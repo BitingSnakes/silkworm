@@ -26,7 +26,9 @@ class _DummyLogger:
 
 
 class _DummyRnetResponse:
-    def __init__(self, *, status: int = 200, headers: Any = None, body: bytes | str = b"") -> None:
+    def __init__(
+        self, *, status: int = 200, headers: Any = None, body: bytes | str = b""
+    ) -> None:
         self.status = status
         self.headers = headers or {}
         self._body = body

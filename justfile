@@ -18,7 +18,7 @@ init:
 	uv sync --group dev
 
 fmt:
-	uv run --group dev ruff format src examples
+	uv run --group dev ruff format src examples tests
 
 lint:
 	uv run --group dev ruff check src examples
