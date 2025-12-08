@@ -11,6 +11,15 @@ Async-first web scraping framework built on [rnet](https://github.com/0x676e67/r
 - Structured logging via `logly` with optional `SILKWORM_LOG_LEVEL` override.
 
 ## Installation
+
+Using PyPI:
+
+```bash
+pip install silkworm-rs
+```
+
+From source:
+
 ```bash
 uv venv  # install uv from https://docs.astral.sh/uv/getting-started/ if needed
 source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
