@@ -17,7 +17,7 @@ source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
 uv pip install -e .
 ```
 
-Silkworm targets Python 3.10+. Dependencies are pinned in `pyproject.toml`; the `scraper-rs` dependency is pulled from GitHub.
+Silkworm targets Python 3.10+. Dependencies are pinned in `pyproject.toml`.
 
 ## Quick start
 Define a spider by subclassing `Spider`, implementing `parse`, and yielding items or follow-up `Request` objects. Then run it with `run_spider`.
