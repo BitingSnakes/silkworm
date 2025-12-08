@@ -61,22 +61,44 @@ Silkworm ships with a few building blocks:
 - `UserAgentMiddleware` rotates or defaults a User-Agent header.
 - `ProxyMiddleware` cycles through a list of proxies.
 - `RetryMiddleware` retries on common transient HTTP codes with backoff.
+- `DelayMiddleware` adds configurable delays between requests for rate limiting or polite scraping.
 - `JsonLinesPipeline` writes scraped items to a JSONL file.
 - `SQLitePipeline` stores items in a SQLite table.
 
 Attach them when invoking `run_spider`:
 
 ```python
-from silkworm.middlewares import RetryMiddleware, UserAgentMiddleware
+from silkworm.middlewares import DelayMiddleware, RetryMiddleware, UserAgentMiddleware
 from silkworm.pipelines import JsonLinesPipeline
 
 run_spider(
     QuotesSpider,
-    request_middlewares=[UserAgentMiddleware()],
+    request_middlewares=[
+        UserAgentMiddleware(),
+        DelayMiddleware(delay=1.0),  # Wait 1 second between requests
+    ],
     response_middlewares=[RetryMiddleware(max_times=3)],
     item_pipelines=[JsonLinesPipeline("data/quotes.jl")],
     request_timeout=10,
 )
+```
+
+### DelayMiddleware usage
+The `DelayMiddleware` supports flexible delay strategies:
+
+```python
+# Fixed delay of 1 second between all requests
+DelayMiddleware(delay=1.0)
+
+# Random delay between 0.5 and 2 seconds
+DelayMiddleware(min_delay=0.5, max_delay=2.0)
+
+# Custom delay function based on request/spider
+def smart_delay(request, spider):
+    # Faster for API endpoints, slower for pages
+    return 0.5 if '/api/' in request.url else 2.0
+
+DelayMiddleware(delay_func=smart_delay)
 ```
 
 ## Example spiders
