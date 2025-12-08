@@ -64,6 +64,8 @@ Silkworm ships with a few building blocks:
 - `DelayMiddleware` adds configurable delays between requests for rate limiting or polite scraping.
 - `JsonLinesPipeline` writes scraped items to a JSONL file.
 - `SQLitePipeline` stores items in a SQLite table.
+- `XMLPipeline` exports scraped items to an XML file.
+- `CSVPipeline` exports scraped items to a CSV file.
 
 Attach them when invoking `run_spider`:
 
@@ -100,6 +102,28 @@ def smart_delay(request, spider):
 
 DelayMiddleware(delay_func=smart_delay)
 ```
+
+### Pipeline usage
+The built-in pipelines provide different export formats for your scraped data:
+
+```python
+from silkworm.pipelines import CSVPipeline, JsonLinesPipeline, SQLitePipeline, XMLPipeline
+
+# JSON Lines - one JSON object per line
+JsonLinesPipeline("data/quotes.jl")
+
+# SQLite database
+SQLitePipeline("data/quotes.db", table="quotes")
+
+# XML format with customizable elements
+XMLPipeline("data/quotes.xml", root_element="quotes", item_element="quote")
+
+# CSV format with automatic field detection or custom fieldnames
+CSVPipeline("data/quotes.csv")  # Auto-detect fields from first item
+CSVPipeline("data/quotes.csv", fieldnames=["author", "text", "tags"])  # Custom order
+```
+
+The `XMLPipeline` automatically converts nested dictionaries and lists to proper XML structure. The `CSVPipeline` flattens nested dictionaries (e.g., `{"user": {"name": "Alice"}}` becomes `user_name`) and converts lists to comma-separated strings.
 
 ## Example spiders
 - `python examples/quotes_spider.py` writes quotes to `data/quotes.jl`.
