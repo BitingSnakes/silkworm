@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
 import random
+from enum import Enum, auto
 from typing import Callable, Iterable, Protocol, Sequence
 
 from .request import Request
@@ -97,6 +98,14 @@ class RetryMiddleware:
         return request
 
 
+class _DelayStrategy(Enum):
+    """Internal enum to track which delay strategy is configured."""
+
+    FIXED = auto()
+    RANDOM = auto()
+    CUSTOM = auto()
+
+
 class DelayMiddleware:
     """
     Middleware to add configurable delays between requests.
@@ -133,13 +142,14 @@ class DelayMiddleware:
         max_delay: float | None = None,
         delay_func: Callable[[Request, "Spider"], float] | None = None,
     ) -> None:
-        # Validate configuration
+        # Validate configuration and determine strategy
         if delay_func is not None:
             if delay is not None or min_delay is not None or max_delay is not None:
                 raise ValueError(
                     "delay_func cannot be used with delay, min_delay, or max_delay"
                 )
-            self.delay_func: Callable[[Request, "Spider"], float] | None = delay_func
+            self._strategy = _DelayStrategy.CUSTOM
+            self._delay_func = delay_func
         elif min_delay is not None or max_delay is not None:
             if delay is not None:
                 raise ValueError("Cannot use both delay and min_delay/max_delay")
@@ -149,14 +159,14 @@ class DelayMiddleware:
                 raise ValueError("min_delay and max_delay must be non-negative")
             if min_delay > max_delay:
                 raise ValueError("min_delay must be less than or equal to max_delay")
-            self.min_delay = min_delay
-            self.max_delay = max_delay
-            self.delay_func = None
+            self._strategy = _DelayStrategy.RANDOM
+            self._min_delay = min_delay
+            self._max_delay = max_delay
         elif delay is not None:
             if delay < 0:
                 raise ValueError("delay must be non-negative")
-            self.delay = delay
-            self.delay_func = None
+            self._strategy = _DelayStrategy.FIXED
+            self._fixed_delay = delay
         else:
             raise ValueError(
                 "Must provide one of: delay, min_delay/max_delay, or delay_func"
@@ -166,12 +176,12 @@ class DelayMiddleware:
 
     async def process_request(self, request: Request, spider: "Spider") -> Request:
         """Calculate and apply delay before processing the request."""
-        if self.delay_func is not None:
-            delay = self.delay_func(request, spider)
-        elif hasattr(self, "min_delay"):
-            delay = random.uniform(self.min_delay, self.max_delay)
-        else:
-            delay = self.delay
+        if self._strategy == _DelayStrategy.CUSTOM:
+            delay = self._delay_func(request, spider)
+        elif self._strategy == _DelayStrategy.RANDOM:
+            delay = random.uniform(self._min_delay, self._max_delay)
+        else:  # FIXED
+            delay = self._fixed_delay
 
         if delay > 0:
             self.logger.debug(
