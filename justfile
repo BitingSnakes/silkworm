@@ -18,16 +18,16 @@ init:
 	uv sync --group dev
 
 fmt:
-	uv run ruff format src examples
+	uv run --group dev ruff format src examples
 
 lint:
-	uv run ruff check src examples
+	uv run --group dev ruff check src examples
 
 typecheck:
-	uv run mypy src examples
+	uv run --group dev mypy src examples
 
 test:
-	uv run pytest
+	uv run --group dev pytest
 
 clean:
 	rm -rf dist build .mypy_cache .ruff_cache .pytest_cache *.egg-info

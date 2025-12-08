@@ -1010,6 +1010,7 @@ dependencies = [
 dev = [
     { name = "build" },
     { name = "mypy" },
+    { name = "pydantic" },
     { name = "pytest" },
     { name = "ruff" },
     { name = "twine" },
@@ -1018,7 +1019,10 @@ dev = [
 [package.dev-dependencies]
 dev = [
     { name = "build" },
+    { name = "mypy" },
     { name = "pydantic" },
+    { name = "pytest" },
+    { name = "ruff" },
     { name = "twine" },
 ]
 
@@ -1027,6 +1031,7 @@ requires-dist = [
     { name = "build", marker = "extra == 'dev'" },
     { name = "logly", specifier = ">=0.1.6" },
     { name = "mypy", marker = "extra == 'dev'" },
+    { name = "pydantic", marker = "extra == 'dev'", specifier = ">=2.12.5" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "rnet", specifier = ">=2.4" },
     { name = "ruff", marker = "extra == 'dev'" },
@@ -1038,7 +1043,10 @@ provides-extras = ["dev"]
 [package.metadata.requires-dev]
 dev = [
     { name = "build" },
+    { name = "mypy" },
     { name = "pydantic", specifier = ">=2.12.5" },
+    { name = "pytest" },
+    { name = "ruff" },
     { name = "twine" },
 ]
 

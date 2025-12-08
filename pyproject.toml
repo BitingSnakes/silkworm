@@ -41,10 +41,11 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+  "build",
+  "mypy",
+  "pydantic>=2.12.5",
   "pytest",
   "ruff",
-  "mypy",
-  "build",
   "twine",
 ]
 
@@ -62,7 +63,10 @@ force-include = {"src/silkworm/py.typed" = "silkworm/py.typed"}
 
 [dependency-groups]
 dev = [
-    "pydantic>=2.12.5",
     "build",
+    "mypy",
+    "pydantic>=2.12.5",
+    "pytest",
+    "ruff",
     "twine",
 ]
