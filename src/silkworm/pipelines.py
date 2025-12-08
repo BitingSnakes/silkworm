@@ -105,8 +105,7 @@ class XMLPipeline:
         self.path = Path(path)
         self.root_element = root_element
         self.item_element = item_element
-        self._fp: io.TextIOWrapper | None = None
-        self._is_first_item = True
+        self._fp: io.TextIOWrapper | None = None  # type: ignore[name-defined]
         self.logger = get_logger(component="XMLPipeline")
 
     async def open(self, spider: "Spider") -> None:
@@ -116,7 +115,6 @@ class XMLPipeline:
             f'<?xml version="1.0" encoding="UTF-8"?>\n<{self.root_element}>\n'
         )
         self._fp.flush()
-        self._is_first_item = True
         self.logger.info("Opened XML pipeline", path=str(self.path))
 
     async def close(self, spider: "Spider") -> None:

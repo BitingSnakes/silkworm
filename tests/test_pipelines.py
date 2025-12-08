@@ -128,7 +128,9 @@ async def test_csv_pipeline_creates_valid_csv():
         lines = content.strip().split("\n")
 
         assert len(lines) == 3  # header + 2 data rows
-        assert "text,author" in lines[0] or "author,text" in lines[0]
+        # Check header has both fields (order may vary)
+        header_fields = set(lines[0].split(","))
+        assert header_fields == {"text", "author"}
         assert "Hello" in content
         assert "John" in content
         assert "World" in content
