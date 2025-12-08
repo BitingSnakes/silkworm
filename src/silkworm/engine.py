@@ -40,7 +40,7 @@ class Engine:
         self.request_middlewares = list(request_middlewares or [])
         self.response_middlewares = list(response_middlewares or [])
         self.item_pipelines = list(item_pipelines or [])
-        
+
         # Statistics tracking
         self.log_stats_interval = log_stats_interval
         self._stats_task: asyncio.Task | None = None
@@ -220,10 +220,10 @@ class Engine:
             await asyncio.sleep(self.log_stats_interval or 30.0)
             if self._stopping:
                 break
-            
+
             elapsed = time.time() - (self._start_time or time.time())
             requests_rate = self._stats["requests_sent"] / elapsed if elapsed > 0 else 0
-            
+
             self.logger.info(
                 "Crawl statistics",
                 spider=self.spider.name,
@@ -240,7 +240,7 @@ class Engine:
         self.logger.info("Starting engine", spider=self.spider.name)
         self._start_time = time.time()
         await self.open_spider()
-        
+
         # number of workers = client concurrency
         concurrency = self.http._sem._value  # type: ignore[attr-defined]
         for _ in range(concurrency):
@@ -254,11 +254,11 @@ class Engine:
         await self._queue.join()
         self._stopping = True
         await asyncio.gather(*self._tasks, return_exceptions=True)
-        
+
         # Stop statistics logging task if it was started
         if self._stats_task is not None:
             await self._stats_task
-        
+
         # Log final statistics
         elapsed = time.time() - (self._start_time or time.time())
         requests_rate = self._stats["requests_sent"] / elapsed if elapsed > 0 else 0
@@ -272,7 +272,7 @@ class Engine:
             errors=self._stats["errors"],
             requests_per_second=round(requests_rate, 2),
         )
-        
+
         await self.http.close()
         await self.close_spider()
         complete_logs()

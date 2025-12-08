@@ -152,3 +152,25 @@ asyncio.run(main())
 
 ## Logging
 Logs are emitted through `logly`. Set `SILKWORM_LOG_LEVEL=DEBUG` to see verbose output (e.g., headers, retries, middleware activity). Logs are flushed when the engine completes a crawl.
+
+### Statistics logging
+Enable periodic statistics logging during a crawl by passing `log_stats_interval` (in seconds) to `run_spider`:
+
+```python
+run_spider(
+    QuotesSpider,
+    log_stats_interval=30,  # Log statistics every 30 seconds
+    request_timeout=10,
+)
+```
+
+Statistics include:
+- **elapsed_seconds**: Time since the crawl started
+- **requests_sent**: Total number of requests sent
+- **responses_received**: Total number of responses received
+- **items_scraped**: Total number of items yielded by the spider
+- **errors**: Total number of errors encountered
+- **queue_size**: Current number of requests waiting to be processed
+- **requests_per_second**: Average request rate
+
+Final statistics are always logged when the spider completes, regardless of the `log_stats_interval` setting.
