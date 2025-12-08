@@ -12,9 +12,9 @@ Async-first web scraping framework built on [rnet](https://github.com/0x676e67/r
 
 ## Installation
 ```bash
-python -m venv .venv
+uv venv  # install uv from https://docs.astral.sh/uv/getting-started/ if needed
 source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
-pip install -e .
+uv pip install -e .
 ```
 
 Silkworm targets Python 3.10+. Dependencies are pinned in `pyproject.toml`; the `scraper-rs` dependency is pulled from GitHub.
