@@ -216,8 +216,11 @@ class Engine:
 
     async def _log_statistics(self) -> None:
         """Periodically log statistics about the crawl progress."""
+        if self.log_stats_interval is None:
+            return
+
         while not self._stopping:
-            await asyncio.sleep(self.log_stats_interval or 30.0)
+            await asyncio.sleep(self.log_stats_interval)
             if self._stopping:
                 break
 
@@ -257,7 +260,11 @@ class Engine:
 
         # Stop statistics logging task if it was started
         if self._stats_task is not None:
-            await self._stats_task
+            self._stats_task.cancel()
+            try:
+                await self._stats_task
+            except asyncio.CancelledError:
+                pass
 
         # Log final statistics
         elapsed = time.time() - (self._start_time or time.time())
