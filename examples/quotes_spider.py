@@ -1,0 +1,95 @@
+from pydantic import BaseModel, ValidationError, field_validator
+
+from silkworm import HTMLResponse, Spider, run_spider
+from silkworm.logging import get_logger
+from silkworm.middlewares import (
+    # ProxyMiddleware,
+    RequestMiddleware,
+    ResponseMiddleware,
+    RetryMiddleware,
+    UserAgentMiddleware,
+)
+from silkworm.pipelines import (
+    ItemPipeline,
+    JsonLinesPipeline,
+    # SQLitePipeline
+)
+
+
+class Quote(BaseModel):
+    text: str
+    author: str
+    tags: list[str]
+
+    @field_validator("text", "author")
+    @classmethod
+    def validate_not_blank(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("must not be empty")
+        return value
+
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, value: list[str]) -> list[str]:
+        cleaned = [tag.strip() for tag in value if tag.strip()]
+        if not cleaned:
+            raise ValueError("at least one tag required")
+        return cleaned
+
+
+class QuotesSpider(Spider):
+    name = "quotes"
+    start_urls = ["https://quotes.toscrape.com/"]
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.logger = get_logger(component="QuotesSpider", spider=self.name)
+
+    async def parse(self, response: HTMLResponse):
+        for el in response.css(".quote"):
+            try:
+                quote = Quote(
+                    text=el.select(".text")[0].text,
+                    author=el.select(".author")[0].text,
+                    tags=[t.text for t in el.select(".tag")],
+                )
+                self.logger.debug(
+                    "Scraped quote",
+                    author=quote.author,
+                    tags=len(quote.tags),
+                )
+                # Pipelines expect dict-like items; ensure conversion regardless of pydantic version.
+                yield (
+                    quote.model_dump() if hasattr(quote, "model_dump") else quote.dict()
+                )
+            except ValidationError as exc:
+                self.logger.warning("Skipping invalid quote", errors=exc.errors())
+                continue
+
+        next_link = response.find("li.next > a")
+        if next_link:
+            href = next_link.attr("href")
+            yield response.follow(href, callback=self.parse)
+
+
+if __name__ == "__main__":
+    request_mw: list[RequestMiddleware] = [
+        UserAgentMiddleware(),
+        # ProxyMiddleware(["http://user:pass@proxy1:8080", "http://proxy2:8080"]),
+    ]
+    response_mw: list[ResponseMiddleware] = [
+        RetryMiddleware(max_times=3),
+    ]
+    pipelines: list[ItemPipeline] = [
+        JsonLinesPipeline("data/quotes.jl"),
+        # SQLitePipeline("data/quotes.db", table="quotes"),
+    ]
+
+    run_spider(
+        QuotesSpider,
+        request_middlewares=request_mw,
+        response_middlewares=response_mw,
+        item_pipelines=pipelines,
+        request_timeout=10,
+    )

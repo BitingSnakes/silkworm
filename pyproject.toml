@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "silkworm"
+version = "0.1.0"
+description = "Async web scraping framework on top of rnet and scraper-rs"
+authors = [
+  { name = "Your Name", email = "you@example.com" }
+]
+readme = "README.md"
+requires-python = ">=3.10"
+
+dependencies = [
+  "rnet>=2.4",
+  "scraper-rs @ git+https://github.com/RustedBytes/scraper-rs",
+  "logly>=0.1.6",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+  "ruff",
+  "mypy",
+]
+
+[project.urls]
+Homepage = "https://github.com/yourname/silkworm"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[dependency-groups]
+dev = [
+    "pydantic>=2.12.5",
+]
