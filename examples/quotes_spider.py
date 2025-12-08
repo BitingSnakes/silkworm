@@ -3,6 +3,7 @@ from pydantic import BaseModel, ValidationError, field_validator
 from silkworm import HTMLResponse, Spider, run_spider
 from silkworm.logging import get_logger
 from silkworm.middlewares import (
+    # DelayMiddleware,
     # ProxyMiddleware,
     RequestMiddleware,
     ResponseMiddleware,
@@ -77,6 +78,9 @@ if __name__ == "__main__":
     request_mw: list[RequestMiddleware] = [
         UserAgentMiddleware(),
         # ProxyMiddleware(["http://user:pass@proxy1:8080", "http://proxy2:8080"]),
+        # Add delay between requests to be polite to the server
+        # DelayMiddleware(delay=0.5),  # Fixed 0.5s delay
+        # DelayMiddleware(min_delay=0.3, max_delay=1.0),  # Random delay
     ]
     response_mw: list[ResponseMiddleware] = [
         RetryMiddleware(max_times=3),

@@ -3,7 +3,7 @@ from urllib.parse import parse_qsl, urlsplit
 import pytest
 
 from silkworm.http import HttpClient
-from silkworm.middlewares import RetryMiddleware
+from silkworm.middlewares import DelayMiddleware, RetryMiddleware
 from silkworm.request import Request
 from silkworm.response import HTMLResponse, Response
 from silkworm import response as response_module
@@ -136,3 +136,118 @@ async def test_retry_middleware_stops_after_max_times(monkeypatch: pytest.Monkey
     result = await middleware.process_response(response, Spider())
 
     assert result is response
+
+
+@pytest.mark.anyio("asyncio")
+async def test_delay_middleware_fixed_delay(monkeypatch: pytest.MonkeyPatch):
+    sleep_calls: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        sleep_calls.append(delay)
+
+    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+
+    middleware = DelayMiddleware(delay=1.5)
+    request = Request(url="http://example.com")
+
+    result = await middleware.process_request(request, Spider())
+
+    assert result is request
+    assert sleep_calls == [1.5]
+
+
+@pytest.mark.anyio("asyncio")
+async def test_delay_middleware_random_delay(monkeypatch: pytest.MonkeyPatch):
+    sleep_calls: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        sleep_calls.append(delay)
+
+    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+
+    middleware = DelayMiddleware(min_delay=0.5, max_delay=2.0)
+    request = Request(url="http://example.com")
+
+    result = await middleware.process_request(request, Spider())
+
+    assert result is request
+    assert len(sleep_calls) == 1
+    assert 0.5 <= sleep_calls[0] <= 2.0
+
+
+@pytest.mark.anyio("asyncio")
+async def test_delay_middleware_custom_function(monkeypatch: pytest.MonkeyPatch):
+    sleep_calls: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        sleep_calls.append(delay)
+
+    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+
+    def custom_delay(request: Request, spider: Spider) -> float:
+        return 3.0 if "slow" in request.url else 0.5
+
+    middleware = DelayMiddleware(delay_func=custom_delay)
+
+    slow_request = Request(url="http://slow.example.com")
+    result1 = await middleware.process_request(slow_request, Spider())
+    assert result1 is slow_request
+    assert sleep_calls[-1] == 3.0
+
+    fast_request = Request(url="http://fast.example.com")
+    result2 = await middleware.process_request(fast_request, Spider())
+    assert result2 is fast_request
+    assert sleep_calls[-1] == 0.5
+
+
+def test_delay_middleware_validation_errors():
+    # Must provide at least one configuration
+    with pytest.raises(ValueError, match="Must provide one of"):
+        DelayMiddleware()
+
+    # Cannot mix delay strategies
+    with pytest.raises(ValueError, match="Cannot use both"):
+        DelayMiddleware(delay=1.0, min_delay=0.5)
+
+    with pytest.raises(ValueError, match="cannot be used with"):
+        DelayMiddleware(delay=1.0, delay_func=lambda r, s: 1.0)
+
+    # min_delay and max_delay must both be provided
+    with pytest.raises(ValueError, match="Both min_delay and max_delay"):
+        DelayMiddleware(min_delay=0.5)
+
+    with pytest.raises(ValueError, match="Both min_delay and max_delay"):
+        DelayMiddleware(max_delay=2.0)
+
+    # Negative values not allowed
+    with pytest.raises(ValueError, match="must be non-negative"):
+        DelayMiddleware(delay=-1.0)
+
+    with pytest.raises(ValueError, match="must be non-negative"):
+        DelayMiddleware(min_delay=-0.5, max_delay=2.0)
+
+    with pytest.raises(ValueError, match="must be non-negative"):
+        DelayMiddleware(min_delay=0.5, max_delay=-2.0)
+
+    # min_delay must be <= max_delay
+    with pytest.raises(ValueError, match="must be less than or equal to"):
+        DelayMiddleware(min_delay=2.0, max_delay=0.5)
+
+
+@pytest.mark.anyio("asyncio")
+async def test_delay_middleware_zero_delay(monkeypatch: pytest.MonkeyPatch):
+    sleep_calls: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        sleep_calls.append(delay)
+
+    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+
+    middleware = DelayMiddleware(delay=0.0)
+    request = Request(url="http://example.com")
+
+    result = await middleware.process_request(request, Spider())
+
+    assert result is request
+    # Zero delay should not call sleep
+    assert sleep_calls == []
