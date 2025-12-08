@@ -15,7 +15,7 @@ license = "MIT"
 
 dependencies = [
   "rnet>=2.4",
-  "scraper-rs @ git+https://github.com/RustedBytes/scraper-rs",
+  "scraper-rust>=0.1",
   "logly>=0.1.6",
 ]
 

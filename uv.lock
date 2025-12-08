@@ -492,9 +492,13 @@ wheels = [
 ]
 
 [[package]]
-name = "scraper-rs"
-version = "0.1.2"
-source = { git = "https://github.com/RustedBytes/scraper-rs#47dcb903d506729c345ee89578db3abd820928e4" }
+name = "scraper-rust"
+version = "0.1.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a8/df/d7dbabd705ed3ae987ecd46b0ce2da73b6a72611d8117b6a1627dae974a6/scraper_rust-0.1.3.tar.gz", hash = "sha256:438324d1df5ef47489f0a21010c405c2084e8ea0fa2e880d41b65b48a1916f32", size = 18448, upload-time = "2025-12-08T18:17:50.863Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d3/31/1719727b61728cf62f2e39bb0e6010804d3e09d9b87e0f787c729bb4de10/scraper_rust-0.1.3-cp310-abi3-manylinux_2_34_x86_64.whl", hash = "sha256:2cdc854be9564e353e257912414a2ecebbbcae94e097349b415152f1688f631e", size = 485060, upload-time = "2025-12-08T18:17:49.169Z" },
+]
 
 [[package]]
 name = "silkworm"
@@ -503,7 +507,7 @@ source = { editable = "." }
 dependencies = [
     { name = "logly" },
     { name = "rnet" },
-    { name = "scraper-rs" },
+    { name = "scraper-rust" },
 ]
 
 [package.optional-dependencies]
@@ -525,7 +529,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "rnet", specifier = ">=2.4" },
     { name = "ruff", marker = "extra == 'dev'" },
-    { name = "scraper-rs", git = "https://github.com/RustedBytes/scraper-rs" },
+    { name = "scraper-rust", specifier = ">=0.1" },
 ]
 provides-extras = ["dev"]
 
