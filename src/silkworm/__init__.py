@@ -1,6 +1,7 @@
 from .request import Request
 from .response import Response, HTMLResponse
 from .spiders import Spider
+from .exceptions import SilkwormError, HttpError, SpiderError
 from .engine import Engine
 from .runner import crawl, run_spider
 from .api import fetch_html
@@ -10,6 +11,9 @@ __all__ = [
     "Request",
     "Response",
     "HTMLResponse",
+    "SilkwormError",
+    "HttpError",
+    "SpiderError",
     "Spider",
     "Engine",
     "crawl",

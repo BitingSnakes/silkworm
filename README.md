@@ -99,5 +99,10 @@ async def main():
 asyncio.run(main())
 ```
 
+## Developer tips
+- Callbacks can yield as usual or simply return a single `Request`/item (sync or async); the engine will normalize the result.
+- `RetryMiddleware` now backs off with `asyncio.sleep` so other concurrent requests keep flowing.
+- The internal HTTP client is closed when the crawl finishes to avoid dangling resources.
+
 ## Logging
 Logs are emitted through `logly`. Set `SILKWORM_LOG_LEVEL=DEBUG` to see verbose output (e.g., headers, retries, middleware activity). Logs are flushed when the engine completes a crawl.

@@ -6,6 +6,7 @@ from urllib.parse import parse_qsl, urlencode, urlsplit
 
 from rnet import Client, Impersonate, Method  # type: ignore[import]
 
+from .exceptions import HttpError
 from .request import Request
 from .response import Response, HTMLResponse
 from .logging import get_logger
@@ -34,24 +35,27 @@ class HttpClient:
         url = self._build_url(req)
         start = asyncio.get_running_loop().time()
 
-        async with self._sem:
-            timeout = req.timeout if req.timeout is not None else self._timeout
-            request_kwargs = dict(
-                headers=headers,
-                data=req.data,
-                json=req.json,
-                proxy=proxy,
-            )
-            if timeout is not None:
-                request_kwargs["timeout"] = timeout
+        try:
+            async with self._sem:
+                timeout = req.timeout if req.timeout is not None else self._timeout
+                request_kwargs = dict(
+                    headers=headers,
+                    data=req.data,
+                    json=req.json,
+                    proxy=proxy,
+                )
+                if timeout is not None:
+                    request_kwargs["timeout"] = timeout
 
-            # Adjust keyword arguments to actual rnet.Client.request signature
-            resp = await self._client.request(method, url, **request_kwargs)
+                # Adjust keyword arguments to actual rnet.Client.request signature
+                resp = await self._client.request(method, url, **request_kwargs)
 
-            status = resp.status
-            headers = self._normalize_headers(resp.headers)
-            body = await self._read_body(resp)
-            elapsed = (asyncio.get_running_loop().time() - start) * 1000
+                status = resp.status
+                headers = self._normalize_headers(resp.headers)
+                body = await self._read_body(resp)
+                elapsed = (asyncio.get_running_loop().time() - start) * 1000
+        except Exception as exc:
+            raise HttpError(f"Request to {req.url} failed") from exc
 
         self.logger.debug(
             "HTTP response",
@@ -195,5 +199,16 @@ class HttpClient:
         raise ValueError(f"Unsupported HTTP method: {method!r}")
 
     async def close(self) -> None:
-        # await self._client.aclose()
-        pass
+        closer = getattr(self._client, "aclose", None) or getattr(
+            self._client, "close", None
+        )
+        if closer is None or not callable(closer):
+            return
+
+        try:
+            result = closer()
+            if inspect.isawaitable(result):
+                await result
+        except Exception as exc:
+            # Best-effort cleanup; suppress shutdown errors so the engine can exit.
+            self.logger.debug("Failed to close HTTP client cleanly", error=str(exc))

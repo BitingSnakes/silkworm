@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "silkworm-rs"
-version = "0.1.0"
+version = "0.1.1"
 description = "Async-first web scraping framework built on rnet and scraper-rs"
 authors = [
   { name = "Yehor Smoliakov", email = "egorsmkv@gmail.com" }
@@ -44,6 +44,8 @@ dev = [
   "pytest",
   "ruff",
   "mypy",
+  "build",
+  "twine",
 ]
 
 [project.urls]
@@ -61,4 +63,6 @@ force-include = {"src/silkworm/py.typed" = "silkworm/py.typed"}
 [dependency-groups]
 dev = [
     "pydantic>=2.12.5",
+    "build",
+    "twine",
 ]

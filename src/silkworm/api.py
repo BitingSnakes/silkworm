@@ -1,4 +1,5 @@
 from __future__ import annotations
+import inspect
 from typing import Tuple
 
 from scraper_rs import Document  # type: ignore[import]
@@ -18,5 +19,8 @@ async def fetch_html(
         text = await resp.text()
         return text, Document(text)
     finally:
-        # await client.aclose()
-        pass
+        closer = getattr(client, "aclose", None) or getattr(client, "close", None)
+        if closer and callable(closer):
+            result = closer()
+            if inspect.isawaitable(result):
+                await result

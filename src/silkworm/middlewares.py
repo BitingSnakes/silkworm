@@ -1,6 +1,6 @@
 from __future__ import annotations
+import asyncio
 import random
-import time
 from typing import Iterable, Protocol, Sequence
 
 from .request import Request
@@ -84,7 +84,6 @@ class RetryMiddleware:
         request = request.replace()
         request.meta["retry_times"] = retry_times
 
-        # naive blocking backoff; for production use asyncio.sleep instead
         delay = self.backoff_base * (2 ** (retry_times - 1))
         self.logger.warning(
             "Retrying request",
@@ -92,6 +91,7 @@ class RetryMiddleware:
             delay=round(delay, 2),
             attempt=retry_times,
         )
-        time.sleep(delay)
+        # non-blocking sleep to avoid stalling other concurrent fetches
+        await asyncio.sleep(delay)
 
         return request

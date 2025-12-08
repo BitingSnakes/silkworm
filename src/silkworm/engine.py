@@ -1,8 +1,9 @@
 from __future__ import annotations
 import asyncio
 import inspect
-from typing import Any, Iterable, Set
+from typing import Any, AsyncIterator, Iterable, Set
 
+from .exceptions import SpiderError
 from .http import HttpClient
 from .request import Request
 from .response import HTMLResponse, Response
@@ -98,6 +99,7 @@ class Engine:
                     "Failed to process request",
                     url=req.url,
                     error=str(exc),
+                    error_type=exc.__class__.__name__,
                     spider=self.spider.name,
                 )
                 raise
@@ -126,35 +128,65 @@ class Engine:
         callback = resp.request.callback
 
         produced: Any
-        if callback is None:
-            if not isinstance(resp, HTMLResponse):
-                raise TypeError("Spider.parse requires an HTMLResponse")
-            produced = self.spider.parse(resp)
-        else:
-            produced = callback(resp)
+        try:
+            if callback is None:
+                if not isinstance(resp, HTMLResponse):
+                    raise TypeError("Spider.parse requires an HTMLResponse")
+                produced = self.spider.parse(resp)
+            else:
+                produced = callback(resp)
+        except Exception as exc:
+            name = getattr(callback, "__name__", "parse") if callback else "parse"
+            raise SpiderError(
+                f"Spider callback '{name}' failed for {self.spider.name}"
+            ) from exc
+
+        try:
+            async for x in self._iterate_callback_results(produced):
+                if isinstance(x, Request):
+                    await self._enqueue(x)
+                else:
+                    self.logger.debug(
+                        "Processing scraped item",
+                        spider=self.spider.name,
+                        pipelines=len(self.item_pipelines),
+                    )
+                    await self._process_item(x)
+        except Exception as exc:
+            name = getattr(callback, "__name__", "parse") if callback else "parse"
+            raise SpiderError(
+                f"Spider callback '{name}' yielded invalid results"
+            ) from exc
+
+    async def _iterate_callback_results(self, produced: Any) -> AsyncIterator[Any]:
+        """
+        Normalize any supported callback return shape (single item, Request,
+        sync/async iterator, or awaitable) into an async iterator.
+        """
         results = await produced if inspect.isawaitable(produced) else produced
 
         if results is None:
             return
 
-        async def iterate():
-            if hasattr(results, "__aiter__"):
-                async for x in results:
-                    yield x
-            else:
-                for x in results:
-                    yield x
+        if isinstance(results, Request):
+            yield results
+            return
 
-        async for x in iterate():
-            if isinstance(x, Request):
-                await self._enqueue(x)
-            else:
-                self.logger.debug(
-                    "Processing scraped item",
-                    spider=self.spider.name,
-                    pipelines=len(self.item_pipelines),
-                )
-                await self._process_item(x)
+        if hasattr(results, "__aiter__"):
+            async for x in results:  # type: ignore[operator]
+                yield x
+            return
+
+        if isinstance(results, Iterable) and not isinstance(
+            results, (str, bytes, bytearray)
+        ):
+            for x in results:
+                yield x
+            return
+
+        # Fallback: treat any other value as a single item to avoid confusing
+        # TypeError from iterating over non-iterables.
+        yield results
 
     async def _process_item(self, item: Any) -> None:
         for pipe in self.item_pipelines:
