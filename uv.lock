@@ -501,7 +501,7 @@ wheels = [
 ]
 
 [[package]]
-name = "silkworm"
+name = "silkworm-rs"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
