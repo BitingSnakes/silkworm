@@ -44,7 +44,7 @@ class Engine:
         # Statistics tracking
         self.log_stats_interval = log_stats_interval
         self._stats_task: asyncio.Task | None = None
-        self._start_time: float | None = None
+        self._start_time: float = 0.0
         self._stats = {
             "requests_sent": 0,
             "responses_received": 0,
@@ -224,7 +224,7 @@ class Engine:
             if self._stopping:
                 break
 
-            elapsed = time.time() - (self._start_time or time.time())
+            elapsed = time.time() - self._start_time
             requests_rate = self._stats["requests_sent"] / elapsed if elapsed > 0 else 0
 
             self.logger.info(
@@ -267,7 +267,7 @@ class Engine:
                 pass
 
         # Log final statistics
-        elapsed = time.time() - (self._start_time or time.time())
+        elapsed = time.time() - self._start_time
         requests_rate = self._stats["requests_sent"] / elapsed if elapsed > 0 else 0
         self.logger.info(
             "Final crawl statistics",
