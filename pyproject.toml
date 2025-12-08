@@ -5,9 +5,9 @@ build-backend = "hatchling.build"
 [project]
 name = "silkworm"
 version = "0.1.0"
-description = "Async web scraping framework on top of rnet and scraper-rs"
+description = "Async web scraping framework on top of Rust"
 authors = [
-  { name = "Your Name", email = "you@example.com" }
+  { name = "Yehor Smoliakov", email = "egorsmkv@gmail.com" }
 ]
 readme = "README.md"
 requires-python = ">=3.10"

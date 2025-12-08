@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 from urllib.parse import urljoin
 
 from pydantic import BaseModel, ValidationError, field_validator
@@ -130,7 +131,20 @@ class HackerNewsSpider(Spider):
         return None
 
 
-if __name__ == "__main__":
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Scrape latest Hacker News posts.")
+    parser.add_argument(
+        "--pages",
+        type=int,
+        default=5,
+        help="Number of pagination pages to crawl (>=1).",
+    )
+    return parser.parse_args()
+
+
+def main() -> None:
+    args = parse_args()
+
     request_mw: list[RequestMiddleware] = [
         UserAgentMiddleware(),
     ]
@@ -147,4 +161,9 @@ if __name__ == "__main__":
         response_middlewares=response_mw,
         item_pipelines=pipelines,
         request_timeout=10,
+        pages=args.pages,
     )
+
+
+if __name__ == "__main__":
+    main()
