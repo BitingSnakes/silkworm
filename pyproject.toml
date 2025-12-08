@@ -45,6 +45,7 @@ dev = [
   "mypy",
   "pydantic>=2.12.5",
   "pytest",
+  "pytest-anyio",
   "ruff",
   "twine",
 ]
@@ -67,6 +68,7 @@ dev = [
     "mypy",
     "pydantic>=2.12.5",
     "pytest",
+    "pytest-anyio",
     "ruff",
     "twine",
 ]

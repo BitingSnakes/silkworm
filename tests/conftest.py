@@ -1,0 +1,113 @@
+import sys
+import types
+from pathlib import Path
+from typing import Any
+
+ROOT = Path(__file__).resolve().parents[1]
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
+
+
+class _DummyLogger:
+    def configure(self, **_: Any) -> None:
+        return None
+
+    def bind(self, **_: Any) -> "_DummyLogger":
+        return self
+
+    def debug(self, *args: Any, **kwargs: Any) -> None:
+        return None
+
+    info = warning = error = debug
+
+    def complete(self) -> None:
+        return None
+
+
+class _DummyRnetResponse:
+    def __init__(self, *, status: int = 200, headers: Any = None, body: bytes | str = b"") -> None:
+        self.status = status
+        self.headers = headers or {}
+        self._body = body
+
+    async def read(self) -> bytes:
+        if isinstance(self._body, bytes):
+            return self._body
+        return str(self._body).encode("utf-8")
+
+    async def text(self) -> str:
+        if isinstance(self._body, bytes):
+            return self._body.decode("utf-8", errors="replace")
+        return str(self._body)
+
+
+class _DummyClient:
+    def __init__(self, impersonate: Any = None, **_: Any) -> None:
+        self.impersonate = impersonate
+        self.calls: list[tuple[Any, str, dict[str, Any]]] = []
+        self.closed = False
+
+    async def request(self, method: Any, url: str, **kwargs: Any) -> _DummyRnetResponse:
+        self.calls.append((method, url, kwargs))
+        return _DummyRnetResponse()
+
+    async def get(self, url: str, **kwargs: Any) -> _DummyRnetResponse:
+        return await self.request("GET", url, **kwargs)
+
+    async def aclose(self) -> None:
+        self.closed = True
+
+    async def close(self) -> None:
+        self.closed = True
+
+
+class _DummyImpersonate:
+    Firefox139 = "Firefox139"
+
+
+class _DummyMethod:
+    GET = "GET"
+    POST = "POST"
+    PUT = "PUT"
+    DELETE = "DELETE"
+
+
+class _DummyDocument:
+    instance_count = 0
+
+    def __init__(self, html: str) -> None:
+        type(self).instance_count += 1
+        self.html = html
+
+    def select(self, selector: str):
+        return [f"{selector}-match"]
+
+    def find(self, selector: str):
+        return f"{selector}-first"
+
+
+# Minimal stub modules so tests don't need real dependencies.
+logly_module = types.ModuleType("logly")
+logly_module.logger = _DummyLogger()
+
+rnet_module = types.ModuleType("rnet")
+rnet_module.Client = _DummyClient
+rnet_module.Impersonate = _DummyImpersonate
+rnet_module.Method = _DummyMethod
+
+scraper_module = types.ModuleType("scraper_rs")
+scraper_module.Document = _DummyDocument
+
+sys.modules["logly"] = logly_module
+sys.modules["rnet"] = rnet_module
+sys.modules["scraper_rs"] = scraper_module
+
+
+# Force AnyIO-powered tests to use asyncio backend to avoid optional trio dep.
+import pytest
+
+
+@pytest.fixture
+def anyio_backend() -> str:
+    return "asyncio"

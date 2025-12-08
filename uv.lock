@@ -12,6 +12,20 @@ wheels = [
 ]
 
 [[package]]
+name = "anyio"
+version = "4.12.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "exceptiongroup", marker = "python_full_version < '3.11'" },
+    { name = "idna" },
+    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/16/ce/8a777047513153587e5434fd752e89334ac33e379aa3497db860eeb60377/anyio-4.12.0.tar.gz", hash = "sha256:73c693b567b0c55130c104d0b43a9baf3aa6a31fc6110116509f27bf75e21ec0", size = 228266, upload-time = "2025-11-28T23:37:38.911Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7f/9c/36c5c37947ebfb8c7f22e0eb6e4d188ee2d53aa3880f3f2744fb894f0cb1/anyio-4.12.0-py3-none-any.whl", hash = "sha256:dad2376a628f98eeca4881fc56cd06affd18f659b17a747d3ff0307ced94b1bb", size = 113362, upload-time = "2025-11-28T23:36:57.897Z" },
+]
+
+[[package]]
 name = "backports-tarfile"
 version = "1.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -791,6 +805,19 @@ wheels = [
 ]
 
 [[package]]
+name = "pytest-anyio"
+version = "0.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/00/44/a02e5877a671b0940f21a7a0d9704c22097b123ed5cdbcca9cab39f17acc/pytest-anyio-0.0.0.tar.gz", hash = "sha256:b41234e9e9ad7ea1dbfefcc1d6891b23d5ef7c9f07ccf804c13a9cc338571fd3", size = 1560, upload-time = "2021-06-29T22:57:30.846Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c6/25/bd6493ae85d0a281b6a0f248d0fdb1d9aa2b31f18bcd4a8800cf397d8209/pytest_anyio-0.0.0-py2.py3-none-any.whl", hash = "sha256:dc8b5c4741cb16ff90be37fddd585ca943ed12bbeb563de7ace6cd94441d8746", size = 1999, upload-time = "2021-06-29T22:57:29.158Z" },
+]
+
+[[package]]
 name = "pywin32-ctypes"
 version = "0.2.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1012,6 +1039,7 @@ dev = [
     { name = "mypy" },
     { name = "pydantic" },
     { name = "pytest" },
+    { name = "pytest-anyio" },
     { name = "ruff" },
     { name = "twine" },
 ]
@@ -1022,6 +1050,7 @@ dev = [
     { name = "mypy" },
     { name = "pydantic" },
     { name = "pytest" },
+    { name = "pytest-anyio" },
     { name = "ruff" },
     { name = "twine" },
 ]
@@ -1033,6 +1062,7 @@ requires-dist = [
     { name = "mypy", marker = "extra == 'dev'" },
     { name = "pydantic", marker = "extra == 'dev'", specifier = ">=2.12.5" },
     { name = "pytest", marker = "extra == 'dev'" },
+    { name = "pytest-anyio", marker = "extra == 'dev'" },
     { name = "rnet", specifier = ">=2.4" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "scraper-rust", specifier = ">=0.1" },
@@ -1046,6 +1076,7 @@ dev = [
     { name = "mypy" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pytest" },
+    { name = "pytest-anyio" },
     { name = "ruff" },
     { name = "twine" },
 ]

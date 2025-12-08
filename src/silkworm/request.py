@@ -22,5 +22,6 @@ class Request:
     priority: int = 0
 
     def replace(self, **kwargs) -> "Request":
-        data = {**self.__dict__, **kwargs}
+        data = {field: getattr(self, field) for field in self.__dataclass_fields__}  # type: ignore[attr-defined]
+        data.update(kwargs)
         return Request(**data)
