@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
 import inspect
+import time
 from typing import Any, AsyncIterator, Iterable, Set
 
 from .exceptions import SpiderError
@@ -24,6 +25,7 @@ class Engine:
         request_middlewares: Iterable[RequestMiddleware] | None = None,
         response_middlewares: Iterable[ResponseMiddleware] | None = None,
         item_pipelines: Iterable[ItemPipeline] | None = None,
+        log_stats_interval: float | None = None,
     ) -> None:
         self.spider = spider
         self.http = HttpClient(  # type: ignore[arg-type]
@@ -38,6 +40,17 @@ class Engine:
         self.request_middlewares = list(request_middlewares or [])
         self.response_middlewares = list(response_middlewares or [])
         self.item_pipelines = list(item_pipelines or [])
+
+        # Statistics tracking
+        self.log_stats_interval = log_stats_interval
+        self._stats_task: asyncio.Task | None = None
+        self._start_time: float = 0.0
+        self._stats = {
+            "requests_sent": 0,
+            "responses_received": 0,
+            "items_scraped": 0,
+            "errors": 0,
+        }
 
     async def open_spider(self) -> None:
         self.logger.info("Opening spider", spider=self.spider.name)
@@ -86,7 +99,9 @@ class Engine:
                     method=req.method,
                     callback=getattr(req.callback, "__name__", None),
                 )
+                self._stats["requests_sent"] += 1
                 resp = await self.http.fetch(req)
+                self._stats["responses_received"] += 1
                 self.logger.info(
                     "Fetched response",
                     url=req.url,
@@ -95,6 +110,7 @@ class Engine:
                 )
                 await self._handle_response(resp)
             except Exception as exc:
+                self._stats["errors"] += 1
                 self.logger.error(
                     "Failed to process request",
                     url=req.url,
@@ -189,6 +205,7 @@ class Engine:
         yield results
 
     async def _process_item(self, item: Any) -> None:
+        self._stats["items_scraped"] += 1
         for pipe in self.item_pipelines:
             self.logger.debug(
                 "Running item pipeline",
@@ -197,18 +214,72 @@ class Engine:
             )
             item = await pipe.process_item(item, self.spider)
 
+    async def _log_statistics(self) -> None:
+        """Periodically log statistics about the crawl progress."""
+        if self.log_stats_interval is None:
+            return
+
+        while not self._stopping:
+            await asyncio.sleep(self.log_stats_interval)
+            if self._stopping:
+                break
+
+            elapsed = time.time() - self._start_time
+            requests_rate = self._stats["requests_sent"] / elapsed if elapsed > 0 else 0
+
+            self.logger.info(
+                "Crawl statistics",
+                spider=self.spider.name,
+                elapsed_seconds=round(elapsed, 1),
+                requests_sent=self._stats["requests_sent"],
+                responses_received=self._stats["responses_received"],
+                items_scraped=self._stats["items_scraped"],
+                errors=self._stats["errors"],
+                queue_size=self._queue.qsize(),
+                requests_per_second=round(requests_rate, 2),
+            )
+
     async def run(self) -> None:
         self.logger.info("Starting engine", spider=self.spider.name)
+        self._start_time = time.time()
         await self.open_spider()
+
         # number of workers = client concurrency
         concurrency = self.http._sem._value  # type: ignore[attr-defined]
         for _ in range(concurrency):
             task = asyncio.create_task(self._worker())
             self._tasks.append(task)
 
+        # Start statistics logging if interval is configured
+        if self.log_stats_interval is not None and self.log_stats_interval > 0:
+            self._stats_task = asyncio.create_task(self._log_statistics())
+
         await self._queue.join()
         self._stopping = True
         await asyncio.gather(*self._tasks, return_exceptions=True)
+
+        # Stop statistics logging task if it was started
+        if self._stats_task is not None:
+            self._stats_task.cancel()
+            try:
+                await self._stats_task
+            except asyncio.CancelledError:
+                pass
+
+        # Log final statistics
+        elapsed = time.time() - self._start_time
+        requests_rate = self._stats["requests_sent"] / elapsed if elapsed > 0 else 0
+        self.logger.info(
+            "Final crawl statistics",
+            spider=self.spider.name,
+            elapsed_seconds=round(elapsed, 1),
+            requests_sent=self._stats["requests_sent"],
+            responses_received=self._stats["responses_received"],
+            items_scraped=self._stats["items_scraped"],
+            errors=self._stats["errors"],
+            requests_per_second=round(requests_rate, 2),
+        )
+
         await self.http.close()
         await self.close_spider()
         complete_logs()
