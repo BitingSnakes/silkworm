@@ -31,6 +31,9 @@ test:
 
 clean:
 	rm -rf dist build .mypy_cache .ruff_cache .pytest_cache *.egg-info
+	rm -rf data/
+	rm -rf **/**/__pycache__
+	rm -rf **/__pycache__
 
 build: clean
 	uv run python -m build

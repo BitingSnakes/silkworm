@@ -103,6 +103,16 @@ def smart_delay(request, spider):
 DelayMiddleware(delay_func=smart_delay)
 ```
 
+Configure which status codes should back off (sleep) before retrying with
+`RetryMiddleware`:
+
+```python
+# Sleep and retry on 403/429 responses (and retry other server errors immediately)
+RetryMiddleware(max_times=3, sleep_http_codes=[403, 429])
+```
+Any code listed in `sleep_http_codes` is automatically retried even if it's not in
+`retry_http_codes`.
+
 ### Pipeline usage
 The built-in pipelines provide different export formats for your scraped data:
 

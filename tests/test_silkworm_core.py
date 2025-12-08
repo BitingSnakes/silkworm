@@ -122,6 +122,54 @@ async def test_retry_middleware_returns_retry_request(monkeypatch: pytest.Monkey
 
 
 @pytest.mark.anyio("asyncio")
+async def test_retry_middleware_sleep_codes_extend_retry(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    sleep_calls: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        sleep_calls.append(delay)
+
+    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+
+    middleware = RetryMiddleware(max_times=1, sleep_http_codes=[403], backoff_base=0.2)
+    request = Request(url="http://example.com")
+    response = Response(
+        url=request.url, status=403, headers={}, body=b"", request=request
+    )
+
+    result = await middleware.process_response(response, Spider())
+
+    assert isinstance(result, Request)
+    assert result.meta["retry_times"] == 1
+    assert sleep_calls == [0.2]
+
+
+@pytest.mark.anyio("asyncio")
+async def test_retry_middleware_retry_without_sleep(monkeypatch: pytest.MonkeyPatch):
+    sleep_calls: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        sleep_calls.append(delay)
+
+    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+
+    middleware = RetryMiddleware(
+        max_times=1, retry_http_codes=[500], sleep_http_codes=[]
+    )
+    request = Request(url="http://example.com")
+    response = Response(
+        url=request.url, status=500, headers={}, body=b"", request=request
+    )
+
+    result = await middleware.process_response(response, Spider())
+
+    assert isinstance(result, Request)
+    assert result.meta["retry_times"] == 1
+    assert sleep_calls == []
+
+
+@pytest.mark.anyio("asyncio")
 async def test_retry_middleware_stops_after_max_times(monkeypatch: pytest.MonkeyPatch):
     async def fake_sleep(_: float) -> None:
         return None

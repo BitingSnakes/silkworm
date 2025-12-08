@@ -62,11 +62,21 @@ class RetryMiddleware:
         max_times: int = 3,
         retry_http_codes: Iterable[int] | None = None,
         backoff_base: float = 0.5,
+        sleep_http_codes: Iterable[int] | None = None,
     ) -> None:
         self.max_times = max_times
-        self.retry_http_codes = set(
+        base_retry_codes = set(
             retry_http_codes or {500, 502, 503, 504, 522, 524, 408, 429}
         )
+        sleep_codes = (
+            set(sleep_http_codes)
+            if sleep_http_codes is not None
+            else set(base_retry_codes)
+        )
+        # Any code we sleep on should also be retried even if it was not
+        # included in retry_http_codes.
+        self.retry_http_codes = base_retry_codes | sleep_codes
+        self.sleep_http_codes = sleep_codes
         self.backoff_base = backoff_base
         self.logger = get_logger(component="RetryMiddleware")
 
@@ -91,9 +101,11 @@ class RetryMiddleware:
             url=request.url,
             delay=round(delay, 2),
             attempt=retry_times,
+            status=response.status,
         )
-        # non-blocking sleep to avoid stalling other concurrent fetches
-        await asyncio.sleep(delay)
+        if response.status in self.sleep_http_codes and delay > 0:
+            # non-blocking sleep to avoid stalling other concurrent fetches
+            await asyncio.sleep(delay)
 
         return request
 

@@ -8,6 +8,7 @@ from pydantic import BaseModel, ValidationError, field_validator  # type: ignore
 from silkworm import HTMLResponse, Spider, run_spider
 from silkworm.logging import get_logger
 from silkworm.middlewares import (
+    DelayMiddleware,
     RequestMiddleware,
     ResponseMiddleware,
     RetryMiddleware,
@@ -147,9 +148,10 @@ def main() -> None:
 
     request_mw: list[RequestMiddleware] = [
         UserAgentMiddleware(),
+        DelayMiddleware(min_delay=0.3, max_delay=1.0),  # Random delay
     ]
     response_mw: list[ResponseMiddleware] = [
-        RetryMiddleware(max_times=3),
+        RetryMiddleware(max_times=3, sleep_http_codes=[403]),
     ]
     pipelines: list[ItemPipeline] = [
         JsonLinesPipeline("data/hackernews.jl"),
