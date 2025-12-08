@@ -5,13 +5,33 @@ build-backend = "hatchling.build"
 [project]
 name = "silkworm"
 version = "0.1.0"
-description = "Async web scraping framework on top of Rust"
+description = "Async-first web scraping framework built on rnet and scraper-rs"
 authors = [
   { name = "Yehor Smoliakov", email = "egorsmkv@gmail.com" }
 ]
-readme = "README.md"
+readme = { file = "README.md", content-type = "text/markdown" }
 requires-python = ">=3.10"
-license = "MIT"
+license = { file = "LICENSE" }
+keywords = [
+  "web-scraping",
+  "crawler",
+  "asyncio",
+  "http",
+  "html",
+  "spider",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Topic :: Internet :: WWW/HTTP",
+  "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
+  "Topic :: Software Development :: Libraries",
+  "Typing :: Typed",
+]
 
 dependencies = [
   "rnet>=2.4",
@@ -27,10 +47,16 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourname/silkworm"
+Homepage = "https://github.com/BitingSnakes/silkworm"
+Repository = "https://github.com/BitingSnakes/silkworm"
+Issues = "https://github.com/BitingSnakes/silkworm/issues"
 
 [tool.hatch.metadata]
 allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/silkworm"]
+force-include = {"src/silkworm/py.typed" = "silkworm/py.typed"}
 
 [dependency-groups]
 dev = [
