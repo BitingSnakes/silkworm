@@ -186,3 +186,8 @@ Statistics include:
 - **requests_per_second**: Average request rate
 
 Final statistics are always logged when the spider completes, regardless of the `log_stats_interval` setting.
+
+To keep memory usage predictable on very large crawls, Silkworm bounds the pending
+request queue by default (`concurrency * 10`). Tune it with
+`max_pending_requests` on `run_spider`/`crawl` (e.g., `max_pending_requests=100`)
+to reduce how many requests are buffered at once.

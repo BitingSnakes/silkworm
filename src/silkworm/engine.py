@@ -20,6 +20,7 @@ class Engine:
         spider: Spider,
         *,
         concurrency: int = 16,
+        max_pending_requests: int | None = None,
         emulation=None,
         request_timeout: float | None = None,
         request_middlewares: Iterable[RequestMiddleware] | None = None,
@@ -31,7 +32,12 @@ class Engine:
         self.http = HttpClient(  # type: ignore[arg-type]
             concurrency=concurrency, emulation=emulation, timeout=request_timeout
         )
-        self._queue: asyncio.Queue[Request] = asyncio.Queue()
+        # Bound the queue to avoid unbounded growth when many requests are scheduled.
+        default_queue_size = concurrency * 10
+        queue_size = (
+            max_pending_requests if max_pending_requests is not None else default_queue_size
+        )
+        self._queue: asyncio.Queue[Request] = asyncio.Queue(maxsize=queue_size)
         self._seen: Set[str] = set()
         self._stopping = False
         self._tasks: list[asyncio.Task] = []
@@ -243,7 +249,6 @@ class Engine:
     async def run(self) -> None:
         self.logger.info("Starting engine", spider=self.spider.name)
         self._start_time = time.time()
-        await self.open_spider()
 
         # number of workers = client concurrency
         concurrency = self.http._sem._value  # type: ignore[attr-defined]
@@ -251,36 +256,41 @@ class Engine:
             task = asyncio.create_task(self._worker())
             self._tasks.append(task)
 
-        # Start statistics logging if interval is configured
-        if self.log_stats_interval is not None and self.log_stats_interval > 0:
-            self._stats_task = asyncio.create_task(self._log_statistics())
+        # Open spider and seed initial requests while workers are already waiting.
+        try:
+            await self.open_spider()
 
-        await self._queue.join()
-        self._stopping = True
-        await asyncio.gather(*self._tasks, return_exceptions=True)
+            # Start statistics logging if interval is configured
+            if self.log_stats_interval is not None and self.log_stats_interval > 0:
+                self._stats_task = asyncio.create_task(self._log_statistics())
 
-        # Stop statistics logging task if it was started
-        if self._stats_task is not None:
-            self._stats_task.cancel()
-            try:
-                await self._stats_task
-            except asyncio.CancelledError:
-                pass
+            await self._queue.join()
+        finally:
+            self._stopping = True
+            await asyncio.gather(*self._tasks, return_exceptions=True)
 
-        # Log final statistics
-        elapsed = time.time() - self._start_time
-        requests_rate = self._stats["requests_sent"] / elapsed if elapsed > 0 else 0
-        self.logger.info(
-            "Final crawl statistics",
-            spider=self.spider.name,
-            elapsed_seconds=round(elapsed, 1),
-            requests_sent=self._stats["requests_sent"],
-            responses_received=self._stats["responses_received"],
-            items_scraped=self._stats["items_scraped"],
-            errors=self._stats["errors"],
-            requests_per_second=round(requests_rate, 2),
-        )
+            # Stop statistics logging task if it was started
+            if self._stats_task is not None:
+                self._stats_task.cancel()
+                try:
+                    await self._stats_task
+                except asyncio.CancelledError:
+                    pass
 
-        await self.http.close()
-        await self.close_spider()
-        complete_logs()
+            # Log final statistics
+            elapsed = time.time() - self._start_time
+            requests_rate = self._stats["requests_sent"] / elapsed if elapsed > 0 else 0
+            self.logger.info(
+                "Final crawl statistics",
+                spider=self.spider.name,
+                elapsed_seconds=round(elapsed, 1),
+                requests_sent=self._stats["requests_sent"],
+                responses_received=self._stats["responses_received"],
+                items_scraped=self._stats["items_scraped"],
+                errors=self._stats["errors"],
+                requests_per_second=round(requests_rate, 2),
+            )
+
+            await self.http.close()
+            await self.close_spider()
+            complete_logs()

@@ -16,6 +16,7 @@ async def crawl(
     item_pipelines: Iterable[ItemPipeline] | None = None,
     request_timeout: float | None = None,
     log_stats_interval: float | None = None,
+    max_pending_requests: int | None = None,
     **spider_kwargs,
 ) -> None:
     spider = spider_cls(**spider_kwargs)
@@ -26,6 +27,7 @@ async def crawl(
         item_pipelines=item_pipelines,
         request_timeout=request_timeout,
         log_stats_interval=log_stats_interval,
+        max_pending_requests=max_pending_requests,
     )
     await engine.run()
 
@@ -38,6 +40,7 @@ def run_spider(
     item_pipelines: Iterable[ItemPipeline] | None = None,
     request_timeout: float | None = None,
     log_stats_interval: float | None = None,
+    max_pending_requests: int | None = None,
     **spider_kwargs,
 ) -> None:
     asyncio.run(
@@ -48,6 +51,7 @@ def run_spider(
             item_pipelines=item_pipelines,
             request_timeout=request_timeout,
             log_stats_interval=log_stats_interval,
+            max_pending_requests=max_pending_requests,
             **spider_kwargs,
         )
     )
