@@ -35,7 +35,7 @@ classifiers = [
 
 dependencies = [
   "rnet>=2.4",
-  "scraper-rust>=0.2.7",
+  "scraper-rust>=0.2.8",
   "logly>=0.1.6",
   "orjson>=3.11.5",
 ]
