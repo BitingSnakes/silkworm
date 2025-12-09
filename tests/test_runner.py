@@ -13,7 +13,7 @@ class SimpleSpider(Spider):
     """A minimal spider for testing."""
 
     name = "simple"
-    start_urls = []
+    start_urls: tuple[str, ...] = ()
 
     async def parse(self, response):
         yield {}

@@ -8,7 +8,9 @@ from silkworm.spiders import Spider
 
 class SmallSpider(Spider):
     name = "small"
-    start_urls = [f"http://example.com/{i}" for i in range(5)]
+    start_urls: tuple[str, ...] = tuple(
+        f"http://example.com/{i}" for i in range(5)
+    )
 
     async def parse(self, response):
         return None

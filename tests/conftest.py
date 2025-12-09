@@ -78,9 +78,11 @@ class _DummyMethod:
 class _DummyDocument:
     instance_count = 0
 
-    def __init__(self, html: str) -> None:
+    def __init__(self, html: str, *, max_size_bytes: int | None = None) -> None:
         type(self).instance_count += 1
         self.html = html
+        self.max_size_bytes = max_size_bytes
+        self.closed = False
 
     def select(self, selector: str):
         return [f"{selector}-match"]
@@ -88,17 +90,20 @@ class _DummyDocument:
     def find(self, selector: str):
         return f"{selector}-first"
 
+    def close(self) -> None:
+        self.closed = True
+
 
 # Minimal stub modules so tests don't need real dependencies.
-logly_module = types.ModuleType("logly")
+logly_module: Any = types.ModuleType("logly")
 logly_module.logger = _DummyLogger()
 
-rnet_module = types.ModuleType("rnet")
+rnet_module: Any = types.ModuleType("rnet")
 rnet_module.Client = _DummyClient
 rnet_module.Impersonate = _DummyImpersonate
 rnet_module.Method = _DummyMethod
 
-scraper_module = types.ModuleType("scraper_rs")
+scraper_module: Any = types.ModuleType("scraper_rs")
 scraper_module.Document = _DummyDocument
 
 sys.modules["logly"] = logly_module

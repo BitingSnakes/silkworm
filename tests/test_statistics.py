@@ -8,7 +8,7 @@ from silkworm.spiders import Spider
 
 class MockSpider(Spider):
     name = "mock"
-    start_urls = []
+    start_urls: tuple[str, ...] = ()
 
     async def parse(self, response):
         yield {"data": "test"}
@@ -93,7 +93,7 @@ async def test_final_log_includes_event_loop():
 
     class NoopSpider(Spider):
         name = "noop"
-        start_urls = []
+        start_urls: tuple[str, ...] = ()
 
         async def parse(self, response):  # pragma: no cover - not invoked
             return None

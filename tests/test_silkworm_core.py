@@ -1,5 +1,5 @@
 from urllib.parse import parse_qsl, urlsplit
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -137,7 +137,7 @@ def test_htmlresponse_uses_configurable_max_size(monkeypatch: pytest.MonkeyPatch
         doc_max_size_bytes=1234,
     )
 
-    doc = resp.doc
+    doc = cast(InspectingDocument, resp.doc)
 
     assert captured["max_size_bytes"] == 1234
     assert doc.max_size_bytes == 1234
@@ -169,7 +169,7 @@ def test_htmlresponse_close_releases_document(monkeypatch: pytest.MonkeyPatch):
         request=Request(url="http://example.com"),
     )
 
-    doc = resp.doc
+    doc = cast(ClosableDocument, resp.doc)
     assert doc.closed is False
 
     resp.close()
@@ -440,7 +440,11 @@ async def test_engine_retries_requests_even_if_url_seen(
 
     async def fake_fetch(req: Request) -> Response:
         status = statuses.pop(0)
-        seen_requests.append((status, req.meta.get("retry_times", 0)))
+        retry_raw = req.meta.get("retry_times", 0)
+        retry_times = (
+            int(retry_raw) if isinstance(retry_raw, (int, float, str)) else 0
+        )
+        seen_requests.append((status, retry_times))
         return Response(url=req.url, status=status, headers={}, body=b"", request=req)
 
     engine.http.fetch = fake_fetch  # type: ignore[assignment]
