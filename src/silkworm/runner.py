@@ -67,7 +67,7 @@ def run_spider_trio(
         import trio_asyncio  # type: ignore[import]
     except ImportError:
         raise ImportError(
-            "trio-asyncio is required for trio support. Install it with: pip install trio-asyncio"
+            "trio-asyncio is required for trio support. Install it with: pip install silkworm-rs[trio]"
         )
 
     async def run_with_trio_asyncio():
