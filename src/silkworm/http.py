@@ -127,7 +127,9 @@ class HttpClient:
             except HttpError:
                 raise
             except Exception as exc:
-                raise HttpError(f"Request to {req.url} failed") from exc
+                detail = str(exc)
+                suffix = f": {detail}" if detail else ""
+                raise HttpError(f"Request to {req.url} failed{suffix}") from exc
             finally:
                 await self._close_response(resp)
 

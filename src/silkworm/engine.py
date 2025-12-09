@@ -133,13 +133,17 @@ class Engine:
                 await self._handle_response(resp)
             except Exception as exc:
                 self._stats["errors"] += 1
-                self.logger.error(
-                    "Failed to process request",
-                    url=req.url,
-                    error=str(exc),
-                    error_type=exc.__class__.__name__,
-                    spider=self.spider.name,
-                )
+                cause = exc.__cause__ or exc.__context__
+                error_context = {
+                    "url": req.url,
+                    "error": str(exc),
+                    "error_type": exc.__class__.__name__,
+                    "spider": self.spider.name,
+                }
+                if cause is not None:
+                    error_context["cause"] = self._safe_repr(cause)
+                    error_context["cause_type"] = cause.__class__.__name__
+                self.logger.error("Failed to process request", **error_context)
                 # Keep the worker alive so other requests can continue to be processed.
                 continue
             finally:
