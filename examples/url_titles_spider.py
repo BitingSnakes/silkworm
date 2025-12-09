@@ -5,7 +5,7 @@ import orjson
 from pathlib import Path
 from typing import Any
 
-from silkworm import HTMLResponse, Response, Spider, run_spider
+from silkworm import HTMLResponse, Response, Spider, run_spider_trio
 from silkworm.logging import get_logger
 from silkworm.middlewares import (
     RequestMiddleware,
@@ -150,7 +150,7 @@ def main() -> None:
         JsonLinesPipeline(args.output),
     ]
 
-    run_spider(
+    run_spider_trio(
         UrlTitlesSpider,
         concurrency=32,
         request_middlewares=request_mw,

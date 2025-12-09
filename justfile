@@ -24,19 +24,20 @@ lint:
 	uv run --group dev ruff check src examples
 
 typecheck:
-	uv run --group dev mypy src examples
+	uv run --group dev mypy src
 
 test:
 	uv run --group dev pytest
 
 clean:
+	rm -rf .venv/
 	rm -rf dist build .mypy_cache .ruff_cache .pytest_cache *.egg-info
 	rm -rf data/
 	rm -rf **/**/__pycache__
 	rm -rf **/__pycache__
 	rm -f *.bin
 
-build: clean
+build: clean init
 	uv run python -m build
 
 publish-test: build

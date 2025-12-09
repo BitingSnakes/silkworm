@@ -160,6 +160,8 @@ def main() -> None:
         item_pipelines=pipelines,
         request_timeout=10,
         log_stats_interval=10,
+        concurrency=32,
+        use_uvloop=True,
         pages=args.pages,
     )
 
