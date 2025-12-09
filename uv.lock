@@ -1003,11 +1003,11 @@ wheels = [
 
 [[package]]
 name = "scraper-rust"
-version = "0.2.3"
+version = "0.2.4"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/08/21/f689a219e10adef29689360b83d151151b8df5be723093789b1f1bfd741d/scraper_rust-0.2.3.tar.gz", hash = "sha256:29c13b2479b3b1e60784b23e6fc94379c22ffcae22a1e8ccc6f2ea9c5aa827b8", size = 23961, upload-time = "2025-12-08T23:11:25.01Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/48/12/e5f97677741f3a3b061639b5ec9a61d3b844b34865d9425b0144a457e8a4/scraper_rust-0.2.4.tar.gz", hash = "sha256:c0ecc2778e974fa07ae96d0a080533bfd7196c69a6d24f02edaa976271d8b839", size = 24580, upload-time = "2025-12-09T01:47:03.289Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3b/ed/a6499d1c8a1fce50173952fcbc19363708c8da13f518d548cad7c47587dc/scraper_rust-0.2.3-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:27c7209f1d7160b2710ea27a5f17c87713270052f9498a87198c6451204b5159", size = 732900, upload-time = "2025-12-08T23:11:23.176Z" },
+    { url = "https://files.pythonhosted.org/packages/f3/46/4aef504166fe219073315725427852f5404b27ecc4da209bf443268738d2/scraper_rust-0.2.4-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:653edccfcf197ffee01c61c631b746a03a2cf16fcc301b17659c8d4474714525", size = 734874, upload-time = "2025-12-09T01:47:01.755Z" },
 ]
 
 [[package]]
@@ -1025,7 +1025,7 @@ wheels = [
 
 [[package]]
 name = "silkworm-rs"
-version = "0.1.2"
+version = "0.1.3"
 source = { editable = "." }
 dependencies = [
     { name = "logly" },

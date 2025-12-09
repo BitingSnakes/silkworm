@@ -147,7 +147,7 @@ def main() -> None:
 
     run_spider(
         UrlTitlesSpider,
-        concurrency=32,
+        concurrency=64,
         request_middlewares=request_mw,
         response_middlewares=response_mw,
         item_pipelines=pipelines,

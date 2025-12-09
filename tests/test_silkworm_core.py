@@ -3,6 +3,7 @@ from urllib.parse import parse_qsl, urlsplit
 import pytest
 
 from silkworm.http import HttpClient
+from silkworm.engine import Engine
 from silkworm.middlewares import DelayMiddleware, RetryMiddleware
 from silkworm.request import Request
 from silkworm.response import HTMLResponse, Response
@@ -67,6 +68,41 @@ def test_htmlresponse_doc_is_cached(monkeypatch: pytest.MonkeyPatch):
     assert first is second
     assert CountingDocument.instances == 1
     assert first.select("body") == ["body"]
+
+
+def test_htmlresponse_close_releases_document(monkeypatch: pytest.MonkeyPatch):
+    class ClosableDocument:
+        instances = 0
+
+        def __init__(self, html: str) -> None:
+            type(self).instances += 1
+            self.html = html
+            self.closed = False
+
+        def select(self, selector: str):
+            return [selector]
+
+        def close(self) -> None:
+            self.closed = True
+
+    monkeypatch.setattr(response_module, "Document", ClosableDocument)
+
+    resp = HTMLResponse(
+        url="http://example.com",
+        status=200,
+        headers={},
+        body=b"<html></html>",
+        request=Request(url="http://example.com"),
+    )
+
+    doc = resp.doc
+    assert doc.closed is False
+
+    resp.close()
+    assert doc.closed is True
+    # closing twice should be a no-op and not recreate the document
+    resp.close()
+    assert ClosableDocument.instances == 1
 
 
 def test_httpclient_build_url_merges_params_with_existing_query():
@@ -167,6 +203,45 @@ async def test_retry_middleware_retry_without_sleep(monkeypatch: pytest.MonkeyPa
     assert isinstance(result, Request)
     assert result.meta["retry_times"] == 1
     assert sleep_calls == []
+
+
+@pytest.mark.anyio("asyncio")
+async def test_engine_closes_responses(monkeypatch: pytest.MonkeyPatch):
+    class DummySpider(Spider):
+        name = "closer"
+
+        async def start_requests(self):
+            yield Request(url="http://example.com", callback=self.parse)
+
+        async def parse(self, response: Response):
+            return None
+
+    class ClosableResponse(Response):
+        __slots__ = ("closed",)
+
+        def __init__(self, *args, **kwargs) -> None:
+            super().__init__(*args, **kwargs)
+            self.closed = False
+
+        def close(self) -> None:
+            self.closed = True
+
+    spider = DummySpider()
+    engine = Engine(spider, concurrency=1)
+    seen: list[ClosableResponse] = []
+
+    async def fake_fetch(req: Request) -> Response:
+        resp = ClosableResponse(
+            url=req.url, status=200, headers={}, body=b"", request=req
+        )
+        seen.append(resp)
+        return resp
+
+    engine.http.fetch = fake_fetch  # type: ignore[assignment]
+
+    await engine.run()
+
+    assert seen and all(r.closed for r in seen)
 
 
 @pytest.mark.anyio("asyncio")

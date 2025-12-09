@@ -139,11 +139,17 @@ class Engine:
         return current
 
     async def _handle_response(self, resp: Response) -> None:
-        processed = await self._apply_response_mw(resp)
+        original_resp = resp
+        try:
+            processed = await self._apply_response_mw(resp)
+        except Exception:
+            original_resp.close()
+            raise
 
         if isinstance(processed, Request):
             # e.g. RetryMiddleware wants a retry
             self.logger.debug("Retrying request from middleware", url=processed.url)
+            original_resp.close()
             await self._enqueue(processed)
             return
 
@@ -163,7 +169,6 @@ class Engine:
             raise SpiderError(
                 f"Spider callback '{name}' failed for {self.spider.name}"
             ) from exc
-
         try:
             async for x in self._iterate_callback_results(produced):
                 if isinstance(x, Request):
@@ -180,6 +185,10 @@ class Engine:
             raise SpiderError(
                 f"Spider callback '{name}' yielded invalid results"
             ) from exc
+        finally:
+            resp.close()
+            if resp is not original_resp:
+                original_resp.close()
 
     async def _iterate_callback_results(self, produced: Any) -> AsyncIterator[Any]:
         """

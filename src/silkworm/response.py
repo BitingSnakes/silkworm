@@ -31,6 +31,12 @@ class Response:
             **kwargs,
         )
 
+    def close(self) -> None:
+        """
+        Hook for subclasses that manage additional resources.
+        """
+        return None
+
 
 @dataclass(slots=True)
 class HTMLResponse(Response):
@@ -51,3 +57,20 @@ class HTMLResponse(Response):
 
     def follow(self, href: str, callback=None, **kwargs) -> "Request":
         return super().follow(href, callback=callback, **kwargs)
+
+    def close(self) -> None:
+        """
+        Release the underlying Document when it is no longer needed.
+        """
+        if self._doc is None:
+            return
+
+        doc = self._doc
+        self._doc = None
+        closer = getattr(doc, "close", None)
+        if closer and callable(closer):
+            try:
+                closer()
+            except Exception:
+                # Best-effort cleanup; avoid surfacing close errors.
+                pass
