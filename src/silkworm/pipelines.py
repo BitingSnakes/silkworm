@@ -3,7 +3,7 @@ import csv
 import io
 import orjson
 import sqlite3
-import xml.etree.ElementTree as ET
+import rxml
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -136,29 +136,34 @@ class XMLPipeline:
         if not self._fp:
             raise RuntimeError("XMLPipeline not opened")
 
-        root = ET.Element(self.item_element)
-        self._dict_to_xml(item, root)
-        xml_str = ET.tostring(root, encoding="unicode")
+        node = self._to_node(self.item_element, item)
+        xml_str = rxml.write_string(node, indent=2, default_xml_def=False)
+        indented_xml = "\n".join(f"  {line}" for line in xml_str.splitlines())
 
-        self._fp.write(f"  {xml_str}\n")
+        self._fp.write(indented_xml + "\n")
         self._fp.flush()
         self.logger.debug("Wrote item to XML", path=str(self.path), spider=spider.name)
         return item
 
-    def _dict_to_xml(self, data: Any, parent: ET.Element) -> None:
-        """Convert a dictionary to XML elements."""
+    def _to_node(self, key: str, data: Any) -> rxml.Node:
+        """Convert a Python structure to an rxml Node tree."""
+        tag = self._sanitize_tag(key)
+
         if isinstance(data, dict):
-            for key, value in data.items():
-                # Sanitize key to be a valid XML tag name
-                key = str(key).replace(" ", "_").replace("-", "_")
-                child = ET.SubElement(parent, key)
-                self._dict_to_xml(value, child)
-        elif isinstance(data, list):
-            for item in data:
-                list_item = ET.SubElement(parent, "item")
-                self._dict_to_xml(item, list_item)
-        else:
-            parent.text = str(data) if data is not None else ""
+            children = [self._to_node(k, v) for k, v in data.items()]
+            return rxml.Node(tag, children=children)
+
+        if isinstance(data, list):
+            children = [self._to_node("item", item) for item in data]
+            return rxml.Node(tag, children=children)
+
+        text = "" if data is None else str(data)
+        return rxml.Node(tag, text=text)
+
+    @staticmethod
+    def _sanitize_tag(tag: Any) -> str:
+        """Make sure the tag name is XML-safe."""
+        return str(tag).replace(" ", "_").replace("-", "_")
 
 
 class CSVPipeline:

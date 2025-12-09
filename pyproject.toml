@@ -42,6 +42,7 @@ dependencies = [
   "scraper-rust>=0.2.8",
   "logly>=0.1.6",
   "orjson>=3.11.5",
+  "rxml>=2.3.6",
 ]
 
 [project.optional-dependencies]
