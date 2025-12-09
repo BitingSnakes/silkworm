@@ -17,6 +17,7 @@ async def crawl(
     request_timeout: float | None = None,
     log_stats_interval: float | None = None,
     max_pending_requests: int | None = None,
+    html_max_size_bytes: int = 5_000_000,
     **spider_kwargs,
 ) -> None:
     spider = spider_cls(**spider_kwargs)
@@ -28,6 +29,7 @@ async def crawl(
         request_timeout=request_timeout,
         log_stats_interval=log_stats_interval,
         max_pending_requests=max_pending_requests,
+        html_max_size_bytes=html_max_size_bytes,
     )
     await engine.run()
 
@@ -41,6 +43,7 @@ def run_spider(
     request_timeout: float | None = None,
     log_stats_interval: float | None = None,
     max_pending_requests: int | None = None,
+    html_max_size_bytes: int = 5_000_000,
     **spider_kwargs,
 ) -> None:
     asyncio.run(
@@ -52,6 +55,7 @@ def run_spider(
             request_timeout=request_timeout,
             log_stats_interval=log_stats_interval,
             max_pending_requests=max_pending_requests,
+            html_max_size_bytes=html_max_size_bytes,
             **spider_kwargs,
         )
     )

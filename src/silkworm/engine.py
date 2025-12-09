@@ -30,6 +30,7 @@ class Engine:
         max_pending_requests: int | None = None,
         emulation=None,
         request_timeout: float | None = None,
+        html_max_size_bytes: int = 5_000_000,
         request_middlewares: Iterable[RequestMiddleware] | None = None,
         response_middlewares: Iterable[ResponseMiddleware] | None = None,
         item_pipelines: Iterable[ItemPipeline] | None = None,
@@ -37,7 +38,10 @@ class Engine:
     ) -> None:
         self.spider = spider
         self.http = HttpClient(  # type: ignore[arg-type]
-            concurrency=concurrency, emulation=emulation, timeout=request_timeout
+            concurrency=concurrency,
+            emulation=emulation,
+            timeout=request_timeout,
+            html_max_size_bytes=html_max_size_bytes,
         )
         # Bound the queue to avoid unbounded growth when many requests are scheduled.
         default_queue_size = concurrency * 10

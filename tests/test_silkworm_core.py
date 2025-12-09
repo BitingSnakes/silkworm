@@ -87,6 +87,32 @@ def test_htmlresponse_doc_is_cached(monkeypatch: pytest.MonkeyPatch):
     assert first.select("body") == ["body"]
 
 
+def test_htmlresponse_uses_configurable_max_size(monkeypatch: pytest.MonkeyPatch):
+    captured: dict[str, int] = {}
+
+    class InspectingDocument:
+        def __init__(self, html: str, *, max_size_bytes: int | None = None) -> None:
+            captured["max_size_bytes"] = max_size_bytes or 0
+            self.html = html
+            self.max_size_bytes = max_size_bytes
+
+    monkeypatch.setattr(response_module, "Document", InspectingDocument)
+
+    resp = HTMLResponse(
+        url="http://example.com",
+        status=200,
+        headers={},
+        body=b"<html></html>",
+        request=Request(url="http://example.com"),
+        doc_max_size_bytes=1234,
+    )
+
+    doc = resp.doc
+
+    assert captured["max_size_bytes"] == 1234
+    assert doc.max_size_bytes == 1234
+
+
 def test_htmlresponse_close_releases_document(monkeypatch: pytest.MonkeyPatch):
     class ClosableDocument:
         instances = 0

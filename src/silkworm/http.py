@@ -20,12 +20,14 @@ class HttpClient:
         impersonate: Impersonate = Impersonate.Firefox139,
         default_headers: dict[str, str] | None = None,
         timeout: float | None = None,
+        html_max_size_bytes: int = 5_000_000,
         **client_kwargs: Any,
     ) -> None:
         self._client = Client(impersonate=impersonate, **client_kwargs)
         self._sem = asyncio.Semaphore(concurrency)
         self._default_headers = default_headers or {}
         self._timeout = timeout
+        self._html_max_size_bytes = html_max_size_bytes
         self.logger = get_logger(component="http")
 
     async def fetch(self, req: Request) -> Response:
@@ -75,6 +77,7 @@ class HttpClient:
                 headers=headers,
                 body=body,
                 request=req,
+                doc_max_size_bytes=self._html_max_size_bytes,
             )
 
         return Response(

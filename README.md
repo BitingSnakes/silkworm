@@ -176,6 +176,14 @@ run_spider(
 )
 ```
 
+### HTML parsing limits
+Cap the size of HTML parsed into `scraper-rs` documents by passing
+`html_max_size_bytes` to `run_spider`/`crawl`:
+
+```python
+run_spider(QuotesSpider, html_max_size_bytes=10_000_000)
+```
+
 Statistics include:
 - **elapsed_seconds**: Time since the crawl started
 - **requests_sent**: Total number of requests sent

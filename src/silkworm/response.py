@@ -47,11 +47,12 @@ class Response:
 @dataclass(slots=True)
 class HTMLResponse(Response):
     _doc: Document | None = None
+    doc_max_size_bytes: int = 5_000_000
 
     @property
     def doc(self) -> Document:
         if self._doc is None:
-            self._doc = Document(self.text, max_size_bytes=5_000_000)
+            self._doc = Document(self.text, max_size_bytes=self.doc_max_size_bytes)
         return self._doc
 
     # shortcuts
