@@ -8,6 +8,17 @@ from .middlewares import RequestMiddleware, ResponseMiddleware
 from .pipelines import ItemPipeline
 
 
+def _install_uvloop() -> None:
+    """Install uvloop event loop policy if available."""
+    try:
+        import uvloop  # type: ignore[import]
+        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+    except ImportError:
+        raise ImportError(
+            "uvloop is not installed. Install it with: pip install silkworm-rs[uvloop]"
+        )
+
+
 async def crawl(
     spider_cls: type[Spider],
     *,
@@ -44,8 +55,12 @@ def run_spider(
     log_stats_interval: float | None = None,
     max_pending_requests: int | None = None,
     html_max_size_bytes: int = 5_000_000,
+    use_uvloop: bool = False,
     **spider_kwargs,
 ) -> None:
+    if use_uvloop:
+        _install_uvloop()
+    
     asyncio.run(
         crawl(
             spider_cls,

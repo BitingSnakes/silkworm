@@ -72,6 +72,7 @@ if __name__ == "__main__":
 - `html_max_size_bytes`: limit HTML parsed into `Document` to avoid huge payloads.
 - `log_stats_interval`: seconds between periodic stats logs; final stats are always emitted.
 - `request_middlewares` / `response_middlewares` / `item_pipelines`: plug-ins run on every request/response/item.
+- `use_uvloop`: enable uvloop event loop for better performance (requires `pip install silkworm-rs[uvloop]`); default False.
 
 ## Built-in middlewares and pipelines
 
@@ -146,6 +147,25 @@ response_middlewares=[SkipNonHTMLMiddleware(sniff_bytes=1024)]
 # Tighten HTML parsing size (bytes) to avoid loading huge bodies into scraper-rs
 run_spider(MySpider, html_max_size_bytes=1_000_000)
 ```
+
+## Performance optimization with uvloop
+For improved async performance, enable uvloop (a fast, drop-in replacement for asyncio's event loop):
+
+```bash
+pip install silkworm-rs[uvloop]
+```
+
+Then pass `use_uvloop=True` to `run_spider`:
+
+```python
+run_spider(
+    QuotesSpider,
+    concurrency=32,
+    use_uvloop=True,  # Enable uvloop for better performance
+)
+```
+
+uvloop can provide 2-4x performance improvement for I/O-bound workloads.
 
 ## Logging and crawl statistics
 - Structured logs via `logly`; set `SILKWORM_LOG_LEVEL=DEBUG` for verbose request/response/middleware output.
