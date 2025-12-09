@@ -194,6 +194,7 @@ This runs your spider using trio as the async backend via trio-asyncio compatibi
 
 ## Examples
 - `python examples/quotes_spider.py` → `data/quotes.jl`
+- `python examples/quotes_spider_trio.py` → `data/quotes_trio.jl` (demonstrates trio backend)
 - `python examples/hackernews_spider.py --pages 5` → `data/hackernews.jl`
 - `python examples/lobsters_spider.py --pages 2` → `data/lobsters.jl`
 - `python examples/url_titles_spider.py --urls-file data/url_titles.jl --output data/titles.jl` (includes `SkipNonHTMLMiddleware` and stricter HTML size limits)
