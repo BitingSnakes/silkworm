@@ -1305,7 +1305,7 @@ wheels = [
 
 [[package]]
 name = "silkworm-rs"
-version = "0.1.7"
+version = "0.1.8"
 source = { editable = "." }
 dependencies = [
     { name = "logly" },

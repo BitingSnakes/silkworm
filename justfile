@@ -34,6 +34,7 @@ clean:
 	rm -rf data/
 	rm -rf **/**/__pycache__
 	rm -rf **/__pycache__
+	rm -f *.bin
 
 build: clean
 	uv run python -m build
