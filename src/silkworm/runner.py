@@ -12,6 +12,7 @@ def _install_uvloop() -> None:
     """Install uvloop event loop policy if available."""
     try:
         import uvloop  # type: ignore[import]
+
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     except ImportError:
         raise ImportError(
@@ -33,10 +34,10 @@ def run_spider_trio(
 ) -> None:
     """
     Run a spider using trio as the async backend.
-    
+
     This is similar to run_spider but uses trio.run() instead of asyncio.run().
     Trio must be installed separately: pip install silkworm-rs[trio]
-    
+
     Args:
         spider_cls: Spider class to instantiate and run
         request_middlewares: Optional request middlewares
@@ -47,7 +48,7 @@ def run_spider_trio(
         max_pending_requests: Maximum pending requests in queue
         html_max_size_bytes: Maximum HTML size to parse
         **spider_kwargs: Additional kwargs passed to spider constructor
-    
+
     Raises:
         ImportError: If trio is not installed
     """
@@ -57,7 +58,7 @@ def run_spider_trio(
         raise ImportError(
             "trio is not installed. Install it with: pip install silkworm-rs[trio]"
         )
-    
+
     # Trio uses its own async primitives, but the engine uses asyncio primitives
     # We use trio-asyncio to run asyncio code within trio
     try:
@@ -66,7 +67,7 @@ def run_spider_trio(
         raise ImportError(
             "trio-asyncio is required for trio support. Install it with: pip install trio-asyncio"
         )
-    
+
     async def run_with_trio_asyncio():
         async with trio_asyncio.open_loop():
             await crawl(
@@ -80,7 +81,7 @@ def run_spider_trio(
                 html_max_size_bytes=html_max_size_bytes,
                 **spider_kwargs,
             )
-    
+
     trio.run(run_with_trio_asyncio)
 
 
@@ -125,7 +126,7 @@ def run_spider(
 ) -> None:
     if use_uvloop:
         _install_uvloop()
-    
+
     asyncio.run(
         crawl(
             spider_cls,
