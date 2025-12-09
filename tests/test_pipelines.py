@@ -1,3 +1,4 @@
+import asyncio
 import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -239,8 +240,6 @@ except ImportError:
 @pytest.mark.skipif(not TASKIQ_AVAILABLE, reason="taskiq not installed")
 @pytest.mark.anyio("asyncio")
 async def test_taskiq_pipeline_sends_items_to_queue():
-    import asyncio
-
     broker = InMemoryBroker()
     processed_items = []
 
