@@ -76,7 +76,6 @@ class Engine:
         if not req.dont_filter and req.url in self._seen:
             self.logger.debug("Skipping already seen request", url=req.url)
             return
-        req = await self._apply_request_mw(req)
         self._seen.add(req.url)
         self.logger.debug("Enqueued request", url=req.url, dont_filter=req.dont_filter)
         await self._queue.put(req)
@@ -93,6 +92,7 @@ class Engine:
                 continue
 
             try:
+                req = await self._apply_request_mw(req)
                 self.logger.debug(
                     "Fetching request",
                     url=req.url,
