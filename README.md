@@ -139,6 +139,7 @@ The `XMLPipeline` automatically converts nested dictionaries and lists to proper
 ## Example spiders
 - `python examples/quotes_spider.py` writes quotes to `data/quotes.jl`.
 - `python examples/hackernews_spider.py --pages 5` (default 5) writes stories to `data/hackernews.jl`.
+- `python examples/lobsters_spider.py --pages 2` (default 1) writes front-page stories to `data/lobsters.jl`.
 
 Both examples include basic validation with Pydantic and demonstrate pagination, logging, middleware, and pipeline usage.
 
