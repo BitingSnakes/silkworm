@@ -118,7 +118,8 @@ class Engine:
                     error_type=exc.__class__.__name__,
                     spider=self.spider.name,
                 )
-                raise
+                # Keep the worker alive so other requests can continue to be processed.
+                continue
             finally:
                 self._queue.task_done()
 
