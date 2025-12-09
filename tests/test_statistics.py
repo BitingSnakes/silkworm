@@ -71,3 +71,39 @@ async def test_engine_stats_payload_includes_seen_and_memory(monkeypatch):
 
     assert payload["seen_requests"] == 2
     assert payload["memory_mb"] == 123.46
+
+
+class _SpyLogger:
+    def __init__(self):
+        self.info_calls: list[tuple[str, dict[str, object]]] = []
+
+    def info(self, message: str, **kwargs):
+        self.info_calls.append((message, kwargs))
+
+    def debug(self, *_args, **_kwargs):  # pragma: no cover - unused here
+        return None
+
+    def error(self, *_args, **_kwargs):  # pragma: no cover - unused here
+        return None
+
+
+@pytest.mark.anyio("asyncio")
+async def test_final_log_includes_event_loop():
+    """Final crawl statistics log should include the event loop in use."""
+
+    class NoopSpider(Spider):
+        name = "noop"
+        start_urls = []
+
+        async def parse(self, response):  # pragma: no cover - not invoked
+            return None
+
+    engine = Engine(NoopSpider(), concurrency=0)
+    spy_logger = _SpyLogger()
+    engine.logger = spy_logger
+
+    await engine.run()
+
+    final_logs = [ctx for msg, ctx in spy_logger.info_calls if msg == "Final crawl statistics"]
+    assert final_logs, "Expected final crawl statistics log entry"
+    assert final_logs[-1].get("event_loop") == "asyncio"

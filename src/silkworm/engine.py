@@ -64,6 +64,7 @@ class Engine:
         self.log_stats_interval = log_stats_interval
         self._stats_task: asyncio.Task | None = None
         self._start_time: float = 0.0
+        self._event_loop_type: str | None = None
         self._stats = {
             "requests_sent": 0,
             "responses_received": 0,
@@ -254,6 +255,20 @@ class Engine:
         divisor = 1024 * 1024 if sys.platform == "darwin" else 1024
         return usage / divisor
 
+    def _detect_event_loop(self, loop: asyncio.AbstractEventLoop | None = None) -> str:
+        """
+        Identify which event loop implementation is currently running.
+        """
+        loop = loop or asyncio.get_running_loop()
+        module = loop.__class__.__module__.lower()
+        name = loop.__class__.__name__.lower()
+
+        if "uvloop" in module or "uvloop" in name:
+            return "uvloop"
+        if "trio" in module or "trio" in name:
+            return "trio"
+        return "asyncio"
+
     def _stats_payload(self, elapsed: float) -> dict[str, Any]:
         requests_rate = self._stats["requests_sent"] / elapsed if elapsed > 0 else 0
         return {
@@ -287,6 +302,7 @@ class Engine:
     async def run(self) -> None:
         self.logger.info("Starting engine", spider=self.spider.name)
         self._start_time = time.time()
+        self._event_loop_type = self._detect_event_loop()
 
         # number of workers = client concurrency
         concurrency = self.http._sem._value  # type: ignore[attr-defined]
@@ -319,6 +335,7 @@ class Engine:
             self.logger.info(
                 "Final crawl statistics",
                 spider=self.spider.name,
+                event_loop=self._event_loop_type,
                 **self._stats_payload(time.time() - self._start_time),
             )
 
