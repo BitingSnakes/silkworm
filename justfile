@@ -3,16 +3,7 @@ set shell := ["bash", "-eu", "-c"]
 default: help
 
 help:
-	@echo "Available recipes:"
-	@echo "  init          Install project + dev deps via uv"
-	@echo "  fmt           Format code with ruff"
-	@echo "  lint          Run ruff checks"
-	@echo "  typecheck     Run mypy"
-	@echo "  test          Run pytest"
-	@echo "  clean         Remove build + cache artifacts"
-	@echo "  build         Clean and build sdist+wheel"
-	@echo "  publish-test  Upload to TestPyPI (builds + twine check first)"
-	@echo "  publish       Upload to PyPI (builds + twine check first)"
+	just -l
 
 init: clean
 	uv sync --group dev
