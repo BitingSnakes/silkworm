@@ -1,6 +1,6 @@
 # silkworm-rs
 
-![PyPI - Version](https://img.shields.io/pypi/v/silkworm-rs)
+[![PyPI - Version](https://img.shields.io/pypi/v/silkworm-rs)](https://pypi.org/project/silkworm-rs/)
 
 Async-first web scraping framework built on [rnet](https://github.com/0x676e67/rnet) for HTTP and [scraper-rs](https://github.com/RustedBytes/scraper-rs) for fast HTML parsing. Silkworm gives you a minimal, typed Spider/Request/Response model plus middlewares and pipelines so you can script simple scrapes or build more involved crawlers.
 
