@@ -23,6 +23,7 @@ def _install_uvloop() -> None:
 def run_spider_trio(
     spider_cls: type[Spider],
     *,
+    concurrency: int = 16,
     request_middlewares: Iterable[RequestMiddleware] | None = None,
     response_middlewares: Iterable[ResponseMiddleware] | None = None,
     item_pipelines: Iterable[ItemPipeline] | None = None,
@@ -40,6 +41,7 @@ def run_spider_trio(
 
     Args:
         spider_cls: Spider class to instantiate and run
+        concurrency: Number of concurrent HTTP requests (default: 16)
         request_middlewares: Optional request middlewares
         response_middlewares: Optional response middlewares
         item_pipelines: Optional item pipelines
@@ -50,7 +52,7 @@ def run_spider_trio(
         **spider_kwargs: Additional kwargs passed to spider constructor
 
     Raises:
-        ImportError: If trio is not installed
+        ImportError: If trio or trio-asyncio is not installed
     """
     try:
         import trio  # type: ignore[import]
@@ -72,6 +74,7 @@ def run_spider_trio(
         async with trio_asyncio.open_loop():
             await crawl(
                 spider_cls,
+                concurrency=concurrency,
                 request_middlewares=request_middlewares,
                 response_middlewares=response_middlewares,
                 item_pipelines=item_pipelines,
@@ -88,6 +91,7 @@ def run_spider_trio(
 async def crawl(
     spider_cls: type[Spider],
     *,
+    concurrency: int = 16,
     request_middlewares: Iterable[RequestMiddleware] | None = None,
     response_middlewares: Iterable[ResponseMiddleware] | None = None,
     item_pipelines: Iterable[ItemPipeline] | None = None,
@@ -100,6 +104,7 @@ async def crawl(
     spider = spider_cls(**spider_kwargs)
     engine = Engine(
         spider,
+        concurrency=concurrency,
         request_middlewares=request_middlewares,
         response_middlewares=response_middlewares,
         item_pipelines=item_pipelines,
@@ -114,6 +119,7 @@ async def crawl(
 def run_spider(
     spider_cls: type[Spider],
     *,
+    concurrency: int = 16,
     request_middlewares: Iterable[RequestMiddleware] | None = None,
     response_middlewares: Iterable[ResponseMiddleware] | None = None,
     item_pipelines: Iterable[ItemPipeline] | None = None,
@@ -130,6 +136,7 @@ def run_spider(
     asyncio.run(
         crawl(
             spider_cls,
+            concurrency=concurrency,
             request_middlewares=request_middlewares,
             response_middlewares=response_middlewares,
             item_pipelines=item_pipelines,
