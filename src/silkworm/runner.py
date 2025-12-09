@@ -19,6 +19,71 @@ def _install_uvloop() -> None:
         )
 
 
+def run_spider_trio(
+    spider_cls: type[Spider],
+    *,
+    request_middlewares: Iterable[RequestMiddleware] | None = None,
+    response_middlewares: Iterable[ResponseMiddleware] | None = None,
+    item_pipelines: Iterable[ItemPipeline] | None = None,
+    request_timeout: float | None = None,
+    log_stats_interval: float | None = None,
+    max_pending_requests: int | None = None,
+    html_max_size_bytes: int = 5_000_000,
+    **spider_kwargs,
+) -> None:
+    """
+    Run a spider using trio as the async backend.
+    
+    This is similar to run_spider but uses trio.run() instead of asyncio.run().
+    Trio must be installed separately: pip install silkworm-rs[trio]
+    
+    Args:
+        spider_cls: Spider class to instantiate and run
+        request_middlewares: Optional request middlewares
+        response_middlewares: Optional response middlewares
+        item_pipelines: Optional item pipelines
+        request_timeout: Per-request timeout in seconds
+        log_stats_interval: Interval for logging statistics
+        max_pending_requests: Maximum pending requests in queue
+        html_max_size_bytes: Maximum HTML size to parse
+        **spider_kwargs: Additional kwargs passed to spider constructor
+    
+    Raises:
+        ImportError: If trio is not installed
+    """
+    try:
+        import trio  # type: ignore[import]
+    except ImportError:
+        raise ImportError(
+            "trio is not installed. Install it with: pip install silkworm-rs[trio]"
+        )
+    
+    # Trio uses its own async primitives, but the engine uses asyncio primitives
+    # We use trio-asyncio to run asyncio code within trio
+    try:
+        import trio_asyncio  # type: ignore[import]
+    except ImportError:
+        raise ImportError(
+            "trio-asyncio is required for trio support. Install it with: pip install trio-asyncio"
+        )
+    
+    async def run_with_trio_asyncio():
+        async with trio_asyncio.open_loop():
+            await crawl(
+                spider_cls,
+                request_middlewares=request_middlewares,
+                response_middlewares=response_middlewares,
+                item_pipelines=item_pipelines,
+                request_timeout=request_timeout,
+                log_stats_interval=log_stats_interval,
+                max_pending_requests=max_pending_requests,
+                html_max_size_bytes=html_max_size_bytes,
+                **spider_kwargs,
+            )
+    
+    trio.run(run_with_trio_asyncio)
+
+
 async def crawl(
     spider_cls: type[Spider],
     *,
