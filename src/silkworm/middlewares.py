@@ -92,7 +92,7 @@ class RetryMiddleware:
             return response  # give up
 
         retry_times += 1
-        request = request.replace()
+        request = request.replace(dont_filter=True)
         request.meta["retry_times"] = retry_times
 
         delay = self.backoff_base * (2 ** (retry_times - 1))

@@ -154,6 +154,7 @@ async def test_retry_middleware_returns_retry_request(monkeypatch: pytest.Monkey
     assert isinstance(result, Request)
     assert result is not request
     assert result.meta["retry_times"] == 1
+    assert result.dont_filter is True
     assert sleep_calls == [0.1]
 
 
@@ -259,6 +260,43 @@ async def test_retry_middleware_stops_after_max_times(monkeypatch: pytest.Monkey
     result = await middleware.process_response(response, Spider())
 
     assert result is response
+
+
+@pytest.mark.anyio("asyncio")
+async def test_engine_retries_requests_even_if_url_seen(monkeypatch: pytest.MonkeyPatch):
+    async def fake_sleep(_: float) -> None:
+        return None
+
+    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+
+    class DummySpider(Spider):
+        name = "retryer"
+
+        async def start_requests(self):
+            yield Request(url="http://example.com", callback=self.parse)
+
+        async def parse(self, response: Response):
+            return None
+
+    statuses = [429, 200]
+    seen_requests: list[tuple[int, int]] = []
+
+    engine = Engine(
+        DummySpider(),
+        concurrency=1,
+        response_middlewares=[RetryMiddleware(max_times=1, backoff_base=0.0)],
+    )
+
+    async def fake_fetch(req: Request) -> Response:
+        status = statuses.pop(0)
+        seen_requests.append((status, req.meta.get("retry_times", 0)))
+        return Response(url=req.url, status=status, headers={}, body=b"", request=req)
+
+    engine.http.fetch = fake_fetch  # type: ignore[assignment]
+
+    await engine.run()
+
+    assert seen_requests == [(429, 0), (200, 1)]
 
 
 @pytest.mark.anyio("asyncio")
