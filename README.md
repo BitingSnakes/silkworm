@@ -167,12 +167,34 @@ run_spider(
 
 uvloop can provide 2-4x performance improvement for I/O-bound workloads.
 
+## Running spiders with trio
+If you prefer trio over asyncio, you can use `run_spider_trio` instead of `run_spider`:
+
+```bash
+pip install silkworm-rs[trio]
+```
+
+Then use `run_spider_trio`:
+
+```python
+from silkworm import run_spider_trio
+
+run_spider_trio(
+    QuotesSpider,
+    concurrency=16,
+    request_timeout=10,
+)
+```
+
+This runs your spider using trio as the async backend via trio-asyncio compatibility layer.
+
 ## Logging and crawl statistics
 - Structured logs via `logly`; set `SILKWORM_LOG_LEVEL=DEBUG` for verbose request/response/middleware output.
 - Periodic statistics with `log_stats_interval`; final stats always include elapsed time, queue size, requests/sec, seen URLs, items scraped, errors, and memory MB.
 
 ## Examples
 - `python examples/quotes_spider.py` → `data/quotes.jl`
+- `python examples/quotes_spider_trio.py` → `data/quotes_trio.jl` (demonstrates trio backend)
 - `python examples/hackernews_spider.py --pages 5` → `data/hackernews.jl`
 - `python examples/lobsters_spider.py --pages 2` → `data/lobsters.jl`
 - `python examples/url_titles_spider.py --urls-file data/url_titles.jl --output data/titles.jl` (includes `SkipNonHTMLMiddleware` and stricter HTML size limits)
