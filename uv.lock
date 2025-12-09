@@ -2005,11 +2005,11 @@ wheels = [
 
 [[package]]
 name = "scraper-rust"
-version = "0.2.8"
+version = "0.2.9"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/f0/b4/9304724432a9eda7b87f5ab4da570bc10abf8443d3e2ca38ac8929e8c03b/scraper_rust-0.2.8.tar.gz", hash = "sha256:c5556c2fdcdc7ff62233e1e45508966749dcc86e79af99411da5a6baecdee68b", size = 27604, upload-time = "2025-12-09T18:45:08.805Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3c/13/09433e0d7193d311ded861dca617c0621ef81f7a1f3ebe3893b44319dad1/scraper_rust-0.2.9.tar.gz", hash = "sha256:097e63115ce52f34e4b3cb2e14a9c91f957e6f2ab862dfa6fcf9c0db44e24914", size = 27925, upload-time = "2025-12-09T19:41:23.036Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/65/b7/9f5a97a108f60f2ebb47352f5730cb0435cc4f52364a8754ed72b21adeeb/scraper_rust-0.2.8-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:06a4fba1b8eef29808256183308445b4be20f59d8422f7c70d5543da20d19435", size = 738275, upload-time = "2025-12-09T18:45:06.991Z" },
+    { url = "https://files.pythonhosted.org/packages/26/05/7e8c3469b6a3e28cf083c817793d4f3969caf604a44dfb046df8c91e9429/scraper_rust-0.2.9-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:ac2b76ac9c1a04638bb71ba7db8a49ac07a85c498b37b5b7ee7e78c3b6eb038d", size = 738381, upload-time = "2025-12-09T19:41:21.559Z" },
 ]
 
 [[package]]
@@ -2027,7 +2027,7 @@ wheels = [
 
 [[package]]
 name = "silkworm-rs"
-version = "0.1.10"
+version = "0.1.11"
 source = { editable = "." }
 dependencies = [
     { name = "logly" },
@@ -2083,7 +2083,7 @@ requires-dist = [
     { name = "rnet", specifier = ">=2.4" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "rxml", specifier = ">=2.3.6" },
-    { name = "scraper-rust", specifier = ">=0.2.8" },
+    { name = "scraper-rust", specifier = ">=0.2.9" },
     { name = "taskiq", marker = "extra == 'taskiq'", specifier = ">=0.11.0" },
     { name = "trio", marker = "extra == 'trio'", specifier = ">=0.23.0" },
     { name = "trio-asyncio", marker = "extra == 'trio'", specifier = ">=0.13.0" },
