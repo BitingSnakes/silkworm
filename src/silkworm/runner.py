@@ -72,7 +72,8 @@ def run_spider_trio(
 
     async def run_with_trio_asyncio():
         async with trio_asyncio.open_loop():
-            await crawl(
+            # Adapt the asyncio-based crawl coroutine to run under Trio.
+            await trio_asyncio.aio_as_trio(crawl)(
                 spider_cls,
                 concurrency=concurrency,
                 request_middlewares=request_middlewares,

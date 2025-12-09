@@ -5,7 +5,7 @@ import orjson
 from pathlib import Path
 from typing import Any
 
-from silkworm import HTMLResponse, Response, Spider, run_spider_trio
+from silkworm import HTMLResponse, Response, Spider, run_spider_trio, run_spider
 from silkworm.logging import get_logger
 from silkworm.middlewares import (
     RequestMiddleware,
@@ -122,6 +122,18 @@ def parse_args() -> argparse.Namespace:
         description="Fetch page titles for URLs listed in a JSONL file."
     )
     parser.add_argument(
+        "--use_trio",
+        type=bool,
+        default=False,
+        help="Whether to run the spider using Trio event loop.",
+    )
+    parser.add_argument(
+        "--use_uvloop",
+        type=bool,
+        default=False,
+        help="Whether to run the spider using uvloop event loop.",
+    )
+    parser.add_argument(
         "--urls-file",
         type=str,
         required=True,
@@ -150,9 +162,8 @@ def main() -> None:
         JsonLinesPipeline(args.output),
     ]
 
-    run_spider_trio(
-        UrlTitlesSpider,
-        concurrency=32,
+    kwargs = dict(
+        concurrency=128,
         request_middlewares=request_mw,
         response_middlewares=response_mw,
         item_pipelines=pipelines,
@@ -161,6 +172,20 @@ def main() -> None:
         html_max_size_bytes=1_000_000,
         urls_file=args.urls_file,
     )
+
+    if args.use_trio:
+        run_spider_trio(
+            UrlTitlesSpider,
+            **kwargs,
+        )
+    else:
+        if args.use_uvloop:
+            kwargs["use_uvloop"] = True
+
+        run_spider(
+            UrlTitlesSpider,
+            **kwargs,
+        )
 
 
 if __name__ == "__main__":
