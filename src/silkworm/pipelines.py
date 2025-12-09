@@ -7,6 +7,14 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Protocol
 
+try:
+    from taskiq import AsyncBroker
+
+    TASKIQ_AVAILABLE = True
+except ImportError:
+    AsyncBroker = None  # type: ignore
+    TASKIQ_AVAILABLE = False
+
 if True:
     from .spiders import Spider  # type: ignore
 from .logging import get_logger
@@ -221,3 +229,103 @@ class CSVPipeline:
         else:
             items.append((parent_key, data))
         return dict(items)
+
+
+class TaskiqPipeline:
+    """
+    Pipeline that sends scraped items to a Taskiq broker/queue instead of writing to a file.
+
+    This allows you to process items asynchronously with Taskiq workers, enabling
+    distributed processing, retries, and other Taskiq features.
+
+    Example:
+        from taskiq import InMemoryBroker
+        from silkworm.pipelines import TaskiqPipeline
+
+        broker = InMemoryBroker()
+
+        @broker.task
+        async def process_item(item):
+            # Your item processing logic here
+            print(f"Processing: {item}")
+
+        pipeline = TaskiqPipeline(broker, task=process_item)
+        # Or: pipeline = TaskiqPipeline(broker, task_name=".:process_item")
+    """
+
+    def __init__(
+        self,
+        broker: "AsyncBroker",
+        task: Any = None,
+        task_name: str | None = None,
+    ) -> None:
+        """
+        Initialize TaskiqPipeline.
+
+        Args:
+            broker: A Taskiq AsyncBroker instance (e.g., InMemoryBroker, RedisBroker)
+            task: A decorated task function (created with @broker.task). If provided, task_name is ignored.
+            task_name: Full name of the task registered on the broker (e.g., ".:process_item").
+                      Either task or task_name must be provided.
+        """
+        if not TASKIQ_AVAILABLE:
+            raise ImportError(
+                "taskiq is required for TaskiqPipeline. Install it with: pip install taskiq"
+            )
+        if task is None and task_name is None:
+            raise ValueError("Either 'task' or 'task_name' must be provided")
+
+        self.broker = broker
+        self._provided_task = task
+        self._task: Any = None
+        self.task_name = task_name
+        self.logger = get_logger(component="TaskiqPipeline")
+
+    async def open(self, spider: "Spider") -> None:
+        """Open the pipeline and start the broker if needed."""
+        await self.broker.startup()
+
+        # If task was provided directly, use it
+        if self._provided_task is not None:
+            self._task = self._provided_task
+            actual_task_name = getattr(self._task, "task_name", "unknown")
+        else:
+            # Find the registered task by name
+            if self.task_name is None:
+                raise ValueError("task_name cannot be None when task is not provided")
+            self._task = self.broker.find_task(self.task_name)
+            if self._task is None:
+                raise ValueError(
+                    f"Task '{self.task_name}' not found in broker. "
+                    f"Make sure you've registered it with @broker.task and use the full task name (e.g., '.:task_name')"
+                )
+            actual_task_name = self.task_name
+
+        self.logger.info(
+            "Opened Taskiq pipeline",
+            task_name=actual_task_name,
+            broker=self.broker.__class__.__name__,
+        )
+
+    async def close(self, spider: "Spider") -> None:
+        """Close the pipeline and shutdown the broker."""
+        await self.broker.shutdown()
+        task_name = getattr(self._task, "task_name", self.task_name or "unknown")
+        self.logger.info("Closed Taskiq pipeline", task_name=task_name)
+
+    async def process_item(self, item: Any, spider: "Spider") -> Any:
+        """Send the item to the Taskiq broker for processing."""
+        if self._task is None:
+            raise RuntimeError("TaskiqPipeline not opened")
+
+        # Send item to the task queue
+        task_result = await self._task.kiq(item)
+
+        task_name = getattr(self._task, "task_name", self.task_name or "unknown")
+        self.logger.debug(
+            "Sent item to Taskiq queue",
+            task_name=task_name,
+            task_id=task_result.task_id,
+            spider=spider.name,
+        )
+        return item
