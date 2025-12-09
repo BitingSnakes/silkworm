@@ -1,6 +1,6 @@
 """Tests for runner module and uvloop integration."""
-import asyncio
 import sys
+from contextlib import contextmanager
 from unittest.mock import patch, MagicMock
 import pytest
 
@@ -17,6 +17,21 @@ class SimpleSpider(Spider):
         yield {}
 
 
+@contextmanager
+def without_uvloop_module():
+    """Context manager to temporarily remove uvloop from sys.modules."""
+    uvloop_backup = sys.modules.get('uvloop')
+    if 'uvloop' in sys.modules:
+        del sys.modules['uvloop']
+    
+    try:
+        yield
+    finally:
+        # Restore uvloop if it was there
+        if uvloop_backup is not None:
+            sys.modules['uvloop'] = uvloop_backup
+
+
 def test_install_uvloop_when_available():
     """Test that uvloop is installed when available."""
     mock_uvloop = MagicMock()
@@ -31,12 +46,7 @@ def test_install_uvloop_when_available():
 
 def test_install_uvloop_raises_when_not_installed():
     """Test that ImportError is raised when uvloop is not installed."""
-    # Temporarily remove uvloop from sys.modules if it exists
-    uvloop_backup = sys.modules.get('uvloop')
-    if 'uvloop' in sys.modules:
-        del sys.modules['uvloop']
-    
-    try:
+    with without_uvloop_module():
         # Mock the import to raise ImportError
         import builtins
         original_import = builtins.__import__
@@ -49,23 +59,19 @@ def test_install_uvloop_raises_when_not_installed():
         with patch('builtins.__import__', side_effect=mock_import):
             with pytest.raises(ImportError, match="uvloop is not installed"):
                 _install_uvloop()
-    finally:
-        # Restore uvloop if it was there
-        if uvloop_backup is not None:
-            sys.modules['uvloop'] = uvloop_backup
 
 
 def test_run_spider_without_uvloop():
     """Test that run_spider works without uvloop (default behavior)."""
     with patch('asyncio.run') as mock_run:
-        with patch('silkworm.runner.crawl') as mock_crawl:
+        with patch('silkworm.runner._install_uvloop') as mock_install:
             mock_run.return_value = None
             run_spider(SimpleSpider, concurrency=1)
             
+            # Verify _install_uvloop was not called (use_uvloop defaults to False)
+            mock_install.assert_not_called()
             # Verify asyncio.run was called
             mock_run.assert_called_once()
-            # Verify use_uvloop was not set (default False)
-            assert 'use_uvloop' not in mock_run.call_args[1]
 
 
 def test_run_spider_with_uvloop_enabled():
@@ -88,12 +94,7 @@ def test_run_spider_with_uvloop_enabled():
 
 def test_run_spider_with_uvloop_not_installed():
     """Test that run_spider raises error when uvloop=True but not installed."""
-    # Temporarily remove uvloop from sys.modules if it exists
-    uvloop_backup = sys.modules.get('uvloop')
-    if 'uvloop' in sys.modules:
-        del sys.modules['uvloop']
-    
-    try:
+    with without_uvloop_module():
         import builtins
         original_import = builtins.__import__
         
@@ -105,7 +106,3 @@ def test_run_spider_with_uvloop_not_installed():
         with patch('builtins.__import__', side_effect=mock_import):
             with pytest.raises(ImportError, match="uvloop is not installed"):
                 run_spider(SimpleSpider, concurrency=1, use_uvloop=True)
-    finally:
-        # Restore uvloop if it was there
-        if uvloop_backup is not None:
-            sys.modules['uvloop'] = uvloop_backup
