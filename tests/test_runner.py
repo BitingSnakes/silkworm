@@ -66,9 +66,12 @@ def test_install_uvloop_raises_when_not_installed():
 
 def test_run_spider_without_uvloop():
     """Test that run_spider works without uvloop (default behavior)."""
-    with patch("asyncio.run") as mock_run:
+    def _run_and_close(coro):
+        # Close coroutine to avoid unawaited coroutine warnings when mocking asyncio.run
+        coro.close()
+
+    with patch("asyncio.run", side_effect=_run_and_close) as mock_run:
         with patch("silkworm.runner._install_uvloop") as mock_install:
-            mock_run.return_value = None
             run_spider(SimpleSpider, concurrency=1)
 
             # Verify _install_uvloop was not called
@@ -85,8 +88,10 @@ def test_run_spider_with_uvloop_enabled():
 
     with patch.dict("sys.modules", {"uvloop": mock_uvloop}):
         with patch("asyncio.set_event_loop_policy") as mock_set_policy:
-            with patch("asyncio.run") as mock_run:
-                mock_run.return_value = None
+            def _run_and_close(coro):
+                coro.close()
+
+            with patch("asyncio.run", side_effect=_run_and_close) as mock_run:
                 run_spider_uvloop(SimpleSpider, concurrency=1)
 
                 # Verify uvloop policy was set
