@@ -41,3 +41,34 @@ async def test_engine_runs_with_limited_queue(monkeypatch: pytest.MonkeyPatch):
 
     assert engine._queue.maxsize == 2
     assert engine._queue.empty()
+
+
+@pytest.mark.anyio("asyncio")
+async def test_engine_does_not_track_dont_filter_requests(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    class NoFilterSpider(Spider):
+        name = "nofilter"
+
+        async def start_requests(self):
+            for i in range(3):
+                yield Request(
+                    url=f"http://example.com/{i}",
+                    callback=self.parse,
+                    dont_filter=True,
+                )
+
+        async def parse(self, response):
+            return None
+
+    spider = NoFilterSpider()
+    engine = Engine(spider, concurrency=1)
+
+    async def fake_fetch(req: Request) -> Response:
+        return Response(url=req.url, status=200, headers={}, body=b"", request=req)
+
+    monkeypatch.setattr(engine.http, "fetch", fake_fetch)
+
+    await engine.run()
+
+    assert engine._seen == set()

@@ -29,13 +29,11 @@ class UrlTitlesSpider(Spider):
         super().__init__(**kwargs)
         self.urls_path = Path(urls_file)
         self.logger = get_logger(component="UrlTitlesSpider", spider=self.name)
-        self.records = self._load_records(self.urls_path)
+        if not self.urls_path.exists():
+            raise FileNotFoundError(f"URLs file not found: {self.urls_path}")
 
-    def _load_records(self, path: Path) -> list[dict[str, Any]]:
-        if not path.exists():
-            raise FileNotFoundError(f"URLs file not found: {path}")
-
-        records: list[dict[str, Any]] = []
+    def _iter_records(self, path: Path):
+        count = 0
         with path.open("r", encoding="utf-8") as fp:
             for line_no, raw in enumerate(fp, 1):
                 line = raw.strip()
@@ -65,15 +63,18 @@ class UrlTitlesSpider(Spider):
                     continue
 
                 data["url"] = url
-                records.append(data)
+                count += 1
+                yield data
 
-        self.logger.info("Loaded URLs", count=len(records), path=str(path))
-        return records
+        self.logger.info("Loaded URLs", count=count, path=str(path))
 
     async def start_requests(self):
-        for record in self.records:
+        for record in self._iter_records(self.urls_path):
             yield Request(
-                url=record["url"], callback=self.parse, meta={"record": record}
+                url=record["url"],
+                callback=self.parse,
+                meta={"record": record},
+                dont_filter=True,
             )
 
     async def parse(self, response: Response):
