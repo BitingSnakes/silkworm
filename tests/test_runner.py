@@ -66,6 +66,7 @@ def test_install_uvloop_raises_when_not_installed():
 
 def test_run_spider_without_uvloop():
     """Test that run_spider works without uvloop (default behavior)."""
+
     def _run_and_close(coro):
         # Close coroutine to avoid unawaited coroutine warnings when mocking asyncio.run
         coro.close()
@@ -88,6 +89,7 @@ def test_run_spider_with_uvloop_enabled():
 
     with patch.dict("sys.modules", {"uvloop": mock_uvloop}):
         with patch("asyncio.set_event_loop_policy") as mock_set_policy:
+
             def _run_and_close(coro):
                 coro.close()
 
