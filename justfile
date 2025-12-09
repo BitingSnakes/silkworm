@@ -29,6 +29,9 @@ typecheck:
 test:
 	uv run --group dev pytest
 
+mypy:
+	uv run --group dev mypy src tests examples
+
 clean:
 	rm -rf .venv/
 	rm -rf dist build .mypy_cache .ruff_cache .pytest_cache *.egg-info

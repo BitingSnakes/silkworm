@@ -55,8 +55,8 @@ class QuotesSpider(Spider):
         html = response
         for quote in html.css(".quote"):
             yield {
-                "text": quote.select(".text")[0].text,
-                "author": quote.select(".author")[0].text,
+                "text": quote.select_first(".text").text,
+                "author": quote.select_first(".author").text,
                 "tags": [t.text for t in quote.select(".tag")],
             }
 
@@ -86,7 +86,7 @@ if __name__ == "__main__":
 - `html_max_size_bytes`: limit HTML parsed into `Document` to avoid huge payloads.
 - `log_stats_interval`: seconds between periodic stats logs; final stats are always emitted.
 - `request_middlewares` / `response_middlewares` / `item_pipelines`: plug-ins run on every request/response/item.
-- `use_uvloop`: enable uvloop event loop for better performance (requires `pip install silkworm-rs[uvloop]`); default False.
+- use `run_spider_uvloop(...)` instead of `run_spider(...)` to run under uvloop (requires `pip install silkworm-rs[uvloop]`).
 
 ## Built-in middlewares and pipelines
 
@@ -169,13 +169,14 @@ For improved async performance, enable uvloop (a fast, drop-in replacement for a
 pip install silkworm-rs[uvloop]
 ```
 
-Then pass `use_uvloop=True` to `run_spider`:
+Then call `run_spider_uvloop` (same signature as `run_spider`):
 
 ```python
-run_spider(
+from silkworm import run_spider_uvloop
+
+run_spider_uvloop(
     QuotesSpider,
     concurrency=32,
-    use_uvloop=True,  # Enable uvloop for better performance
 )
 ```
 
@@ -224,7 +225,7 @@ from silkworm import fetch_html
 
 async def main():
     text, doc = await fetch_html("https://example.com")
-    print(doc.select("title")[0].text)
+    print(doc.select_first("title").text)
 
 asyncio.run(main())
 ```

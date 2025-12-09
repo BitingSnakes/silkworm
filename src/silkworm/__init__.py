@@ -3,7 +3,7 @@ from .response import Response, HTMLResponse
 from .spiders import Spider
 from .exceptions import SilkwormError, HttpError, SpiderError
 from .engine import Engine
-from .runner import crawl, run_spider, run_spider_trio
+from .runner import crawl, run_spider, run_spider_uvloop, run_spider_trio
 from .api import fetch_html
 from .logging import get_logger
 
@@ -18,6 +18,7 @@ __all__ = [
     "Engine",
     "crawl",
     "run_spider",
+    "run_spider_uvloop",
     "run_spider_trio",
     "fetch_html",
     "get_logger",

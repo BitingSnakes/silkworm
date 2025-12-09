@@ -5,7 +5,14 @@ import orjson
 from pathlib import Path
 from typing import Any, cast
 
-from silkworm import HTMLResponse, Response, Spider, run_spider_trio, run_spider
+from silkworm import (
+    HTMLResponse,
+    Response,
+    Spider,
+    run_spider,
+    run_spider_trio,
+    run_spider_uvloop,
+)
 from silkworm.logging import get_logger
 from silkworm.middlewares import (
     RequestMiddleware,
@@ -182,10 +189,8 @@ def main() -> None:
             **kwargs,
         )
     else:
-        if args.use_uvloop:
-            kwargs["use_uvloop"] = True
-
-        run_spider(
+        runner = run_spider_uvloop if args.use_uvloop else run_spider
+        runner(
             UrlTitlesSpider,
             **kwargs,
         )

@@ -6,7 +6,7 @@ from urllib.parse import urljoin
 
 from pydantic import BaseModel, ValidationError, field_validator  # type: ignore[import]
 
-from silkworm import HTMLResponse, Response, Spider, run_spider
+from silkworm import HTMLResponse, Response, Spider, run_spider_uvloop
 from silkworm.logging import get_logger
 from silkworm.middlewares import (
     DelayMiddleware,
@@ -158,7 +158,7 @@ def main() -> None:
         JsonLinesPipeline("data/lobsters.jl"),
     ]
 
-    run_spider(
+    run_spider_uvloop(
         LobstersSpider,
         request_middlewares=request_mw,
         response_middlewares=response_mw,
@@ -166,7 +166,6 @@ def main() -> None:
         request_timeout=10,
         log_stats_interval=10,
         concurrency=32,
-        use_uvloop=True,  # Enable uvloop for better performance
         pages=args.pages,
     )
 

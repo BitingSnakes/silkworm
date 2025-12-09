@@ -229,7 +229,7 @@ async def test_csv_pipeline_handles_extra_fields():
 
 # TaskiqPipeline tests - skip if taskiq not installed
 try:
-    from taskiq import InMemoryBroker
+    from taskiq import InMemoryBroker  # type: ignore
     from silkworm.pipelines import TaskiqPipeline
 
     TASKIQ_AVAILABLE = True

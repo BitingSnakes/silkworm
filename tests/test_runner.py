@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from unittest.mock import patch, MagicMock
 import pytest
 
-from silkworm.runner import run_spider, _install_uvloop
+from silkworm.runner import run_spider, run_spider_uvloop, _install_uvloop
 from silkworm.spiders import Spider
 
 
@@ -71,14 +71,14 @@ def test_run_spider_without_uvloop():
             mock_run.return_value = None
             run_spider(SimpleSpider, concurrency=1)
 
-            # Verify _install_uvloop was not called (use_uvloop defaults to False)
+            # Verify _install_uvloop was not called
             mock_install.assert_not_called()
             # Verify asyncio.run was called
             mock_run.assert_called_once()
 
 
 def test_run_spider_with_uvloop_enabled():
-    """Test that run_spider installs uvloop when use_uvloop=True."""
+    """Test that run_spider_uvloop installs uvloop policy before running."""
     mock_uvloop = MagicMock()
     mock_policy = MagicMock()
     mock_uvloop.EventLoopPolicy.return_value = mock_policy
@@ -87,7 +87,7 @@ def test_run_spider_with_uvloop_enabled():
         with patch("asyncio.set_event_loop_policy") as mock_set_policy:
             with patch("asyncio.run") as mock_run:
                 mock_run.return_value = None
-                run_spider(SimpleSpider, concurrency=1, use_uvloop=True)
+                run_spider_uvloop(SimpleSpider, concurrency=1)
 
                 # Verify uvloop policy was set
                 mock_set_policy.assert_called_once_with(mock_policy)
@@ -96,7 +96,7 @@ def test_run_spider_with_uvloop_enabled():
 
 
 def test_run_spider_with_uvloop_not_installed():
-    """Test that run_spider raises error when uvloop=True but not installed."""
+    """Test that run_spider_uvloop raises error when uvloop is missing."""
     with without_uvloop_module():
         import builtins
 
@@ -109,4 +109,4 @@ def test_run_spider_with_uvloop_not_installed():
 
         with patch("builtins.__import__", side_effect=mock_import):
             with pytest.raises(ImportError, match="uvloop is not installed"):
-                run_spider(SimpleSpider, concurrency=1, use_uvloop=True)
+                run_spider_uvloop(SimpleSpider, concurrency=1)

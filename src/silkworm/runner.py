@@ -128,12 +128,8 @@ def run_spider(
     log_stats_interval: float | None = None,
     max_pending_requests: int | None = None,
     html_max_size_bytes: int = 5_000_000,
-    use_uvloop: bool = False,
     **spider_kwargs,
 ) -> None:
-    if use_uvloop:
-        _install_uvloop()
-
     asyncio.run(
         crawl(
             spider_cls,
@@ -147,4 +143,32 @@ def run_spider(
             html_max_size_bytes=html_max_size_bytes,
             **spider_kwargs,
         )
+    )
+
+
+def run_spider_uvloop(
+    spider_cls: type[Spider],
+    *,
+    concurrency: int = 16,
+    request_middlewares: Iterable[RequestMiddleware] | None = None,
+    response_middlewares: Iterable[ResponseMiddleware] | None = None,
+    item_pipelines: Iterable[ItemPipeline] | None = None,
+    request_timeout: float | None = None,
+    log_stats_interval: float | None = None,
+    max_pending_requests: int | None = None,
+    html_max_size_bytes: int = 5_000_000,
+    **spider_kwargs,
+) -> None:
+    _install_uvloop()
+    run_spider(
+        spider_cls,
+        concurrency=concurrency,
+        request_middlewares=request_middlewares,
+        response_middlewares=response_middlewares,
+        item_pipelines=item_pipelines,
+        request_timeout=request_timeout,
+        log_stats_interval=log_stats_interval,
+        max_pending_requests=max_pending_requests,
+        html_max_size_bytes=html_max_size_bytes,
+        **spider_kwargs,
     )
