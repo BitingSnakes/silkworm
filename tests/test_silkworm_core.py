@@ -263,7 +263,9 @@ async def test_retry_middleware_stops_after_max_times(monkeypatch: pytest.Monkey
 
 
 @pytest.mark.anyio("asyncio")
-async def test_engine_retries_requests_even_if_url_seen(monkeypatch: pytest.MonkeyPatch):
+async def test_engine_retries_requests_even_if_url_seen(
+    monkeypatch: pytest.MonkeyPatch,
+):
     async def fake_sleep(_: float) -> None:
         return None
 

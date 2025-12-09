@@ -45,7 +45,9 @@ class UrlTitlesSpider(Spider):
                     data = json.loads(line)
                 except json.JSONDecodeError as exc:
                     self.logger.warning(
-                        "Skipping invalid JSON line", line_number=line_no, error=str(exc)
+                        "Skipping invalid JSON line",
+                        line_number=line_no,
+                        error=str(exc),
                     )
                     continue
 

@@ -2,7 +2,8 @@ from __future__ import annotations
 import asyncio
 import random
 from enum import Enum, auto
-from typing import Callable, Iterable, Protocol, Sequence
+from collections.abc import Callable, Iterable, Sequence
+from typing import Protocol
 
 from .request import Request
 from .response import Response

@@ -1,6 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass
-from typing import Dict, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
 from scraper_rs import Document  # type: ignore[import]
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 class Response:
     url: str
     status: int
-    headers: Dict[str, str]
+    headers: dict[str, str]
     body: bytes
     request: "Request"
 
@@ -40,7 +40,7 @@ class Response:
 
 @dataclass(slots=True)
 class HTMLResponse(Response):
-    _doc: Optional[Document] = None
+    _doc: Document | None = None
 
     @property
     def doc(self) -> Document:

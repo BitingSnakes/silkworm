@@ -1,6 +1,6 @@
 from __future__ import annotations
 import asyncio
-from typing import Iterable, Type
+from collections.abc import Iterable
 
 from .spiders import Spider
 from .engine import Engine
@@ -9,7 +9,7 @@ from .pipelines import ItemPipeline
 
 
 async def crawl(
-    spider_cls: Type[Spider],
+    spider_cls: type[Spider],
     *,
     request_middlewares: Iterable[RequestMiddleware] | None = None,
     response_middlewares: Iterable[ResponseMiddleware] | None = None,
@@ -33,7 +33,7 @@ async def crawl(
 
 
 def run_spider(
-    spider_cls: Type[Spider],
+    spider_cls: type[Spider],
     *,
     request_middlewares: Iterable[RequestMiddleware] | None = None,
     response_middlewares: Iterable[ResponseMiddleware] | None = None,

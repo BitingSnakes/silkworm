@@ -1,6 +1,5 @@
 from __future__ import annotations
 import inspect
-from typing import Tuple
 
 from scraper_rs import Document  # type: ignore[import]
 from rnet import Client, Impersonate  # type: ignore[import]
@@ -11,7 +10,7 @@ async def fetch_html(
     *,
     impersonate: Impersonate = Impersonate.Firefox139,
     timeout: float | None = None,
-) -> Tuple[str, Document]:
+) -> tuple[str, Document]:
     client = Client(impersonate=impersonate)
     try:
         kwargs = {"timeout": timeout} if timeout is not None else {}

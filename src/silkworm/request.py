@@ -1,6 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Dict, Optional
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from .response import Response  # type: ignore[import]
 
@@ -11,13 +12,13 @@ Callback = Callable[["Response"], Awaitable[Any]]  # type: ignore[name-defined]
 class Request:
     url: str
     method: str = "GET"
-    headers: Dict[str, str] = field(default_factory=dict)
-    params: Dict[str, Any] = field(default_factory=dict)
+    headers: dict[str, str] = field(default_factory=dict)
+    params: dict[str, Any] = field(default_factory=dict)
     data: Any | None = None
     json: Any | None = None
-    meta: Dict[str, Any] = field(default_factory=dict)
+    meta: dict[str, Any] = field(default_factory=dict)
     timeout: float | None = None
-    callback: Optional[Callback] = None
+    callback: Callback | None = None
     dont_filter: bool = False
     priority: int = 0
 

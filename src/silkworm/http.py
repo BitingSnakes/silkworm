@@ -1,7 +1,7 @@
 from __future__ import annotations
 import asyncio
 import inspect
-from typing import Any, Dict, Optional
+from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit
 
 from rnet import Client, Impersonate, Method  # type: ignore[import]
@@ -18,7 +18,7 @@ class HttpClient:
         *,
         concurrency: int = 16,
         impersonate: Impersonate = Impersonate.Firefox139,
-        default_headers: Optional[Dict[str, str]] = None,
+        default_headers: dict[str, str] | None = None,
         timeout: float | None = None,
         **client_kwargs: Any,
     ) -> None:
@@ -126,7 +126,7 @@ class HttpClient:
             return b""
         return bytes(data)
 
-    def _normalize_headers(self, raw_headers: Any) -> Dict[str, str]:
+    def _normalize_headers(self, raw_headers: Any) -> dict[str, str]:
         """
         rnet's Response.headers may be a mapping or a list of raw header lines;
         coerce both shapes into a plain dict without raising.
@@ -149,7 +149,7 @@ class HttpClient:
             except Exception:
                 pass
 
-        headers: Dict[str, str] = {}
+        headers: dict[str, str] = {}
         if isinstance(raw_headers, (list, tuple)):
             for entry in raw_headers:
                 if isinstance(entry, (list, tuple)) and len(entry) == 2:

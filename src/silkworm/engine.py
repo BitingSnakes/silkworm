@@ -2,7 +2,8 @@ from __future__ import annotations
 import asyncio
 import inspect
 import time
-from typing import Any, AsyncIterator, Iterable, Set
+from collections.abc import AsyncIterator, Iterable
+from typing import Any
 
 from .exceptions import SpiderError
 from .http import HttpClient
@@ -35,10 +36,12 @@ class Engine:
         # Bound the queue to avoid unbounded growth when many requests are scheduled.
         default_queue_size = concurrency * 10
         queue_size = (
-            max_pending_requests if max_pending_requests is not None else default_queue_size
+            max_pending_requests
+            if max_pending_requests is not None
+            else default_queue_size
         )
         self._queue: asyncio.Queue[Request] = asyncio.Queue(maxsize=queue_size)
-        self._seen: Set[str] = set()
+        self._seen: set[str] = set()
         self._stopping = False
         self._tasks: list[asyncio.Task] = []
         self.logger = get_logger(component="engine", spider=self.spider.name)
