@@ -144,10 +144,10 @@ def main() -> None:
 
     request_mw: list[RequestMiddleware] = [
         UserAgentMiddleware(),
-        # DelayMiddleware(min_delay=0.3, max_delay=1.0),  # Randomized polite delay
+        DelayMiddleware(min_delay=0.3, max_delay=1.0),  # Randomized polite delay
     ]
     response_mw: list[ResponseMiddleware] = [
-        RetryMiddleware(max_times=3, sleep_http_codes=[403, 429]),
+        RetryMiddleware(max_times=15, sleep_http_codes=[403, 429]),
     ]
     pipelines: list[ItemPipeline] = [
         JsonLinesPipeline("data/lobsters.jl"),
