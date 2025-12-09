@@ -83,7 +83,13 @@ from silkworm.middlewares import (
     SkipNonHTMLMiddleware,
     UserAgentMiddleware,
 )
-from silkworm.pipelines import CSVPipeline, JsonLinesPipeline, SQLitePipeline, XMLPipeline
+from silkworm.pipelines import (
+    CSVPipeline,
+    JsonLinesPipeline,
+    SQLitePipeline,
+    XMLPipeline,
+    TaskiqPipeline,  # requires: pip install taskiq
+)
 
 run_spider(
     QuotesSpider,
@@ -109,6 +115,28 @@ run_spider(
 - `RetryMiddleware` backs off with `asyncio.sleep`; any status in `sleep_http_codes` is retried even if not in `retry_http_codes`.
 - `SkipNonHTMLMiddleware` checks `Content-Type` and optionally sniffs the body (`sniff_bytes`) to avoid running HTML callbacks on binary/API responses.
 - `CSVPipeline` flattens nested dicts (e.g., `{"user": {"name": "Alice"}}` -> `user_name`) and joins lists with commas; `XMLPipeline` preserves nesting.
+- `TaskiqPipeline` sends items to a [Taskiq](https://taskiq-python.github.io/) queue for distributed processing (requires `pip install taskiq`).
+
+## Streaming items to a queue with TaskiqPipeline
+Stream scraped items to a [Taskiq](https://taskiq-python.github.io/) queue for distributed processing:
+
+```python
+from taskiq import InMemoryBroker
+from silkworm.pipelines import TaskiqPipeline
+
+broker = InMemoryBroker()
+
+@broker.task
+async def process_item(item):
+    # Your item processing logic here
+    print(f"Processing: {item}")
+    # Save to database, send to another service, etc.
+
+pipeline = TaskiqPipeline(broker, task=process_item)
+run_spider(MySpider, item_pipelines=[pipeline])
+```
+
+This enables distributed processing, retries, rate limiting, and other Taskiq features. See `examples/taskiq_quotes_spider.py` for a complete example.
 
 ## Handling non-HTML responses
 Keep crawls cheap when URLs mix HTML and binaries/APIs:
@@ -129,6 +157,7 @@ run_spider(MySpider, html_max_size_bytes=1_000_000)
 - `python examples/lobsters_spider.py --pages 2` → `data/lobsters.jl`
 - `python examples/url_titles_spider.py --urls-file data/url_titles.jl --output data/titles.jl` (includes `SkipNonHTMLMiddleware` and stricter HTML size limits)
 - `python examples/export_formats_demo.py --pages 2` → JSONL, XML, and CSV outputs in `data/`
+- `python examples/taskiq_quotes_spider.py --pages 2` → demonstrates TaskiqPipeline for queue-based processing
 
 ## Convenience API
 For one-off fetches without a full spider, use `fetch_html`:
