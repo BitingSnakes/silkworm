@@ -1,8 +1,8 @@
 from __future__ import annotations
 from collections.abc import AsyncIterator, Iterable
 from ._types import MetaData
-from .request import CallbackOutput, CallbackResult, Request
-from .response import HTMLResponse, Response
+from .request import CallbackOutput, Request
+from .response import Response
 
 
 class Spider:

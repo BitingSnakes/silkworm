@@ -185,8 +185,10 @@ class Engine:
             raise SpiderError(
                 f"Spider callback '{name}' failed for {self.spider.name}"
             ) from exc
+
+        last_yielded: Request | JSONValue | None = None
+
         try:
-            last_yielded: Request | JSONValue | None = None
             async for x in self._iterate_callback_results(produced):
                 last_yielded = x
                 if isinstance(x, Request):

@@ -441,9 +441,7 @@ async def test_engine_retries_requests_even_if_url_seen(
     async def fake_fetch(req: Request) -> Response:
         status = statuses.pop(0)
         retry_raw = req.meta.get("retry_times", 0)
-        retry_times = (
-            int(retry_raw) if isinstance(retry_raw, (int, float, str)) else 0
-        )
+        retry_times = int(retry_raw) if isinstance(retry_raw, (int, float, str)) else 0
         seen_requests.append((status, retry_times))
         return Response(url=req.url, status=status, headers={}, body=b"", request=req)
 
