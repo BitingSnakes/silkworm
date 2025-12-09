@@ -32,37 +32,50 @@ uv pip install -e .
 Targets Python 3.10+; dependencies are pinned in `pyproject.toml`.
 
 ## Quick start
-Define a spider by subclassing `Spider`, implementing `parse`, and yielding items or follow-up `Request` objects. Then run it with `run_spider`.
+Define a spider by subclassing `Spider`, implementing `parse`, and yielding items or follow-up `Request` objects. This example writes quotes to `data/quotes.jl` and enables basic user agent, retry, and non-HTML filtering middlewares.
 
 ```python
-from silkworm import HTMLResponse, Spider, run_spider
+from silkworm import HTMLResponse, Response, Spider, run_spider
+from silkworm.middlewares import (
+    RetryMiddleware,
+    SkipNonHTMLMiddleware,
+    UserAgentMiddleware,
+)
+from silkworm.pipelines import JsonLinesPipeline
 
 
 class QuotesSpider(Spider):
     name = "quotes"
-    start_urls = ["https://quotes.toscrape.com/"]
+    start_urls = ("https://quotes.toscrape.com/",)
 
-    async def parse(self, response: HTMLResponse):
-        for quote in response.css(".quote"):
+    async def parse(self, response: Response):
+        if not isinstance(response, HTMLResponse):
+            return
+
+        html = response
+        for quote in html.css(".quote"):
             yield {
                 "text": quote.select(".text")[0].text,
                 "author": quote.select(".author")[0].text,
                 "tags": [t.text for t in quote.select(".tag")],
             }
 
-        next_link = response.find("li.next > a")
-        if next_link:
-            yield response.follow(next_link.attr("href"), callback=self.parse)
+        if next_link := html.find("li.next > a"):
+            yield html.follow(next_link.attr("href"), callback=self.parse)
 
 
 if __name__ == "__main__":
     run_spider(
         QuotesSpider,
+        request_middlewares=[UserAgentMiddleware()],
+        response_middlewares=[
+            SkipNonHTMLMiddleware(),
+            RetryMiddleware(max_times=3, sleep_http_codes=[429, 503]),
+        ],
+        item_pipelines=[JsonLinesPipeline("data/quotes.jl")],
         concurrency=16,
         request_timeout=10,
-        log_stats_interval=30,  # periodic crawl stats; final stats always log
-        max_pending_requests=160,  # defaults to concurrency * 10 if omitted
-        html_max_size_bytes=5_000_000,  # cap HTML parsed into scraper-rs
+        log_stats_interval=30,
     )
 ```
 
