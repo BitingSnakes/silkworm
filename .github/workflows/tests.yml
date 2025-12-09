@@ -28,5 +28,8 @@ jobs:
       - name: Install dependencies
         run: uv sync --group dev
 
+      - name: Install taskiq
+        run: uv pip install taskiq
+
       - name: Run tests
         run: uv run --group dev pytest
