@@ -34,6 +34,7 @@ class HttpClient:
         method = self._normalize_method(req.method)
         url = self._build_url(req)
         start = asyncio.get_running_loop().time()
+        resp: Any | None = None
 
         try:
             async with self._sem:
@@ -56,6 +57,8 @@ class HttpClient:
                 elapsed = (asyncio.get_running_loop().time() - start) * 1000
         except Exception as exc:
             raise HttpError(f"Request to {req.url} failed") from exc
+        finally:
+            await self._close_response(resp)
 
         self.logger.debug(
             "HTTP response",
@@ -116,6 +119,21 @@ class HttpClient:
                 return self._ensure_bytes(value)
 
         raise TypeError("Unable to read response body")
+
+    async def _close_response(self, resp: Any | None) -> None:
+        """Release the underlying HTTP response if it exposes a close hook."""
+        if resp is None:
+            return
+
+        closer = getattr(resp, "aclose", None) or getattr(resp, "close", None)
+        if closer and callable(closer):
+            try:
+                result = closer()
+                if inspect.isawaitable(result):
+                    await result
+            except Exception:
+                # Best-effort cleanup; avoid surfacing close errors.
+                self.logger.debug("Failed to close response", exc_info=True)
 
     def _ensure_bytes(self, data: Any) -> bytes:
         if isinstance(data, bytes):
