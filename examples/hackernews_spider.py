@@ -5,7 +5,7 @@ from urllib.parse import urljoin
 
 from pydantic import BaseModel, ValidationError, field_validator  # type: ignore[import]
 
-from silkworm import HTMLResponse, Spider, run_spider
+from silkworm import HTMLResponse, Response, Spider, run_spider
 from silkworm.logging import get_logger
 from silkworm.middlewares import (
     DelayMiddleware,
@@ -43,7 +43,7 @@ class HackerNewsPost(BaseModel):
 
 class HackerNewsSpider(Spider):
     name = "hacker_news_latest"
-    start_urls = ["https://news.ycombinator.com/newest"]
+    start_urls = ("https://news.ycombinator.com/newest",)
 
     def __init__(self, pages: int = 5, **kwargs):
         super().__init__(**kwargs)
@@ -51,10 +51,15 @@ class HackerNewsSpider(Spider):
         self.pages_seen = 0
         self.logger = get_logger(component="HackerNewsSpider", spider=self.name)
 
-    async def parse(self, response: HTMLResponse):
+    async def parse(self, response: Response):
+        if not isinstance(response, HTMLResponse):
+            self.logger.warning("Skipping non-HTML response", url=response.url)
+            return
+
+        html = response
         self.pages_seen += 1
 
-        for row in response.css("tr.athing"):
+        for row in html.css("tr.athing"):
             post_id = row.attr("id")
             rank_el = row.find(".rank")
             rank = None
@@ -65,10 +70,10 @@ class HackerNewsSpider(Spider):
             title_el = row.find("span.titleline a, a.storylink")
             title = title_el.text if title_el else ""
             href = title_el.attr("href") if title_el else ""
-            url = urljoin(response.url, href)
+            url = urljoin(html.url, href)
 
             subtext = (
-                response.find(f"tr.athing[id='{post_id}'] + tr .subtext")
+                html.find(f"tr.athing[id='{post_id}'] + tr .subtext")
                 if post_id
                 else None
             )
@@ -104,11 +109,11 @@ class HackerNewsSpider(Spider):
                 self.logger.warning("Skipping invalid story", errors=exc.errors())
                 continue
 
-        more_link = response.find("a.morelink")
+        more_link = html.find("a.morelink")
         if more_link and self.pages_seen < self.pages_requested:
             href = more_link.attr("href")
             if href:
-                yield response.follow(href, callback=self.parse)
+                yield html.follow(href, callback=self.parse)
 
     @staticmethod
     def _parse_points(subtext) -> int | None:

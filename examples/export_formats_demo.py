@@ -2,7 +2,7 @@
 
 from pydantic import BaseModel, field_validator
 
-from silkworm import HTMLResponse, Spider, run_spider
+from silkworm import HTMLResponse, Response, Spider, run_spider
 from silkworm.logging import get_logger
 from silkworm.middlewares import (
     RequestMiddleware,
@@ -42,7 +42,7 @@ class Quote(BaseModel):
 
 class ExportFormatsSpider(Spider):
     name = "export_formats"
-    start_urls = ["https://quotes.toscrape.com/page/1/"]
+    start_urls = ("https://quotes.toscrape.com/page/1/",)
 
     def __init__(self, max_pages: int = 2, **kwargs):
         super().__init__(**kwargs)
@@ -50,12 +50,15 @@ class ExportFormatsSpider(Spider):
         self.pages_scraped = 0
         self.logger = get_logger(component="ExportFormatsSpider", spider=self.name)
 
-    async def parse(self, response: HTMLResponse):
-        self.logger.info(
-            "Parsing page", url=response.url, pages_scraped=self.pages_scraped
-        )
+    async def parse(self, response: Response):
+        if not isinstance(response, HTMLResponse):
+            self.logger.warning("Skipping non-HTML response", url=response.url)
+            return
 
-        for el in response.css(".quote"):
+        html = response
+        self.logger.info("Parsing page", url=html.url, pages_scraped=self.pages_scraped)
+
+        for el in html.css(".quote"):
             try:
                 quote = Quote(
                     text=el.select(".text")[0].text,
@@ -74,10 +77,10 @@ class ExportFormatsSpider(Spider):
 
         # Follow pagination up to max_pages
         if self.pages_scraped < self.max_pages:
-            next_link = response.find("li.next > a")
+            next_link = html.find("li.next > a")
             if next_link:
                 href = next_link.attr("href")
-                yield response.follow(href, callback=self.parse)
+                yield html.follow(href, callback=self.parse)
         else:
             self.logger.info("Reached max pages", max_pages=self.max_pages)
 

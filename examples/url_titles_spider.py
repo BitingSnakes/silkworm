@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import orjson
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from silkworm import HTMLResponse, Response, Spider, run_spider_trio, run_spider
 from silkworm.logging import get_logger
@@ -79,7 +79,10 @@ class UrlTitlesSpider(Spider):
             )
 
     async def parse(self, response: Response):
-        record: dict[str, Any] = response.request.meta.get("record", {})
+        meta_record = response.request.meta.get("record")
+        record = (
+            cast(dict[str, Any], meta_record) if isinstance(meta_record, dict) else {}
+        )
 
         html_response: HTMLResponse | None
         if isinstance(response, HTMLResponse):

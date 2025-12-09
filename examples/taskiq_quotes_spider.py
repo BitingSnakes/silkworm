@@ -11,9 +11,9 @@ Requirements:
     pip install silkworm-rs taskiq
 """
 
-from taskiq import InMemoryBroker
+from taskiq import InMemoryBroker  # type: ignore[import-not-found]
 
-from silkworm import HTMLResponse, Spider, run_spider
+from silkworm import HTMLResponse, Response, Spider, run_spider
 from silkworm.logging import get_logger
 from silkworm.middlewares import RetryMiddleware, UserAgentMiddleware
 from silkworm.pipelines import TaskiqPipeline
@@ -43,7 +43,7 @@ async def process_quote(item):
 
 class TaskiqQuotesSpider(Spider):
     name = "taskiq_quotes"
-    start_urls = ["https://quotes.toscrape.com/"]
+    start_urls = ("https://quotes.toscrape.com/",)
 
     def __init__(self, max_pages: int = 2, **kwargs):
         super().__init__(**kwargs)
@@ -51,7 +51,12 @@ class TaskiqQuotesSpider(Spider):
         self.pages_scraped = 0
         self.logger = get_logger(component="TaskiqQuotesSpider", spider=self.name)
 
-    async def parse(self, response: HTMLResponse):
+    async def parse(self, response: Response):
+        if not isinstance(response, HTMLResponse):
+            self.logger.warning("Skipping non-HTML response", url=response.url)
+            return
+
+        html = response
         self.pages_scraped += 1
         self.logger.info(
             "Parsing page",
@@ -59,7 +64,7 @@ class TaskiqQuotesSpider(Spider):
             url=response.url,
         )
 
-        for quote in response.css(".quote"):
+        for quote in html.css(".quote"):
             yield {
                 "text": quote.select(".text")[0].text,
                 "author": quote.select(".author")[0].text,
@@ -68,9 +73,9 @@ class TaskiqQuotesSpider(Spider):
 
         # Follow next page link if we haven't reached max_pages
         if self.pages_scraped < self.max_pages:
-            next_link = response.find("li.next > a")
+            next_link = html.find("li.next > a")
             if next_link:
-                yield response.follow(next_link.attr("href"), callback=self.parse)
+                yield html.follow(next_link.attr("href"), callback=self.parse)
 
 
 if __name__ == "__main__":

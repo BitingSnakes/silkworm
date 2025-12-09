@@ -6,7 +6,7 @@ from urllib.parse import urljoin
 
 from pydantic import BaseModel, ValidationError, field_validator  # type: ignore[import]
 
-from silkworm import HTMLResponse, Spider, run_spider
+from silkworm import HTMLResponse, Response, Spider, run_spider
 from silkworm.logging import get_logger
 from silkworm.middlewares import (
     DelayMiddleware,
@@ -50,7 +50,7 @@ class LobstersStory(BaseModel):
 
 class LobstersSpider(Spider):
     name = "lobsters_front_page"
-    start_urls = ["https://lobste.rs/"]
+    start_urls = ("https://lobste.rs/",)
 
     def __init__(self, pages: int = 1, **kwargs):
         super().__init__(**kwargs)
@@ -58,17 +58,22 @@ class LobstersSpider(Spider):
         self.pages_seen = 0
         self.logger = get_logger(component="LobstersSpider", spider=self.name)
 
-    async def parse(self, response: HTMLResponse):
+    async def parse(self, response: Response):
+        if not isinstance(response, HTMLResponse):
+            self.logger.warning("Skipping non-HTML response", url=response.url)
+            return
+
+        html = response
         self.pages_seen += 1
 
-        for story in response.css("ol.stories > li.story"):
+        for story in html.css("ol.stories > li.story"):
             short_id = story.attr("data-shortid") or story.attr("id") or ""
             short_id = short_id.replace("story_", "")
 
             title_el = story.find("span.link a.u-url")
             title = title_el.text if title_el else ""
             href = title_el.attr("href") if title_el else ""
-            url = urljoin(response.url, href)
+            url = urljoin(html.url, href)
 
             domain_el = story.find("a.domain")
             domain = domain_el.text if domain_el else None
@@ -113,12 +118,12 @@ class LobstersSpider(Spider):
                 self.logger.warning("Skipping invalid story", errors=exc.errors())
                 continue
 
-        next_link = response.css("div.morelink a[href]")
+        next_link = html.css("div.morelink a[href]")
         if len(next_link) > 0 and self.pages_seen < self.pages_requested:
             next_link = next_link[-1]
             href = next_link.attr("href")
             if href:
-                yield response.follow(href, callback=self.parse)
+                yield html.follow(href, callback=self.parse)
 
     @staticmethod
     def _extract_number(text: str | None) -> int | None:

@@ -1,6 +1,6 @@
 """Example spider demonstrating trio support."""
 
-from silkworm import HTMLResponse, Spider, run_spider_trio
+from silkworm import HTMLResponse, Response, Spider, run_spider_trio
 from silkworm.pipelines import JsonLinesPipeline
 
 
@@ -8,20 +8,24 @@ class QuotesSpider(Spider):
     """Simple spider to scrape quotes using trio backend."""
 
     name = "quotes_trio"
-    start_urls = ["https://quotes.toscrape.com/"]
+    start_urls = ("https://quotes.toscrape.com/",)
 
-    async def parse(self, response: HTMLResponse):
+    async def parse(self, response: Response):
         """Parse quotes from the page."""
-        for quote in response.css(".quote"):
+        if not isinstance(response, HTMLResponse):
+            return
+
+        html = response
+        for quote in html.css(".quote"):
             yield {
                 "text": quote.select(".text")[0].text,
                 "author": quote.select(".author")[0].text,
                 "tags": [t.text for t in quote.select(".tag")],
             }
 
-        next_link = response.find("li.next > a")
+        next_link = html.find("li.next > a")
         if next_link:
-            yield response.follow(next_link.attr("href"), callback=self.parse)
+            yield html.follow(next_link.attr("href"), callback=self.parse)
 
 
 if __name__ == "__main__":

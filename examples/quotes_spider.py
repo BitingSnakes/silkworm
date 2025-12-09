@@ -1,6 +1,6 @@
 from pydantic import BaseModel, ValidationError, field_validator
 
-from silkworm import HTMLResponse, Spider, run_spider
+from silkworm import HTMLResponse, Response, Spider, run_spider
 from silkworm.logging import get_logger
 from silkworm.middlewares import (
     # DelayMiddleware,
@@ -41,14 +41,19 @@ class Quote(BaseModel):
 
 class QuotesSpider(Spider):
     name = "quotes"
-    start_urls = ["https://quotes.toscrape.com/"]
+    start_urls = ("https://quotes.toscrape.com/",)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.logger = get_logger(component="QuotesSpider", spider=self.name)
 
-    async def parse(self, response: HTMLResponse):
-        for el in response.css(".quote"):
+    async def parse(self, response: Response):
+        if not isinstance(response, HTMLResponse):
+            self.logger.warning("Skipping non-HTML response", url=response.url)
+            return
+
+        html = response
+        for el in html.css(".quote"):
             try:
                 quote = Quote(
                     text=el.select(".text")[0].text,
@@ -68,10 +73,10 @@ class QuotesSpider(Spider):
                 self.logger.warning("Skipping invalid quote", errors=exc.errors())
                 continue
 
-        next_link = response.find("li.next > a")
+        next_link = html.find("li.next > a")
         if next_link:
             href = next_link.attr("href")
-            yield response.follow(href, callback=self.parse)
+            yield html.follow(href, callback=self.parse)
 
 
 if __name__ == "__main__":
