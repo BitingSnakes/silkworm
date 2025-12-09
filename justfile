@@ -46,5 +46,9 @@ publish: build
 	uv run twine check dist/*
 	uv run twine upload dist/*
 
-profile:
+py-spy:
 	py-spy record -o profile.svg --subprocesses -- python examples/url_titles_spider.py --urls-file ./data/lobsters.jl --output data/url_titles.jl
+
+memray:
+	uv run --group dev memray run -o memray_report.bin examples/url_titles_spider.py --urls-file ./data/lobsters.jl --output data/url_titles.jl
+	uv run --group dev memray flamegraph memray_report.bin -o memray_report.svg

@@ -37,3 +37,5 @@ Thumbs.db
 
 # Silkworm specific
 data/
+
+*.bin

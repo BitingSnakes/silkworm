@@ -57,3 +57,17 @@ async def test_engine_accepts_none_log_stats_interval():
     engine = Engine(spider, log_stats_interval=None)
 
     assert engine.log_stats_interval is None
+
+
+@pytest.mark.anyio("asyncio")
+async def test_engine_stats_payload_includes_seen_and_memory(monkeypatch):
+    """Engine stats payload includes seen count and memory usage."""
+    spider = MockSpider()
+    engine = Engine(spider)
+    engine._seen.update({"https://a.example", "https://b.example"})
+    monkeypatch.setattr(engine, "_get_memory_usage_mb", lambda: 123.456)
+
+    payload = engine._stats_payload(elapsed=2.0)
+
+    assert payload["seen_requests"] == 2
+    assert payload["memory_mb"] == 123.46

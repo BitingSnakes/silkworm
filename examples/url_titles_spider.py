@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import argparse
-import json
+import orjson
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +11,7 @@ from silkworm.middlewares import (
     RequestMiddleware,
     ResponseMiddleware,
     RetryMiddleware,
+    SkipNonHTMLMiddleware,
     UserAgentMiddleware,
 )
 from silkworm.pipelines import ItemPipeline, JsonLinesPipeline
@@ -40,8 +41,8 @@ class UrlTitlesSpider(Spider):
                 if not line:
                     continue
                 try:
-                    data = json.loads(line)
-                except json.JSONDecodeError as exc:
+                    data = orjson.loads(line)
+                except orjson.JSONDecodeError as exc:
                     self.logger.warning(
                         "Skipping invalid JSON line",
                         line_number=line_no,
@@ -143,6 +144,7 @@ def main() -> None:
     ]
     response_mw: list[ResponseMiddleware] = [
         RetryMiddleware(max_times=3, sleep_http_codes=[403, 429]),
+        SkipNonHTMLMiddleware(),
     ]
     pipelines: list[ItemPipeline] = [
         JsonLinesPipeline(args.output),
@@ -150,11 +152,12 @@ def main() -> None:
 
     run_spider(
         UrlTitlesSpider,
-        concurrency=64,
+        concurrency=16,
         request_middlewares=request_mw,
         response_middlewares=response_mw,
         item_pipelines=pipelines,
         request_timeout=5,
+        log_stats_interval=10,
         urls_file=args.urls_file,
     )
 

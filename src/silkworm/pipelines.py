@@ -1,7 +1,7 @@
 from __future__ import annotations
 import csv
 import io
-import json
+import orjson
 import sqlite3
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -20,10 +20,10 @@ class ItemPipeline(Protocol):
 
 class JsonLinesPipeline:
     def __init__(
-        self, path: str | Path = "items.jl", *, ensure_ascii: bool = False
+        self,
+        path: str | Path = "items.jl",
     ) -> None:
         self.path = Path(path)
-        self.ensure_ascii = ensure_ascii
         self._fp: io.TextIOWrapper | None = None  # type: ignore[name-defined]
         self.logger = get_logger(component="JsonLinesPipeline")
 
@@ -41,7 +41,7 @@ class JsonLinesPipeline:
     async def process_item(self, item: Any, spider: "Spider") -> Any:
         if not self._fp:
             raise RuntimeError("JsonLinesPipeline not opened")
-        line = json.dumps(item, ensure_ascii=self.ensure_ascii)
+        line = orjson.dumps(item).decode("utf-8")
         self._fp.write(line + "\n")
         self._fp.flush()
         self.logger.debug(
@@ -87,7 +87,7 @@ class SQLitePipeline:
         cur = self._conn.cursor()
         cur.execute(
             f"INSERT INTO {self.table} (spider, data) VALUES (?, ?)",
-            (spider.name, json.dumps(item)),
+            (spider.name, orjson.dumps(item)),
         )
         self._conn.commit()
         self.logger.debug("Stored item in SQLite", table=self.table, spider=spider.name)

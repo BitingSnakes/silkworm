@@ -41,6 +41,23 @@ def test_response_follow_inherits_callback_and_joins_url():
     assert next_req.callback is callback
 
 
+def test_response_close_releases_payload():
+    req = Request(url="http://example.com")
+    resp = Response(
+        url=req.url,
+        status=200,
+        headers={"Content-Type": "text/html"},
+        body=b"abc",
+        request=req,
+    )
+
+    resp.close()
+    resp.close()  # idempotent
+
+    assert resp.body == b""
+    assert resp.headers == {}
+
+
 def test_htmlresponse_doc_is_cached(monkeypatch: pytest.MonkeyPatch):
     class CountingDocument:
         instances = 0
@@ -100,6 +117,9 @@ def test_htmlresponse_close_releases_document(monkeypatch: pytest.MonkeyPatch):
 
     resp.close()
     assert doc.closed is True
+    assert resp._doc is None
+    assert resp.body == b""
+    assert resp.headers == {}
     # closing twice should be a no-op and not recreate the document
     resp.close()
     assert ClosableDocument.instances == 1

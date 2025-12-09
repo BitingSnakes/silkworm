@@ -1,5 +1,5 @@
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
@@ -16,6 +16,7 @@ class Response:
     headers: dict[str, str]
     body: bytes
     request: "Request"
+    _closed: bool = field(default=False, init=False, repr=False, compare=False)
 
     @property
     def text(self) -> str:
@@ -33,9 +34,14 @@ class Response:
 
     def close(self) -> None:
         """
-        Hook for subclasses that manage additional resources.
+        Release payload references so responses don't pin memory if they linger.
         """
-        return None
+        if self._closed:
+            return
+
+        self._closed = True
+        self.body = b""
+        self.headers.clear()
 
 
 @dataclass(slots=True)
@@ -45,7 +51,7 @@ class HTMLResponse(Response):
     @property
     def doc(self) -> Document:
         if self._doc is None:
-            self._doc = Document(self.text)
+            self._doc = Document(self.text, max_size_bytes=5_000_000)
         return self._doc
 
     # shortcuts
@@ -62,15 +68,19 @@ class HTMLResponse(Response):
         """
         Release the underlying Document when it is no longer needed.
         """
-        if self._doc is None:
+        if self._closed:
             return
 
         doc = self._doc
         self._doc = None
-        closer = getattr(doc, "close", None)
-        if closer and callable(closer):
-            try:
-                closer()
-            except Exception:
-                # Best-effort cleanup; avoid surfacing close errors.
-                pass
+        if doc is not None:
+            closer = getattr(doc, "close", None)
+            if closer and callable(closer):
+                try:
+                    closer()
+                except Exception:
+                    # Best-effort cleanup; avoid surfacing close errors.
+                    pass
+
+        # Explicitly call base class to avoid zero-arg super issues with slotted dataclasses.
+        Response.close(self)

@@ -1,9 +1,15 @@
 from __future__ import annotations
 import asyncio
 import inspect
+import sys
 import time
 from collections.abc import AsyncIterator, Iterable
 from typing import Any
+
+try:  # resource is POSIX-only
+    import resource
+except ImportError:  # pragma: no cover - platform dependent
+    resource = None  # type: ignore[assignment]
 
 from .exceptions import SpiderError
 from .http import HttpClient
@@ -234,6 +240,30 @@ class Engine:
             )
             item = await pipe.process_item(item, self.spider)
 
+    def _get_memory_usage_mb(self) -> float:
+        """
+        Return memory usage (RSS) in megabytes, normalizing platform differences.
+        """
+        if resource is None:
+            return 0.0
+        usage = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        divisor = 1024 * 1024 if sys.platform == "darwin" else 1024
+        return usage / divisor
+
+    def _stats_payload(self, elapsed: float) -> dict[str, Any]:
+        requests_rate = self._stats["requests_sent"] / elapsed if elapsed > 0 else 0
+        return {
+            "elapsed_seconds": round(elapsed, 1),
+            "requests_sent": self._stats["requests_sent"],
+            "responses_received": self._stats["responses_received"],
+            "items_scraped": self._stats["items_scraped"],
+            "errors": self._stats["errors"],
+            "queue_size": self._queue.qsize(),
+            "requests_per_second": round(requests_rate, 2),
+            "seen_requests": len(self._seen),
+            "memory_mb": round(self._get_memory_usage_mb(), 2),
+        }
+
     async def _log_statistics(self) -> None:
         """Periodically log statistics about the crawl progress."""
         if self.log_stats_interval is None:
@@ -244,19 +274,10 @@ class Engine:
             if self._stopping:
                 break
 
-            elapsed = time.time() - self._start_time
-            requests_rate = self._stats["requests_sent"] / elapsed if elapsed > 0 else 0
-
             self.logger.info(
                 "Crawl statistics",
                 spider=self.spider.name,
-                elapsed_seconds=round(elapsed, 1),
-                requests_sent=self._stats["requests_sent"],
-                responses_received=self._stats["responses_received"],
-                items_scraped=self._stats["items_scraped"],
-                errors=self._stats["errors"],
-                queue_size=self._queue.qsize(),
-                requests_per_second=round(requests_rate, 2),
+                **self._stats_payload(time.time() - self._start_time),
             )
 
     async def run(self) -> None:
@@ -291,17 +312,10 @@ class Engine:
                     pass
 
             # Log final statistics
-            elapsed = time.time() - self._start_time
-            requests_rate = self._stats["requests_sent"] / elapsed if elapsed > 0 else 0
             self.logger.info(
                 "Final crawl statistics",
                 spider=self.spider.name,
-                elapsed_seconds=round(elapsed, 1),
-                requests_sent=self._stats["requests_sent"],
-                responses_received=self._stats["responses_received"],
-                items_scraped=self._stats["items_scraped"],
-                errors=self._stats["errors"],
-                requests_per_second=round(requests_rate, 2),
+                **self._stats_payload(time.time() - self._start_time),
             )
 
             await self.http.close()
