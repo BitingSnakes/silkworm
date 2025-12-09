@@ -66,6 +66,7 @@ force-include = {"src/silkworm/py.typed" = "silkworm/py.typed"}
 dev = [
     "build",
     "mypy",
+    "py-spy>=0.4.1",
     "pydantic>=2.12.5",
     "pytest",
     "pytest-anyio",
