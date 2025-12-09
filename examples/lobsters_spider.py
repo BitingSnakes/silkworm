@@ -161,7 +161,7 @@ def main() -> None:
         request_timeout=10,
         log_stats_interval=10,
         concurrency=32,
-        use_uvloop=True,
+        use_uvloop=True, # Enable uvloop for better performance
         pages=args.pages,
     )
 

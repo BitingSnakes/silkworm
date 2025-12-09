@@ -14,7 +14,7 @@ help:
 	@echo "  publish-test  Upload to TestPyPI (builds + twine check first)"
 	@echo "  publish       Upload to PyPI (builds + twine check first)"
 
-init:
+init: clean
 	uv sync --group dev
 
 fmt:
