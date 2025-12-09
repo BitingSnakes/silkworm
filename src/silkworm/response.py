@@ -6,7 +6,7 @@ from urllib.parse import urljoin
 from scraper_rs import Document  # type: ignore[import]
 
 if TYPE_CHECKING:
-    from .request import Request
+    from .request import Callback, Request
 
 
 @dataclass(slots=True)
@@ -22,14 +22,16 @@ class Response:
     def text(self) -> str:
         return self.body.decode("utf-8", errors="replace")
 
-    def follow(self, href: str, callback=None, **kwargs) -> "Request":
+    def follow(
+        self, href: str, callback: "Callback | None" = None, **kwargs: object
+    ) -> "Request":
         from .request import Request  # local import to avoid cycle
 
         url = urljoin(self.url, href)
         return Request(
             url=url,
             callback=callback or self.request.callback,
-            **kwargs,
+            **kwargs,  # type: ignore[arg-type]
         )
 
     def close(self) -> None:
@@ -62,7 +64,9 @@ class HTMLResponse(Response):
     def find(self, selector: str):
         return self.doc.find(selector)
 
-    def follow(self, href: str, callback=None, **kwargs) -> "Request":
+    def follow(
+        self, href: str, callback: "Callback | None" = None, **kwargs: object
+    ) -> "Request":
         return super().follow(href, callback=callback, **kwargs)
 
     def close(self) -> None:

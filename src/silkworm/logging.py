@@ -1,24 +1,49 @@
 from __future__ import annotations
 
 import os
-from typing import Any
+from typing import Protocol, cast, runtime_checkable
 
 from logly import logger as _logger  # type: ignore[import]
+
+_typed_logger = cast("_Logger", _logger)
+
+
+@runtime_checkable
+class _Logger(Protocol):
+    def configure(
+        self,
+        *,
+        level: str,
+        show_time: bool,
+        show_module: bool,
+        show_function: bool,
+        show_filename: bool,
+        show_lineno: bool,
+    ) -> None: ...
+
+    def bind(self, **context: object) -> "_Logger": ...
+
+    def info(self, message: str, **context: object) -> None: ...
+    def debug(self, message: str, **context: object) -> None: ...
+    def warning(self, message: str, **context: object) -> None: ...
+    def error(self, message: str, **context: object) -> None: ...
+    def complete(self) -> None: ...
+
 
 _configured = False
 
 
-def _configure_if_needed() -> Any:
+def _configure_if_needed() -> _Logger:
     """
     Configure the shared Logly logger once using env overrides and
     return it so callers can bind additional context.
     """
     global _configured
     if _configured:
-        return _logger
+        return _typed_logger
 
     level = os.getenv("SILKWORM_LOG_LEVEL", "INFO").upper()
-    _logger.configure(
+    _typed_logger.configure(
         level=level,
         show_time=True,
         show_module=True,
@@ -27,10 +52,10 @@ def _configure_if_needed() -> Any:
         show_lineno=False,
     )
     _configured = True
-    return _logger
+    return _typed_logger
 
 
-def get_logger(**context: Any) -> Any:
+def get_logger(**context: object) -> _Logger:
     """
     Grab the shared Logly logger with optional bound context fields.
     """
@@ -44,4 +69,4 @@ def complete_logs() -> None:
     """
     if not _configured:
         return
-    _logger.complete()
+    _typed_logger.complete()

@@ -9,7 +9,7 @@ from .request import Request
 from .response import HTMLResponse, Response
 from .logging import get_logger
 
-from .spiders import Spider  # type: ignore
+from .spiders import Spider
 
 
 class RequestMiddleware(Protocol):
@@ -88,7 +88,8 @@ class RetryMiddleware:
         if response.status not in self.retry_http_codes:
             return response
 
-        retry_times = request.meta.get("retry_times", 0)
+        retry_raw = request.meta.get("retry_times", 0)
+        retry_times = retry_raw if isinstance(retry_raw, int) else 0
         if retry_times >= self.max_times:
             return response  # give up
 

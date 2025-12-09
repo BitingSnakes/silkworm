@@ -3,6 +3,7 @@ import inspect
 
 from scraper_rs import Document  # type: ignore[import]
 from rnet import Client, Impersonate  # type: ignore[import]
+from typing import Any, cast
 
 
 async def fetch_html(
@@ -11,10 +12,12 @@ async def fetch_html(
     impersonate: Impersonate = Impersonate.Firefox139,
     timeout: float | None = None,
 ) -> tuple[str, Document]:
-    client = Client(impersonate=impersonate)
+    client = cast(Any, Client)(impersonate=impersonate)
     try:
-        kwargs = {"timeout": timeout} if timeout is not None else {}
-        resp = await client.get(url, **kwargs)
+        if timeout is not None:
+            resp = await client.get(url, timeout=timeout)
+        else:
+            resp = await client.get(url)
         text = await resp.text()
         return text, Document(text)
     finally:

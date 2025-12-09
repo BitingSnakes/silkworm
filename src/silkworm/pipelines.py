@@ -4,11 +4,12 @@ import io
 import orjson
 import sqlite3
 import rxml
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Protocol, runtime_checkable
 
 try:
-    from taskiq import AsyncBroker
+    from taskiq import AsyncBroker  # type: ignore[import-not-found]
 
     TASKIQ_AVAILABLE = True
 except ImportError:
@@ -18,12 +19,32 @@ except ImportError:
 if True:
     from .spiders import Spider  # type: ignore
 from .logging import get_logger
+from ._types import JSONValue
 
 
 class ItemPipeline(Protocol):
     async def open(self, spider: "Spider") -> None: ...
     async def close(self, spider: "Spider") -> None: ...
-    async def process_item(self, item: Any, spider: "Spider") -> Any: ...
+    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue: ...
+
+
+@runtime_checkable
+class _TaskiqTask(Protocol):
+    task_name: str
+
+    async def kiq(self, item: JSONValue): ...
+
+
+@runtime_checkable
+class _TaskiqResult(Protocol):
+    task_id: str | int
+
+
+@runtime_checkable
+class _TaskiqBroker(Protocol):
+    async def startup(self) -> None: ...
+    async def shutdown(self) -> None: ...
+    def find_task(self, task_name: str) -> _TaskiqTask | None: ...
 
 
 class JsonLinesPipeline:
@@ -32,7 +53,7 @@ class JsonLinesPipeline:
         path: str | Path = "items.jl",
     ) -> None:
         self.path = Path(path)
-        self._fp: io.TextIOWrapper | None = None  # type: ignore[name-defined]
+        self._fp: io.TextIOWrapper | None = None
         self.logger = get_logger(component="JsonLinesPipeline")
 
     async def open(self, spider: "Spider") -> None:
@@ -46,7 +67,7 @@ class JsonLinesPipeline:
             self._fp = None
             self.logger.info("Closed JSONL pipeline", path=str(self.path))
 
-    async def process_item(self, item: Any, spider: "Spider") -> Any:
+    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
         if not self._fp:
             raise RuntimeError("JsonLinesPipeline not opened")
         line = orjson.dumps(item).decode("utf-8")
@@ -89,7 +110,7 @@ class SQLitePipeline:
             self._conn = None
             self.logger.info("Closed SQLite pipeline", path=str(self.path))
 
-    async def process_item(self, item: Any, spider: "Spider") -> Any:
+    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
         if not self._conn:
             raise RuntimeError("SQLitePipeline not opened")
         cur = self._conn.cursor()
@@ -113,7 +134,7 @@ class XMLPipeline:
         self.path = Path(path)
         self.root_element = root_element
         self.item_element = item_element
-        self._fp: io.TextIOWrapper | None = None  # type: ignore[name-defined]
+        self._fp: io.TextIOWrapper | None = None
         self.logger = get_logger(component="XMLPipeline")
 
     async def open(self, spider: "Spider") -> None:
@@ -132,7 +153,7 @@ class XMLPipeline:
             self._fp = None
             self.logger.info("Closed XML pipeline", path=str(self.path))
 
-    async def process_item(self, item: Any, spider: "Spider") -> Any:
+    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
         if not self._fp:
             raise RuntimeError("XMLPipeline not opened")
 
@@ -145,7 +166,7 @@ class XMLPipeline:
         self.logger.debug("Wrote item to XML", path=str(self.path), spider=spider.name)
         return item
 
-    def _to_node(self, key: str, data: Any) -> rxml.Node:
+    def _to_node(self, key: str, data: JSONValue) -> rxml.Node:
         """Convert a Python structure to an rxml Node tree."""
         tag = self._sanitize_tag(key)
 
@@ -161,7 +182,7 @@ class XMLPipeline:
         return rxml.Node(tag, text=text)
 
     @staticmethod
-    def _sanitize_tag(tag: Any) -> str:
+    def _sanitize_tag(tag: object) -> str:
         """Make sure the tag name is XML-safe."""
         return str(tag).replace(" ", "_").replace("-", "_")
 
@@ -190,12 +211,12 @@ class CSVPipeline:
             self._writer = None
             self.logger.info("Closed CSV pipeline", path=str(self.path))
 
-    async def process_item(self, item: Any, spider: "Spider") -> Any:
+    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
         if not self._fp:
             raise RuntimeError("CSVPipeline not opened")
 
         # Flatten nested structures if item is a dict
-        if isinstance(item, dict):
+        if isinstance(item, Mapping):
             flat_item = self._flatten_dict(item)
         else:
             flat_item = {"value": str(item)}
@@ -218,21 +239,20 @@ class CSVPipeline:
         self.logger.debug("Wrote item to CSV", path=str(self.path), spider=spider.name)
         return item
 
-    def _flatten_dict(self, data: Any, parent_key: str = "", sep: str = "_") -> dict:
+    def _flatten_dict(
+        self, data: Mapping[str, JSONValue], parent_key: str = "", sep: str = "_"
+    ) -> dict[str, JSONValue | str]:
         """Flatten a nested dictionary structure."""
-        items: list[tuple[str, Any]] = []
-        if isinstance(data, dict):
-            for key, value in data.items():
-                new_key = f"{parent_key}{sep}{key}" if parent_key else key
-                if isinstance(value, dict):
-                    items.extend(self._flatten_dict(value, new_key, sep=sep).items())
-                elif isinstance(value, list):
-                    # Convert list to comma-separated string
-                    items.append((new_key, ", ".join(str(v) for v in value)))
-                else:
-                    items.append((new_key, value))
-        else:
-            items.append((parent_key, data))
+        items: list[tuple[str, JSONValue | str]] = []
+        for key, value in data.items():
+            new_key = f"{parent_key}{sep}{key}" if parent_key else key
+            if isinstance(value, Mapping):
+                items.extend(self._flatten_dict(value, new_key, sep=sep).items())
+            elif isinstance(value, list):
+                # Convert list to comma-separated string
+                items.append((new_key, ", ".join(str(v) for v in value)))
+            else:
+                items.append((new_key, value))
         return dict(items)
 
 
@@ -260,8 +280,8 @@ class TaskiqPipeline:
 
     def __init__(
         self,
-        broker: "AsyncBroker",
-        task: Any = None,
+        broker: "_TaskiqBroker",
+        task: _TaskiqTask | None = None,
         task_name: str | None = None,
     ) -> None:
         """
@@ -280,9 +300,9 @@ class TaskiqPipeline:
         if task is None and task_name is None:
             raise ValueError("Either 'task' or 'task_name' must be provided")
 
-        self.broker = broker
-        self._provided_task = task
-        self._task: Any = None
+        self.broker: _TaskiqBroker = broker
+        self._provided_task: _TaskiqTask | None = task
+        self._task: _TaskiqTask | None = None
         self.task_name = task_name
         self.logger = get_logger(component="TaskiqPipeline")
 
@@ -293,7 +313,7 @@ class TaskiqPipeline:
         # If task was provided directly, use it
         if self._provided_task is not None:
             self._task = self._provided_task
-            actual_task_name = getattr(self._task, "task_name", "unknown")
+            actual_task_name = self._task.task_name
         else:
             # Find the registered task by name
             if self.task_name is None:
@@ -315,22 +335,30 @@ class TaskiqPipeline:
     async def close(self, spider: "Spider") -> None:
         """Close the pipeline and shutdown the broker."""
         await self.broker.shutdown()
-        task_name = getattr(self._task, "task_name", self.task_name or "unknown")
+        task_name = (
+            self._task.task_name
+            if self._task is not None
+            else self.task_name
+            if self.task_name is not None
+            else "unknown"
+        )
         self.logger.info("Closed Taskiq pipeline", task_name=task_name)
 
-    async def process_item(self, item: Any, spider: "Spider") -> Any:
+    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
         """Send the item to the Taskiq broker for processing."""
         if self._task is None:
             raise RuntimeError("TaskiqPipeline not opened")
 
         # Send item to the task queue
         task_result = await self._task.kiq(item)
-
-        task_name = getattr(self._task, "task_name", self.task_name or "unknown")
+        task_name = self._task.task_name
+        task_id: str | int | None = None
+        if isinstance(task_result, _TaskiqResult):
+            task_id = task_result.task_id
         self.logger.debug(
             "Sent item to Taskiq queue",
             task_name=task_name,
-            task_id=task_result.task_id,
+            task_id=task_id or "unknown",
             spider=spider.name,
         )
         return item

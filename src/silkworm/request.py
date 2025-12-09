@@ -1,28 +1,44 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
-from collections.abc import Awaitable, Callable
-from typing import Any
+from dataclasses import dataclass, field, replace
+from collections.abc import AsyncIterable, AsyncIterator, Awaitable, Callable, Iterable
+from typing import TYPE_CHECKING, TypeAlias
 
-from .response import Response  # type: ignore[import]
+from ._types import BodyData, Headers, JSONValue, MetaData, QueryParams
 
-Callback = Callable[["Response"], Awaitable[Any]]  # type: ignore[name-defined]
+if TYPE_CHECKING:
+    from .response import Response
 
 
 @dataclass(slots=True)
 class Request:
     url: str
     method: str = "GET"
-    headers: dict[str, str] = field(default_factory=dict)
-    params: dict[str, Any] = field(default_factory=dict)
-    data: Any | None = None
-    json: Any | None = None
-    meta: dict[str, Any] = field(default_factory=dict)
+    headers: Headers = field(default_factory=dict)
+    params: QueryParams = field(default_factory=dict)
+    data: BodyData = None
+    json: JSONValue | None = None
+    meta: MetaData = field(default_factory=dict)
     timeout: float | None = None
-    callback: Callback | None = None
+    callback: "Callback | None" = None
     dont_filter: bool = False
     priority: int = 0
 
-    def replace(self, **kwargs) -> "Request":
-        data = {field: getattr(self, field) for field in self.__dataclass_fields__}  # type: ignore[attr-defined]
-        data.update(kwargs)
-        return Request(**data)
+    def replace(self, **kwargs: object) -> "Request":
+        """
+        Return a new Request with the provided fields replaced.
+        """
+        return replace(self, **kwargs)  # type: ignore[arg-type]
+
+
+CallbackOutput: TypeAlias = (
+    Request
+    | JSONValue
+    | Iterable[Request | JSONValue]
+    | AsyncIterable[Request | JSONValue]
+    | AsyncIterator[Request | JSONValue]
+    | None
+)
+CallbackResult: TypeAlias = CallbackOutput | Awaitable[CallbackOutput]
+Callback: TypeAlias = Callable[["Response"], CallbackResult]
+
+__all__ = ["Callback", "CallbackOutput", "CallbackResult", "Request"]

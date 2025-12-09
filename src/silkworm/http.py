@@ -1,12 +1,14 @@
 from __future__ import annotations
 import asyncio
 import inspect
-from typing import Any
+from collections.abc import Mapping, Sequence
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit
+from typing import Any, cast
 
 from rnet import Client, Impersonate, Method  # type: ignore[import]
 
 from .exceptions import HttpError
+from ._types import Headers, QueryValue
 from .request import Request
 from .response import Response, HTMLResponse
 from .logging import get_logger
@@ -18,14 +20,22 @@ class HttpClient:
         *,
         concurrency: int = 16,
         impersonate: Impersonate = Impersonate.Firefox139,
-        default_headers: dict[str, str] | None = None,
+        default_headers: Headers | None = None,
         timeout: float | None = None,
         html_max_size_bytes: int = 5_000_000,
         follow_redirects: bool = True,
         max_redirects: int = 10,
-        **client_kwargs: Any,
+        emulation: str | None = None,
+        **client_kwargs: object,
     ) -> None:
-        self._client = Client(impersonate=impersonate, **client_kwargs)
+        client_options: dict[str, object] = {"impersonate": impersonate}
+        if emulation is not None:
+            client_options["emulation"] = emulation
+        client_options.update(client_kwargs)
+
+        client_factory = cast(Any, Client)
+        self._client: Any = client_factory(**client_options)
+        self._concurrency = concurrency
         self._sem = asyncio.Semaphore(concurrency)
         self._default_headers = default_headers or {}
         self._timeout = timeout
@@ -35,6 +45,14 @@ class HttpClient:
             raise ValueError("max_redirects must be non-negative")
         self._max_redirects = max_redirects
         self.logger = get_logger(component="http")
+
+    @property
+    def concurrency(self) -> int:
+        return self._concurrency
+
+    @property
+    def html_max_size_bytes(self) -> int:
+        return self._html_max_size_bytes
 
     async def fetch(self, req: Request) -> Response:
         proxy = req.meta.get("proxy")
@@ -50,7 +68,7 @@ class HttpClient:
         elapsed: float = 0.0
 
         while True:
-            resp: Any | None = None
+            resp: Any = None
             method = self._normalize_method(current_req.method)
             url = self._build_url(current_req)
             visited_urls.add(url)
@@ -62,7 +80,7 @@ class HttpClient:
                         if current_req.timeout is not None
                         else self._timeout
                     )
-                    request_kwargs = dict(
+                    request_kwargs: dict[str, object] = dict(
                         headers={**self._default_headers, **current_req.headers},
                         data=current_req.data,
                         json=current_req.json,
@@ -121,8 +139,17 @@ class HttpClient:
             proxy=bool(proxy),
             redirects=redirects_followed,
         )
-        content_type = headers.get("content-type", "")
-        if "html" in content_type:
+        content_type = headers.get("content-type", "").lower()
+        snippet = body[:2048]
+        snippet_lower = snippet.lower()
+        looks_textual = b"\x00" not in snippet
+        is_html = (
+            "html" in content_type
+            or b"<html" in snippet_lower
+            or b"<!doctype" in snippet_lower
+            or (content_type.startswith("text/") and looks_textual)
+        )
+        if is_html:
             return HTMLResponse(
                 url=url,
                 status=status,
@@ -140,42 +167,32 @@ class HttpClient:
             request=current_req,
         )
 
-    async def _read_body(self, resp: Any) -> bytes:
+    async def _maybe_await(self, value: object) -> object:
+        return await value if inspect.isawaitable(value) else value
+
+    async def _read_body(self, resp: object) -> bytes:
         """
         rnet responses may expose the payload differently; try common attributes.
         """
-        # preferred path: read() coroutine or function
-        if hasattr(resp, "read"):
-            reader = resp.read
-            if callable(reader):
-                result = reader()
-                if inspect.isawaitable(result):
-                    result = await result
-                return self._ensure_bytes(result)
+        reader = getattr(resp, "read", None)
+        if callable(reader):
+            return self._ensure_bytes(await self._maybe_await(reader()))
 
-        # fallbacks: content/body attributes or callables
-        for attr in ("content", "body"):
-            if hasattr(resp, attr):
-                value = getattr(resp, attr)
-                if callable(value):
-                    value = value()
-                if inspect.isawaitable(value):
-                    value = await value
-                return self._ensure_bytes(value)
-
-        # last resort: text/aread style
-        for attr in ("text",):
-            if hasattr(resp, attr):
-                value = getattr(resp, attr)
-                if callable(value):
-                    value = value()
-                if inspect.isawaitable(value):
-                    value = await value
-                return self._ensure_bytes(value)
+        for attr in ("content", "body", "text"):
+            candidate = getattr(resp, attr, None)
+            if candidate is None:
+                continue
+            if callable(candidate):
+                candidate = candidate()
+            candidate = await self._maybe_await(candidate)
+            try:
+                return self._ensure_bytes(candidate)
+            except (TypeError, ValueError):
+                continue
 
         raise TypeError("Unable to read response body")
 
-    async def _close_response(self, resp: Any | None) -> None:
+    async def _close_response(self, resp: object | None) -> None:
         """Release the underlying HTTP response if it exposes a close hook."""
         if resp is None:
             return
@@ -183,70 +200,69 @@ class HttpClient:
         closer = getattr(resp, "aclose", None) or getattr(resp, "close", None)
         if closer and callable(closer):
             try:
-                result = closer()
-                if inspect.isawaitable(result):
-                    await result
+                await self._maybe_await(closer())
             except Exception:
                 # Best-effort cleanup; avoid surfacing close errors.
                 self.logger.debug("Failed to close response", exc_info=True)
 
-    def _ensure_bytes(self, data: Any) -> bytes:
+    def _ensure_bytes(self, data: object) -> bytes:
         if isinstance(data, bytes):
             return data
         if isinstance(data, str):
             return data.encode("utf-8", errors="replace")
+        if isinstance(data, (bytearray, memoryview)):
+            return bytes(data)
         if data is None:
             return b""
-        return bytes(data)
+        try:
+            return bytes(data)  # type: ignore[call-overload]
+        except Exception:
+            return str(data).encode("utf-8", errors="replace")
 
-    def _normalize_headers(self, raw_headers: Any) -> dict[str, str]:
+    @staticmethod
+    def _textify(value: object) -> str:
+        if isinstance(value, bytes):
+            return value.decode("utf-8", errors="ignore")
+        return str(value)
+
+    def _normalize_headers(self, raw_headers: object) -> dict[str, str]:
         """
         rnet's Response.headers may be a mapping or a list of raw header lines;
         coerce both shapes into a plain dict without raising.
         """
 
-        def _as_str(val: Any) -> str:
-            if isinstance(val, bytes):
-                return val.decode("utf-8", errors="ignore")
-            return str(val)
-
         if raw_headers is None:
             return {}
 
-        # Best effort if it already looks like a mapping
-        if isinstance(raw_headers, dict):
-            return {_as_str(k).lower(): _as_str(v) for k, v in raw_headers.items()}
-        if hasattr(raw_headers, "items"):
-            try:
-                return {_as_str(k).lower(): _as_str(v) for k, v in raw_headers.items()}
-            except Exception:
-                pass
+        if isinstance(raw_headers, Mapping):
+            return {
+                self._textify(k).strip().lower(): self._textify(v).strip()
+                for k, v in raw_headers.items()
+            }
 
-        headers: dict[str, str] = {}
-        if isinstance(raw_headers, (list, tuple)):
+        headers: Headers = {}
+        if isinstance(raw_headers, Sequence) and not isinstance(
+            raw_headers, (str, bytes, bytearray)
+        ):
             for entry in raw_headers:
-                if isinstance(entry, (list, tuple)) and len(entry) == 2:
+                if isinstance(entry, Sequence) and len(entry) == 2:
                     k, v = entry
                 elif isinstance(entry, (bytes, str)):
-                    text = (
-                        entry.decode("utf-8", errors="ignore")
-                        if isinstance(entry, bytes)
-                        else entry
-                    )
+                    text = self._textify(entry)
                     if ":" not in text:
                         continue
                     k, v = text.split(":", 1)
                 else:
                     continue
-                k = _as_str(k).strip().lower()
-                v = _as_str(v).strip()
-                headers[k] = v
+                headers[self._textify(k).strip().lower()] = self._textify(v).strip()
             if headers:
                 return headers
 
         try:
+            mapping = cast(Mapping[object, object], raw_headers)
             return {
-                _as_str(k).lower(): _as_str(v) for k, v in dict(raw_headers).items()
+                self._textify(k).strip().lower(): self._textify(v).strip()
+                for k, v in mapping.items()
             }
         except Exception:
             return {}
@@ -256,27 +272,31 @@ class HttpClient:
             return req.url
 
         parts = urlsplit(req.url)
-        existing = dict(parse_qsl(parts.query, keep_blank_values=True))
+        existing: dict[str, QueryValue] = dict(
+            parse_qsl(parts.query, keep_blank_values=True)
+        )
         existing.update(req.params)
-        query = urlencode(existing, doseq=True)
+        query = urlencode(cast(Mapping[str, object], existing), doseq=True)
         return parts._replace(query=query).geturl()
 
-    def _normalize_method(self, method: str | Method) -> Method:
+    def _normalize_method(self, method: str | Method) -> Method | str:
         if isinstance(method, Method):
             return method
 
         upper = method.upper()
-        if hasattr(Method, upper):
-            return getattr(Method, upper)
+        member = getattr(Method, upper, None)
+        if member is not None:
+            return member
 
-        raise ValueError(f"Unsupported HTTP method: {method!r}")
+        try:
+            return Method[upper]  # type: ignore[index]
+        except Exception:
+            # Fallback to the uppercased string for test doubles or alternative
+            # Method implementations that are not subscriptable.
+            return upper
 
-    def _method_name(self, method: Method) -> str:
-        return (
-            getattr(method, "name", None)
-            or getattr(method, "value", None)
-            or str(method)
-        )
+    def _method_name(self, method: Method | str) -> str:
+        return getattr(method, "name", str(method))
 
     def _should_follow_redirect(self, status: int, headers: dict[str, str]) -> bool:
         if not self._follow_redirects:
@@ -288,7 +308,7 @@ class HttpClient:
         return urljoin(current_url, location.strip())
 
     def _redirect_request(
-        self, req: Request, redirect_url: str, status: int, method: Method
+        self, req: Request, redirect_url: str, status: int, method: Method | str
     ) -> Request:
         method_name = self._method_name(method).upper()
         new_method = method_name
@@ -308,8 +328,9 @@ class HttpClient:
             params={},  # don't re-append original query params to redirect targets
         )
 
-        redirects = updated.meta.get("redirect_times", 0) + 1
-        updated.meta["redirect_times"] = redirects
+        raw_redirects = updated.meta.get("redirect_times", 0)
+        redirects = raw_redirects if isinstance(raw_redirects, int) else 0
+        updated.meta["redirect_times"] = redirects + 1
         return updated
 
     async def close(self) -> None:

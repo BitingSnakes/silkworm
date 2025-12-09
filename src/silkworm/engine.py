@@ -3,8 +3,8 @@ import asyncio
 import inspect
 import sys
 import time
-from collections.abc import AsyncIterator, Iterable
-from typing import Any
+from collections.abc import AsyncIterable, AsyncIterator, Iterable
+from typing import Callable, cast
 
 try:  # resource is POSIX-only
     import resource
@@ -12,8 +12,9 @@ except ImportError:  # pragma: no cover - platform dependent
     resource = None  # type: ignore[assignment]
 
 from .exceptions import SpiderError
+from ._types import JSONValue
 from .http import HttpClient
-from .request import Request
+from .request import CallbackOutput, CallbackResult, Request
 from .response import HTMLResponse, Response
 from .spiders import Spider
 from .middlewares import RequestMiddleware, ResponseMiddleware
@@ -37,7 +38,7 @@ class Engine:
         log_stats_interval: float | None = None,
     ) -> None:
         self.spider = spider
-        self.http = HttpClient(  # type: ignore[arg-type]
+        self.http = HttpClient(
             concurrency=concurrency,
             emulation=emulation,
             timeout=request_timeout,
@@ -65,7 +66,7 @@ class Engine:
         self._stats_task: asyncio.Task | None = None
         self._start_time: float = 0.0
         self._event_loop_type: str | None = None
-        self._stats = {
+        self._stats: dict[str, int] = {
             "requests_sent": 0,
             "responses_received": 0,
             "items_scraped": 0,
@@ -150,7 +151,7 @@ class Engine:
             if isinstance(current, Request):
                 # already converted to a retry Request by a previous mw
                 break
-            current = await mw.process_response(current, self.spider)  # type: ignore[arg-type]
+            current = await mw.process_response(current, self.spider)
         return current
 
     async def _handle_response(self, resp: Response) -> None:
@@ -171,21 +172,23 @@ class Engine:
         resp = processed
         callback = resp.request.callback
 
-        produced: Any
+        produced: CallbackResult
         try:
-            if callback is None:
-                if not isinstance(resp, HTMLResponse):
-                    raise TypeError("Spider.parse requires an HTMLResponse")
-                produced = self.spider.parse(resp)
+            effective_callback = callback or self.spider.parse
+            if self._expects_html(callback):
+                html_resp = self._ensure_html_response(resp)
+                produced = effective_callback(html_resp)
             else:
-                produced = callback(resp)
+                produced = effective_callback(resp)
         except Exception as exc:
             name = getattr(callback, "__name__", "parse") if callback else "parse"
             raise SpiderError(
                 f"Spider callback '{name}' failed for {self.spider.name}"
             ) from exc
         try:
+            last_yielded: Request | JSONValue | None = None
             async for x in self._iterate_callback_results(produced):
+                last_yielded = x
                 if isinstance(x, Request):
                     await self._enqueue(x)
                 else:
@@ -197,6 +200,20 @@ class Engine:
                     await self._process_item(x)
         except Exception as exc:
             name = getattr(callback, "__name__", "parse") if callback else "parse"
+            self.logger.error(
+                "Callback yielded invalid results",
+                callback=name,
+                produced_type=type(produced).__name__,
+                last_yielded_type=type(last_yielded).__name__
+                if last_yielded is not None
+                else None,
+                last_yielded_repr=self._safe_repr(last_yielded),
+                spider=self.spider.name,
+                url=resp.url,
+                error=str(exc),
+                error_type=exc.__class__.__name__,
+                exc_info=True,
+            )
             raise SpiderError(
                 f"Spider callback '{name}' yielded invalid results"
             ) from exc
@@ -205,11 +222,14 @@ class Engine:
             if resp is not original_resp:
                 original_resp.close()
 
-    async def _iterate_callback_results(self, produced: Any) -> AsyncIterator[Any]:
+    async def _iterate_callback_results(
+        self, produced: CallbackResult
+    ) -> AsyncIterator[Request | JSONValue]:
         """
         Normalize any supported callback return shape (single item, Request,
         sync/async iterator, or awaitable) into an async iterator.
         """
+        results: CallbackOutput
         results = await produced if inspect.isawaitable(produced) else produced
 
         if results is None:
@@ -219,8 +239,8 @@ class Engine:
             yield results
             return
 
-        if hasattr(results, "__aiter__"):
-            async for x in results:  # type: ignore[operator]
+        if isinstance(results, (AsyncIterator, AsyncIterable)):
+            async for x in results:
                 yield x
             return
 
@@ -233,9 +253,9 @@ class Engine:
 
         # Fallback: treat any other value as a single item to avoid confusing
         # TypeError from iterating over non-iterables.
-        yield results
+        yield cast(JSONValue, results)
 
-    async def _process_item(self, item: Any) -> None:
+    async def _process_item(self, item: JSONValue) -> None:
         self._stats["items_scraped"] += 1
         for pipe in self.item_pipelines:
             self.logger.debug(
@@ -269,7 +289,7 @@ class Engine:
             return "trio"
         return "asyncio"
 
-    def _stats_payload(self, elapsed: float) -> dict[str, Any]:
+    def _stats_payload(self, elapsed: float) -> dict[str, float | int]:
         requests_rate = self._stats["requests_sent"] / elapsed if elapsed > 0 else 0
         return {
             "elapsed_seconds": round(elapsed, 1),
@@ -305,8 +325,7 @@ class Engine:
         self._event_loop_type = self._detect_event_loop()
 
         # number of workers = client concurrency
-        concurrency = self.http._sem._value  # type: ignore[attr-defined]
-        for _ in range(concurrency):
+        for _ in range(self.http.concurrency):
             task = asyncio.create_task(self._worker())
             self._tasks.append(task)
 
@@ -342,3 +361,35 @@ class Engine:
             await self.http.close()
             await self.close_spider()
             complete_logs()
+
+    def _expects_html(
+        self, callback: Callable[[Response], CallbackResult] | None
+    ) -> bool:
+        if callback is None:
+            return True
+
+        cb_self = getattr(callback, "__self__", None)
+        cb_func = getattr(callback, "__func__", None)
+        parse_func = getattr(self.spider.parse, "__func__", None)
+        if cb_self is self.spider and cb_func is parse_func:
+            return True
+
+        return False
+
+    def _ensure_html_response(self, resp: Response) -> HTMLResponse:
+        if isinstance(resp, HTMLResponse):
+            return resp
+        return HTMLResponse(
+            url=resp.url,
+            status=resp.status,
+            headers=dict(resp.headers),
+            body=resp.body,
+            request=resp.request,
+            doc_max_size_bytes=self.http.html_max_size_bytes,
+        )
+
+    def _safe_repr(self, value: object, limit: int = 200) -> str:
+        if value is None:
+            return "None"
+        text = repr(value)
+        return text if len(text) <= limit else f"{text[:limit]}…"
