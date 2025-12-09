@@ -45,3 +45,6 @@ publish-test: build
 publish: build
 	uv run twine check dist/*
 	uv run twine upload dist/*
+
+profile:
+	py-spy record -o profile.svg --subprocesses -- python examples/url_titles_spider.py --urls-file ./data/lobsters.jl --output data/url_titles.jl
