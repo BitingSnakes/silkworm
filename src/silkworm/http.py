@@ -2,7 +2,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 from typing import Any
-from urllib.parse import parse_qsl, urlencode, urlsplit
+from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit
 
 from rnet import Client, Impersonate, Method  # type: ignore[import]
 
@@ -21,6 +21,8 @@ class HttpClient:
         default_headers: dict[str, str] | None = None,
         timeout: float | None = None,
         html_max_size_bytes: int = 5_000_000,
+        follow_redirects: bool = True,
+        max_redirects: int = 10,
         **client_kwargs: Any,
     ) -> None:
         self._client = Client(impersonate=impersonate, **client_kwargs)
@@ -28,64 +30,114 @@ class HttpClient:
         self._default_headers = default_headers or {}
         self._timeout = timeout
         self._html_max_size_bytes = html_max_size_bytes
+        self._follow_redirects = follow_redirects
+        if max_redirects < 0:
+            raise ValueError("max_redirects must be non-negative")
+        self._max_redirects = max_redirects
         self.logger = get_logger(component="http")
 
     async def fetch(self, req: Request) -> Response:
-        headers = {**self._default_headers, **req.headers}
         proxy = req.meta.get("proxy")
-        method = self._normalize_method(req.method)
-        url = self._build_url(req)
-        start = asyncio.get_running_loop().time()
-        resp: Any | None = None
+        current_req = req
+        redirects_followed = 0
+        visited_urls: set[str] = set()
+        total_start = asyncio.get_running_loop().time()
 
-        try:
-            async with self._sem:
-                timeout = req.timeout if req.timeout is not None else self._timeout
-                request_kwargs = dict(
-                    headers=headers,
-                    data=req.data,
-                    json=req.json,
-                    proxy=proxy,
-                )
-                if timeout is not None:
-                    request_kwargs["timeout"] = timeout
+        # Response data captured from the final request in any redirect chain
+        body: bytes = b""
+        status: int = 0
+        headers: dict[str, str] = {}
+        elapsed: float = 0.0
 
-                # Adjust keyword arguments to actual rnet.Client.request signature
-                resp = await self._client.request(method, url, **request_kwargs)
+        while True:
+            resp: Any | None = None
+            method = self._normalize_method(current_req.method)
+            url = self._build_url(current_req)
+            visited_urls.add(url)
 
-                status = resp.status
-                headers = self._normalize_headers(resp.headers)
-                body = await self._read_body(resp)
-                elapsed = (asyncio.get_running_loop().time() - start) * 1000
-        except Exception as exc:
-            raise HttpError(f"Request to {req.url} failed") from exc
-        finally:
-            await self._close_response(resp)
+            try:
+                async with self._sem:
+                    timeout = (
+                        current_req.timeout
+                        if current_req.timeout is not None
+                        else self._timeout
+                    )
+                    request_kwargs = dict(
+                        headers={**self._default_headers, **current_req.headers},
+                        data=current_req.data,
+                        json=current_req.json,
+                        proxy=proxy,
+                    )
+                    if timeout is not None:
+                        request_kwargs["timeout"] = timeout
+
+                    # Adjust keyword arguments to actual rnet.Client.request signature
+                    resp = await self._client.request(method, url, **request_kwargs)
+
+                    status = resp.status
+                    headers = self._normalize_headers(resp.headers)
+
+                    if self._should_follow_redirect(status, headers):
+                        if redirects_followed >= self._max_redirects:
+                            raise HttpError(
+                                f"Exceeded maximum redirects ({self._max_redirects})"
+                            )
+
+                        redirect_url = self._resolve_redirect_url(
+                            url, headers.get("location", "")
+                        )
+                        if redirect_url in visited_urls:
+                            raise HttpError("Redirect loop detected")
+
+                        redirects_followed += 1
+                        self.logger.debug(
+                            "Following redirect",
+                            from_url=url,
+                            to_url=redirect_url,
+                            status=status,
+                        )
+                        current_req = self._redirect_request(
+                            current_req, redirect_url, status, method
+                        )
+                        await self._close_response(resp)
+                        resp = None
+                        continue
+
+                    body = await self._read_body(resp)
+                    elapsed = (asyncio.get_running_loop().time() - total_start) * 1000
+                break
+            except HttpError:
+                raise
+            except Exception as exc:
+                raise HttpError(f"Request to {req.url} failed") from exc
+            finally:
+                await self._close_response(resp)
 
         self.logger.debug(
             "HTTP response",
-            url=req.url,
+            url=url,
             status=status,
             elapsed_ms=round(elapsed, 2),
             proxy=bool(proxy),
+            redirects=redirects_followed,
         )
         content_type = headers.get("content-type", "")
         if "html" in content_type:
             return HTMLResponse(
-                url=req.url,
+                url=url,
                 status=status,
                 headers=headers,
                 body=body,
-                request=req,
+                request=current_req,
                 doc_max_size_bytes=self._html_max_size_bytes,
             )
 
         return Response(
-            url=req.url,
+            url=url,
             status=status,
             headers=headers,
             body=body,
-            request=req,
+            request=current_req,
         )
 
     async def _read_body(self, resp: Any) -> bytes:
@@ -218,6 +270,47 @@ class HttpClient:
             return getattr(Method, upper)
 
         raise ValueError(f"Unsupported HTTP method: {method!r}")
+
+    def _method_name(self, method: Method) -> str:
+        return (
+            getattr(method, "name", None)
+            or getattr(method, "value", None)
+            or str(method)
+        )
+
+    def _should_follow_redirect(self, status: int, headers: dict[str, str]) -> bool:
+        if not self._follow_redirects:
+            return False
+
+        return status in {301, 302, 303, 307, 308} and "location" in headers
+
+    def _resolve_redirect_url(self, current_url: str, location: str) -> str:
+        return urljoin(current_url, location.strip())
+
+    def _redirect_request(
+        self, req: Request, redirect_url: str, status: int, method: Method
+    ) -> Request:
+        method_name = self._method_name(method).upper()
+        new_method = method_name
+        new_data = req.data
+        new_json = req.json
+
+        if status in {301, 302, 303} and method_name not in {"GET", "HEAD"}:
+            new_method = "GET"
+            new_data = None
+            new_json = None
+
+        updated = req.replace(
+            url=redirect_url,
+            method=new_method,
+            data=new_data,
+            json=new_json,
+            params={},  # don't re-append original query params to redirect targets
+        )
+
+        redirects = updated.meta.get("redirect_times", 0) + 1
+        updated.meta["redirect_times"] = redirects
+        return updated
 
     async def close(self) -> None:
         closer = getattr(self._client, "aclose", None) or getattr(

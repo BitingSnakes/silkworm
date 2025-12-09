@@ -152,15 +152,18 @@ def main() -> None:
 
     run_spider(
         UrlTitlesSpider,
-        concurrency=16,
+        concurrency=32,
         request_middlewares=request_mw,
         response_middlewares=response_mw,
         item_pipelines=pipelines,
         request_timeout=5,
         log_stats_interval=10,
+        html_max_size_bytes=1_000_000,
         urls_file=args.urls_file,
     )
 
 
 if __name__ == "__main__":
     main()
+
+    print("Crawling completed.")

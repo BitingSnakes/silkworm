@@ -1,4 +1,5 @@
 from urllib.parse import parse_qsl, urlsplit
+from typing import Any
 
 import pytest
 
@@ -9,6 +10,34 @@ from silkworm.request import Request
 from silkworm.response import HTMLResponse, Response
 from silkworm import response as response_module
 from silkworm.spiders import Spider
+
+
+class _StubResponse:
+    def __init__(
+        self, *, status: int = 200, headers: Any = None, body: bytes | str = b""
+    ) -> None:
+        self.status = status
+        self.headers = headers or {}
+        self._body = body
+
+    async def read(self) -> bytes:
+        if isinstance(self._body, bytes):
+            return self._body
+        return str(self._body).encode("utf-8")
+
+    async def text(self) -> str:
+        if isinstance(self._body, bytes):
+            return self._body.decode("utf-8", errors="replace")
+        return str(self._body)
+
+
+class _RecordingClient:
+    def __init__(self) -> None:
+        self.calls: list[tuple[Any, str, dict[str, Any]]] = []
+
+    async def request(self, method: Any, url: str, **kwargs: Any) -> _StubResponse:
+        self.calls.append((method, url, kwargs))
+        return _StubResponse()
 
 
 def test_request_replace_creates_new_request_with_updates():
@@ -62,9 +91,10 @@ def test_htmlresponse_doc_is_cached(monkeypatch: pytest.MonkeyPatch):
     class CountingDocument:
         instances = 0
 
-        def __init__(self, html: str) -> None:
+        def __init__(self, html: str, max_size_bytes: int | None = None) -> None:
             type(self).instances += 1
             self.html = html
+            self.max_size_bytes = max_size_bytes
 
         def select(self, selector: str):
             return [selector]
@@ -117,10 +147,11 @@ def test_htmlresponse_close_releases_document(monkeypatch: pytest.MonkeyPatch):
     class ClosableDocument:
         instances = 0
 
-        def __init__(self, html: str) -> None:
+        def __init__(self, html: str, max_size_bytes: int | None = None) -> None:
             type(self).instances += 1
             self.html = html
             self.closed = False
+            self.max_size_bytes = max_size_bytes
 
         def select(self, selector: str):
             return [selector]
@@ -178,6 +209,78 @@ def test_httpclient_normalize_headers_handles_multiple_shapes():
     assert normalized["content-type"] == "text/html; charset=utf-8"
     assert normalized["x-test"] == "value"
     assert normalized["x-ratelimit"] == "10"
+
+
+@pytest.mark.anyio("asyncio")
+async def test_httpclient_follows_redirects():
+    class RedirectClient(_RecordingClient):
+        async def request(self, method: Any, url: str, **kwargs: Any) -> _StubResponse:  # type: ignore[override]
+            self.calls.append((method, url, kwargs))
+            if url.startswith("http://example.com/start"):
+                return _StubResponse(
+                    status=302,
+                    headers={"Location": "/next", "Content-Type": "text/plain"},
+                )
+            return _StubResponse(
+                status=200, headers={"Content-Type": "text/plain"}, body=b"ok"
+            )
+
+    client = HttpClient()
+    client._client = RedirectClient()  # type: ignore[assignment]
+
+    resp = await client.fetch(
+        Request(url="http://example.com/start", params={"foo": "1"})
+    )
+
+    assert resp.status == 200
+    assert resp.url == "http://example.com/next"
+    assert resp.body == b"ok"
+    assert resp.request.url == "http://example.com/next"
+    assert client._client.calls[0][1] == "http://example.com/start?foo=1"
+    assert client._client.calls[1][1] == "http://example.com/next"
+
+
+@pytest.mark.anyio("asyncio")
+async def test_httpclient_detects_redirect_loops():
+    from silkworm.exceptions import HttpError
+
+    class LoopingClient(_RecordingClient):
+        async def request(self, method: Any, url: str, **kwargs: Any) -> _StubResponse:  # type: ignore[override]
+            self.calls.append((method, url, kwargs))
+            return _StubResponse(
+                status=302, headers={"Location": "/loop", "Content-Type": "text/plain"}
+            )
+
+    client = HttpClient(max_redirects=2)
+    client._client = LoopingClient()  # type: ignore[assignment]
+
+    with pytest.raises(HttpError):
+        await client.fetch(Request(url="http://example.com/loop"))
+
+
+@pytest.mark.anyio("asyncio")
+async def test_httpclient_converts_post_to_get_on_303():
+    class ConvertingClient(_RecordingClient):
+        async def request(self, method: Any, url: str, **kwargs: Any) -> _StubResponse:  # type: ignore[override]
+            self.calls.append((method, url, kwargs))
+            if len(self.calls) == 1:
+                return _StubResponse(
+                    status=303, headers={"Location": "https://example.com/landing"}
+                )
+            return _StubResponse(status=200, headers={}, body=b"done")
+
+    client = HttpClient()
+    client._client = ConvertingClient()  # type: ignore[assignment]
+
+    resp = await client.fetch(
+        Request(url="https://example.com/form", method="POST", data={"foo": "bar"})
+    )
+
+    assert resp.status == 200
+    assert resp.request.method == "GET"
+    assert client._client.calls[0][0] == "POST"
+    assert client._client.calls[1][0] == "GET"
+    assert client._client.calls[1][2].get("data") is None
 
 
 @pytest.mark.anyio("asyncio")
