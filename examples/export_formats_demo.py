@@ -80,9 +80,7 @@ class ExportFormatsSpider(Spider):
                     tags=[t.text for t in el.css(".tag")],
                 )
                 self.logger.debug("Scraped quote", author=quote.author)
-                yield (
-                    quote.model_dump() if hasattr(quote, "model_dump") else quote.dict()
-                )
+                yield quote.model_dump()
             except Exception as exc:
                 self.logger.warning("Skipping invalid quote", error=str(exc))
                 continue

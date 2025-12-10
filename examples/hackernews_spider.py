@@ -102,9 +102,7 @@ class HackerNewsSpider(Spider):
                     points=item.points,
                     comments=item.comments,
                 )
-                yield (
-                    item.model_dump() if hasattr(item, "model_dump") else item.dict()
-                )
+                yield item.model_dump()
             except ValidationError as exc:
                 self.logger.warning("Skipping invalid story", errors=exc.errors())
                 continue

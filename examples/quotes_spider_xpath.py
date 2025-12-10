@@ -79,9 +79,7 @@ class QuotesSpiderXPath(Spider):
                 )
 
                 # Pipelines expect dict-like items
-                yield (
-                    quote.model_dump() if hasattr(quote, "model_dump") else quote.dict()
-                )
+                yield quote.model_dump()
             except ValidationError as exc:
                 self.logger.warning("Skipping invalid quote", errors=exc.errors())
                 continue
