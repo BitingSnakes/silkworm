@@ -24,10 +24,28 @@ jobs:
         run: uv venv --python ${{ matrix.python-version }}
 
       - name: Install dependencies
-        run: uv sync --group dev
-
-      - name: Install taskiq
-        run: uv pip install taskiq
+        run: |
+          uv sync --group dev \
+            --extra taskiq \
+            --extra msgpack \
+            --extra polars \
+            --extra excel \
+            --extra yaml \
+            --extra avro \
+            --extra elasticsearch \
+            --extra mongodb \
+            --extra s3 \
+            --extra vortex \
+            --extra mysql \
+            --extra postgresql \
+            --extra gsheets \
+            --extra snowflake \
+            --extra ftp \
+            --extra sftp \
+            --extra cassandra \
+            --extra couchdb \
+            --extra dynamodb
+          uv pip install msgpack
 
       - name: Run tests
         run: uv run --group dev pytest
