@@ -73,6 +73,9 @@ polars = [
 excel = [
   "openpyxl>=3.1.0",
 ]
+yaml = [
+  "pyyaml>=6.0",
+]
 avro = [
   "fastavro>=1.9.0",
 ]

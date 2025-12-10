@@ -692,7 +692,7 @@ class YAMLPipeline:
         """
         if not YAML_AVAILABLE:
             raise ImportError(
-                "pyyaml is required for YAMLPipeline. Install it with: pip install pyyaml"
+                "pyyaml is required for YAMLPipeline. Install it with: pip install silkworm-rs[yaml]"
             )
 
         self.path = Path(path)
@@ -920,7 +920,7 @@ class MongoDBPipeline:
         self.connection_string = connection_string
         self.database = database
         self.collection = collection
-        self._client: motor.motor_asyncio.AsyncIOMotorClient | None = None  # type: ignore[name-defined]
+        self._client = None  # type: ignore[var-annotated]
         self._db = None
         self._coll = None
         self.logger = get_logger(component="MongoDBPipeline")

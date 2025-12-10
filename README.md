@@ -108,7 +108,7 @@ from silkworm.pipelines import (
     TaskiqPipeline,  # requires: pip install silkworm-rs[taskiq]
     PolarsPipeline,  # requires: pip install silkworm-rs[polars]
     ExcelPipeline,  # requires: pip install silkworm-rs[excel]
-    YAMLPipeline,  # requires: pip install pyyaml
+    YAMLPipeline,  # requires: pip install silkworm-rs[yaml]
     AvroPipeline,  # requires: pip install silkworm-rs[avro]
     ElasticsearchPipeline,  # requires: pip install silkworm-rs[elasticsearch]
     MongoDBPipeline,  # requires: pip install silkworm-rs[mongodb]
@@ -144,7 +144,7 @@ run_spider(
 - `TaskiqPipeline` sends items to a [Taskiq](https://taskiq-python.github.io/) queue for distributed processing (requires `pip install silkworm-rs[taskiq]`).
 - `PolarsPipeline` writes items to a Parquet file using Polars for efficient columnar storage (requires `pip install silkworm-rs[polars]`).
 - `ExcelPipeline` writes items to an Excel .xlsx file (requires `pip install silkworm-rs[excel]`).
-- `YAMLPipeline` writes items to a YAML file (requires `pip install pyyaml`).
+- `YAMLPipeline` writes items to a YAML file (requires `pip install silkworm-rs[yaml]`).
 - `AvroPipeline` writes items to an Avro file with optional schema (requires `pip install silkworm-rs[avro]`).
 - `ElasticsearchPipeline` sends items to an Elasticsearch index (requires `pip install silkworm-rs[elasticsearch]`).
 - `MongoDBPipeline` sends items to a MongoDB collection (requires `pip install silkworm-rs[mongodb]`).

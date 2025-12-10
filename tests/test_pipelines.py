@@ -678,18 +678,19 @@ async def test_avro_pipeline_infers_schema():
 
 # ElasticsearchPipeline tests - skip if elasticsearch not installed
 try:
-    from elasticsearch import AsyncElasticsearch  # type: ignore  # noqa: F401
+    from elasticsearch import AsyncElasticsearch  # noqa: F401
     from silkworm.pipelines import ElasticsearchPipeline
 
     ELASTICSEARCH_AVAILABLE = True
 except ImportError:
     ELASTICSEARCH_AVAILABLE = False
+    ElasticsearchPipeline = None  # type: ignore
 
 
 @pytest.mark.skipif(not ELASTICSEARCH_AVAILABLE, reason="elasticsearch not installed")
 def test_elasticsearch_pipeline_initialization():
     # Just test that we can initialize the pipeline
-    pipeline = ElasticsearchPipeline(
+    pipeline = ElasticsearchPipeline(  # type: ignore
         hosts=["http://localhost:9200"],
         index="test_index",
     )
@@ -699,18 +700,19 @@ def test_elasticsearch_pipeline_initialization():
 
 # MongoDBPipeline tests - skip if motor not installed
 try:
-    import motor.motor_asyncio  # type: ignore  # noqa: F401
+    import motor.motor_asyncio  # noqa: F401
     from silkworm.pipelines import MongoDBPipeline
 
     MOTOR_AVAILABLE = True
 except ImportError:
     MOTOR_AVAILABLE = False
+    MongoDBPipeline = None  # type: ignore
 
 
 @pytest.mark.skipif(not MOTOR_AVAILABLE, reason="motor not installed")
 def test_mongodb_pipeline_initialization():
     # Just test that we can initialize the pipeline
-    pipeline = MongoDBPipeline(
+    pipeline = MongoDBPipeline(  # type: ignore
         connection_string="mongodb://localhost:27017",
         database="test_db",
         collection="test_collection",
@@ -721,18 +723,19 @@ def test_mongodb_pipeline_initialization():
 
 # S3JsonLinesPipeline tests - skip if opendal not installed
 try:
-    import opendal  # type: ignore  # noqa: F401
+    import opendal  # noqa: F401
     from silkworm.pipelines import S3JsonLinesPipeline
 
     OPENDAL_AVAILABLE = True
 except ImportError:
     OPENDAL_AVAILABLE = False
+    S3JsonLinesPipeline = None  # type: ignore
 
 
 @pytest.mark.skipif(not OPENDAL_AVAILABLE, reason="opendal not installed")
 def test_s3_jsonlines_pipeline_initialization():
     # Just test that we can initialize the pipeline
-    pipeline = S3JsonLinesPipeline(
+    pipeline = S3JsonLinesPipeline(  # type: ignore
         bucket="test-bucket",
         key="data/items.jl",
         region="us-east-1",
