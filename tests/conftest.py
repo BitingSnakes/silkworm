@@ -90,6 +90,12 @@ class _DummyDocument:
     def find(self, selector: str):
         return f"{selector}-first"
 
+    def xpath(self, xpath: str):
+        return [f"{xpath}-match"]
+
+    def xpath_first(self, xpath: str):
+        return f"{xpath}-first"
+
     def close(self) -> None:
         self.closed = True
 

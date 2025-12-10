@@ -20,9 +20,23 @@ def extract_select(html: str, max_size_bytes: int, selector: str) -> list["Eleme
 
 def extract_find(html: str, max_size_bytes: int, selector: str) -> "Element" | None:
     doc = Document(html, max_size_bytes=max_size_bytes)
-    elements = doc.find(selector)
+    element = doc.find(selector)
+    doc.close()
+    return element
+
+
+def extract_xpath(html: str, max_size_bytes: int, xpath: str) -> list["Element"]:
+    doc = Document(html, max_size_bytes=max_size_bytes)
+    elements = doc.xpath(xpath)
     doc.close()
     return elements
+
+
+def extract_xpath_first(html: str, max_size_bytes: int, xpath: str) -> "Element" | None:
+    doc = Document(html, max_size_bytes=max_size_bytes)
+    element = doc.xpath_first(xpath)
+    doc.close()
+    return element
 
 
 @dataclass(slots=True)
@@ -84,6 +98,16 @@ class HTMLResponse(Response):
     async def find(self, selector: str) -> Element | None:
         return await to_thread(
             extract_find, self.text, self.doc_max_size_bytes, selector
+        )
+
+    async def xpath(self, xpath: str) -> list[Element]:
+        return await to_thread(
+            extract_xpath, self.text, self.doc_max_size_bytes, xpath
+        )
+
+    async def xpath_first(self, xpath: str) -> Element | None:
+        return await to_thread(
+            extract_xpath_first, self.text, self.doc_max_size_bytes, xpath
         )
 
     def follow(
