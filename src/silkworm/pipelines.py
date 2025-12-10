@@ -260,6 +260,14 @@ class JsonLinesPipeline:
                 self._operator = None
                 self._object_path = None
                 self._fp = self.path.open("a", encoding="utf-8")
+            else:
+                self.logger.debug(
+                    "Wrote item to JSONL",
+                    path=str(self.path),
+                    spider=spider.name,
+                    backend="opendal",
+                )
+                return item
 
         if not self._fp:
             raise RuntimeError("JsonLinesPipeline not opened")

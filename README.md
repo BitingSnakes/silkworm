@@ -150,6 +150,7 @@ run_spider(
 - `DelayMiddleware` strategies: `delay=1.0` (fixed), `min_delay/max_delay` (random), or `delay_func` (custom).
 - `RetryMiddleware` backs off with `asyncio.sleep`; any status in `sleep_http_codes` is retried even if not in `retry_http_codes`.
 - `SkipNonHTMLMiddleware` checks `Content-Type` and optionally sniffs the body (`sniff_bytes`) to avoid running HTML callbacks on binary/API responses.
+- `JsonLinesPipeline` writes items to a local JSON Lines file and, when `opendal` is installed, appends asynchronously via the filesystem backend (`use_opendal=False` to stick to a regular file handle).
 - `CSVPipeline` flattens nested dicts (e.g., `{"user": {"name": "Alice"}}` -> `user_name`) and joins lists with commas; `XMLPipeline` preserves nesting.
 - `MsgPackPipeline` writes items in binary MessagePack format using [ormsgpack](https://github.com/aviramha/ormsgpack) for fast and compact serialization (requires `pip install silkworm-rs[msgpack]`).
 - `TaskiqPipeline` sends items to a [Taskiq](https://taskiq-python.github.io/) queue for distributed processing (requires `pip install silkworm-rs[taskiq]`).

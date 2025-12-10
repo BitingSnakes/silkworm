@@ -365,7 +365,7 @@ def main() -> None:
     ]
 
     pipelines: list[ItemPipeline] = [
-        JsonLinesPipeline(args.output),
+        JsonLinesPipeline(args.output, use_opendal=True),
     ]
 
     run_spider_uvloop(
