@@ -2,7 +2,7 @@
 Example spider that loads a sitemap file and extracts meta + Open Graph information from pages.
 
 This spider demonstrates:
-- Parsing XML sitemap files to extract URLs
+- Parsing XML sitemap files to extract URLs using rxml
 - Extracting HTML meta tags (title, description, keywords)
 - Extracting Open Graph (OG) tags for social media metadata
 - Using Pydantic for data validation
@@ -17,9 +17,10 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import re
 from typing import Any
-from xml.etree import ElementTree as ET
 
+import rxml
 from pydantic import BaseModel, field_validator
 
 from silkworm import HTMLResponse, Response, Spider, run_spider
@@ -129,35 +130,41 @@ class SitemapSpider(Spider):
             return
 
         try:
-            # Parse XML content
-            root = ET.fromstring(response.body)
+            # Detect root tag from XML content
+            xml_text = response.text
+            root_tag_match = re.search(r"<(\w+)[\s>]", xml_text)
+            if not root_tag_match:
+                self.logger.error(
+                    "Could not detect root tag in sitemap",
+                    url=response.url,
+                )
+                return
 
-            # Handle namespace (sitemaps typically use http://www.sitemaps.org/schemas/sitemap/0.9)
-            ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+            root_tag = root_tag_match.group(1)
+            root = rxml.read_string(xml_text, root_tag)
 
             # Check if this is a sitemap index (contains other sitemaps)
-            sitemap_elements = root.findall(".//sm:sitemap/sm:loc", ns)
+            sitemap_elements = root.search_by_name("sitemap")
             if sitemap_elements:
                 self.logger.info(
                     "Found sitemap index with sub-sitemaps",
                     count=len(sitemap_elements),
                 )
-                for elem in sitemap_elements:
-                    if elem.text:
-                        self.logger.debug("Following sub-sitemap", url=elem.text)
+                for sitemap_elem in sitemap_elements:
+                    loc_nodes = sitemap_elem.search_by_name("loc")
+                    if loc_nodes and loc_nodes[0].text:
+                        self.logger.debug(
+                            "Following sub-sitemap", url=loc_nodes[0].text
+                        )
                         yield Request(
-                            url=elem.text.strip(),
+                            url=loc_nodes[0].text.strip(),
                             callback=self.parse_sitemap,
                             dont_filter=True,
                         )
                 return
 
             # Otherwise, extract URLs from the sitemap
-            url_elements = root.findall(".//sm:url/sm:loc", ns)
-
-            # If namespace didn't work, try without namespace (some sitemaps don't use it)
-            if not url_elements:
-                url_elements = root.findall(".//url/loc")
+            url_elements = root.search_by_name("url")
 
             if not url_elements:
                 self.logger.warning(
@@ -173,9 +180,10 @@ class SitemapSpider(Spider):
             )
 
             # Extract and request each URL
-            for elem in url_elements:
-                if elem.text:
-                    url = elem.text.strip()
+            for url_elem in url_elements:
+                loc_nodes = url_elem.search_by_name("loc")
+                if loc_nodes and loc_nodes[0].text:
+                    url = loc_nodes[0].text.strip()
 
                     # Check if we've reached the max pages limit (with lock for concurrent safety)
                     async with self._pages_lock:
@@ -197,15 +205,9 @@ class SitemapSpider(Spider):
                         dont_filter=True,
                     )
 
-        except ET.ParseError as exc:
-            self.logger.error(
-                "Failed to parse sitemap XML",
-                url=response.url,
-                error=str(exc),
-            )
         except Exception as exc:
             self.logger.error(
-                "Unexpected error parsing sitemap",
+                "Failed to parse sitemap XML",
                 url=response.url,
                 error=str(exc),
             )
