@@ -319,3 +319,118 @@ def test_taskiq_pipeline_without_taskiq_raises_import_error():
     if not TASKIQ_AVAILABLE:
         pytest.skip("taskiq is installed, cannot test ImportError path")
     # If taskiq is available, this test is satisfied
+
+
+# MsgPackPipeline tests - skip if ormsgpack not installed
+# Note: We import both ormsgpack and msgpack. ormsgpack is required for the
+# MsgPackPipeline to work (for writing), but we use msgpack for reading in tests
+# because ormsgpack doesn't have an Unpacker class to read multiple objects from a stream.
+try:
+    import ormsgpack  # type: ignore  # noqa: F401
+    import msgpack  # type: ignore
+    from silkworm.pipelines import MsgPackPipeline
+
+    ORMSGPACK_AVAILABLE = True
+except ImportError:
+    ORMSGPACK_AVAILABLE = False
+
+
+@pytest.mark.skipif(not ORMSGPACK_AVAILABLE, reason="ormsgpack not installed")
+@pytest.mark.anyio("asyncio")
+async def test_msgpack_pipeline_writes_items():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        msgpack_path = Path(tmpdir) / "test.msgpack"
+        pipeline = MsgPackPipeline(msgpack_path)
+        spider = Spider()
+
+        await pipeline.open(spider)
+        await pipeline.process_item({"text": "Hello", "author": "John"}, spider)
+        await pipeline.process_item({"text": "World", "author": "Jane"}, spider)
+        await pipeline.close(spider)
+
+        # Read and verify MsgPack data
+        with open(msgpack_path, "rb") as f:
+            data = f.read()
+
+        # Unpack both items using msgpack.Unpacker
+        unpacker = msgpack.Unpacker()
+        unpacker.feed(data)
+        items = list(unpacker)
+
+        assert len(items) == 2
+        assert items[0] == {"text": "Hello", "author": "John"}
+        assert items[1] == {"text": "World", "author": "Jane"}
+
+
+@pytest.mark.skipif(not ORMSGPACK_AVAILABLE, reason="ormsgpack not installed")
+@pytest.mark.anyio("asyncio")
+async def test_msgpack_pipeline_append_mode():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        msgpack_path = Path(tmpdir) / "test.msgpack"
+        spider = Spider()
+
+        # Write first item
+        pipeline1 = MsgPackPipeline(msgpack_path, mode="write")
+        await pipeline1.open(spider)
+        await pipeline1.process_item({"text": "First"}, spider)
+        await pipeline1.close(spider)
+
+        # Append second item
+        pipeline2 = MsgPackPipeline(msgpack_path, mode="append")
+        await pipeline2.open(spider)
+        await pipeline2.process_item({"text": "Second"}, spider)
+        await pipeline2.close(spider)
+
+        # Read and verify both items
+        with open(msgpack_path, "rb") as f:
+            data = f.read()
+
+        unpacker = msgpack.Unpacker()
+        unpacker.feed(data)
+        items = list(unpacker)
+
+        assert len(items) == 2
+        assert items[0] == {"text": "First"}
+        assert items[1] == {"text": "Second"}
+
+
+@pytest.mark.skipif(not ORMSGPACK_AVAILABLE, reason="ormsgpack not installed")
+@pytest.mark.anyio("asyncio")
+async def test_msgpack_pipeline_handles_nested_data():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        msgpack_path = Path(tmpdir) / "test.msgpack"
+        pipeline = MsgPackPipeline(msgpack_path)
+        spider = Spider()
+
+        await pipeline.open(spider)
+        await pipeline.process_item(
+            {"user": {"name": "Alice", "age": 30}, "tags": ["python", "web"]}, spider
+        )
+        await pipeline.close(spider)
+
+        # Read and verify
+        with open(msgpack_path, "rb") as f:
+            data = f.read()
+
+        unpacker = msgpack.Unpacker()
+        unpacker.feed(data)
+        items = list(unpacker)
+
+        assert len(items) == 1
+        assert items[0] == {"user": {"name": "Alice", "age": 30}, "tags": ["python", "web"]}
+
+
+@pytest.mark.skipif(not ORMSGPACK_AVAILABLE, reason="ormsgpack not installed")
+@pytest.mark.anyio("asyncio")
+async def test_msgpack_pipeline_not_opened_raises_error():
+    pipeline = MsgPackPipeline("test.msgpack")
+    spider = Spider()
+
+    with pytest.raises(RuntimeError, match="MsgPackPipeline not opened"):
+        await pipeline.process_item({"test": "data"}, spider)
+
+
+@pytest.mark.skipif(not ORMSGPACK_AVAILABLE, reason="ormsgpack not installed")
+def test_msgpack_pipeline_invalid_mode_raises_error():
+    with pytest.raises(ValueError, match="mode must be 'write' or 'append'"):
+        MsgPackPipeline("test.msgpack", mode="invalid")

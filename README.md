@@ -102,9 +102,10 @@ from silkworm.middlewares import (
 from silkworm.pipelines import (
     CSVPipeline,
     JsonLinesPipeline,
+    MsgPackPipeline,  # requires: pip install silkworm-rs[msgpack]
     SQLitePipeline,
     XMLPipeline,
-    TaskiqPipeline,  # requires: pip install taskiq
+    TaskiqPipeline,  # requires: pip install silkworm-rs[taskiq]
 )
 
 run_spider(
@@ -123,6 +124,7 @@ run_spider(
         SQLitePipeline("data/quotes.db", table="quotes"),
         XMLPipeline("data/quotes.xml", root_element="quotes", item_element="quote"),
         CSVPipeline("data/quotes.csv", fieldnames=["author", "text", "tags"]),
+        MsgPackPipeline("data/quotes.msgpack"),
     ],
 )
 ```
@@ -131,7 +133,8 @@ run_spider(
 - `RetryMiddleware` backs off with `asyncio.sleep`; any status in `sleep_http_codes` is retried even if not in `retry_http_codes`.
 - `SkipNonHTMLMiddleware` checks `Content-Type` and optionally sniffs the body (`sniff_bytes`) to avoid running HTML callbacks on binary/API responses.
 - `CSVPipeline` flattens nested dicts (e.g., `{"user": {"name": "Alice"}}` -> `user_name`) and joins lists with commas; `XMLPipeline` preserves nesting.
-- `TaskiqPipeline` sends items to a [Taskiq](https://taskiq-python.github.io/) queue for distributed processing (requires `pip install taskiq`).
+- `MsgPackPipeline` writes items in binary MessagePack format using [ormsgpack](https://github.com/aviramha/ormsgpack) for fast and compact serialization (requires `pip install silkworm-rs[msgpack]`).
+- `TaskiqPipeline` sends items to a [Taskiq](https://taskiq-python.github.io/) queue for distributed processing (requires `pip install silkworm-rs[taskiq]`).
 
 ## Streaming items to a queue with TaskiqPipeline
 Stream scraped items to a [Taskiq](https://taskiq-python.github.io/) queue for distributed processing:

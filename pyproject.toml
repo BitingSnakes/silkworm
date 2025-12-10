@@ -64,6 +64,9 @@ trio = [
   "trio>=0.23.0",
   "trio-asyncio>=0.13.0",
 ]
+msgpack = [
+  "ormsgpack>=1.7.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/BitingSnakes/silkworm"

@@ -17,6 +17,14 @@ from silkworm.pipelines import (
     XMLPipeline,
 )
 
+# Try to import MsgPackPipeline (requires optional dependency)
+try:
+    from silkworm.pipelines import MsgPackPipeline
+
+    MSGPACK_AVAILABLE = True
+except ImportError:
+    MSGPACK_AVAILABLE = False
+
 
 class Quote(BaseModel):
     text: str
@@ -119,11 +127,17 @@ if __name__ == "__main__":
         CSVPipeline("data/quotes_demo.csv", fieldnames=["author", "text", "tags"]),
     ]
 
+    # Add MsgPack pipeline if available
+    if MSGPACK_AVAILABLE:
+        pipelines.append(MsgPackPipeline("data/quotes_demo.msgpack"))
+
     print(f"Starting spider to scrape {args.pages} page(s)...")
     print("Exporting to:")
     print("  - data/quotes_demo.jl (JSON Lines)")
     print("  - data/quotes_demo.xml (XML)")
     print("  - data/quotes_demo.csv (CSV)")
+    if MSGPACK_AVAILABLE:
+        print("  - data/quotes_demo.msgpack (MsgPack)")
 
     run_spider(
         ExportFormatsSpider,
