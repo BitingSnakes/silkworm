@@ -23,6 +23,56 @@ try:
 except ImportError:
     ORMSGPACK_AVAILABLE = False
 
+try:
+    import polars as pl  # type: ignore[import-not-found]
+
+    POLARS_AVAILABLE = True
+except ImportError:
+    POLARS_AVAILABLE = False
+
+try:
+    import openpyxl  # type: ignore[import-not-found]
+
+    OPENPYXL_AVAILABLE = True
+except ImportError:
+    OPENPYXL_AVAILABLE = False
+
+try:
+    import yaml  # type: ignore[import-untyped]
+
+    YAML_AVAILABLE = True
+except ImportError:
+    YAML_AVAILABLE = False
+
+try:
+    import fastavro  # type: ignore[import-not-found]
+
+    FASTAVRO_AVAILABLE = True
+except ImportError:
+    FASTAVRO_AVAILABLE = False
+
+try:
+    from elasticsearch import AsyncElasticsearch  # type: ignore[import-not-found]
+
+    ELASTICSEARCH_AVAILABLE = True
+except ImportError:
+    AsyncElasticsearch = None  # type: ignore
+    ELASTICSEARCH_AVAILABLE = False
+
+try:
+    import motor.motor_asyncio  # type: ignore[import-not-found]
+
+    MOTOR_AVAILABLE = True
+except ImportError:
+    MOTOR_AVAILABLE = False
+
+try:
+    import opendal  # type: ignore[import-not-found]
+
+    OPENDAL_AVAILABLE = True
+except ImportError:
+    OPENDAL_AVAILABLE = False
+
 if True:
     from .spiders import Spider  # type: ignore
 from .logging import get_logger
@@ -143,7 +193,7 @@ class MsgPackPipeline:
     async def open(self, spider: "Spider") -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         file_mode = "ab" if self.mode == "append" else "wb"
-        self._fp = self.path.open(file_mode)
+        self._fp = self.path.open(file_mode)  # type: ignore[assignment]
         self.logger.info(
             "Opened MsgPack pipeline", path=str(self.path), mode=self.mode
         )
@@ -447,5 +497,547 @@ class TaskiqPipeline:
             task_name=task_name,
             task_id=task_id or "unknown",
             spider=spider.name,
+        )
+        return item
+
+
+class PolarsPipeline:
+    """
+    Pipeline that writes items to a Parquet file using Polars.
+
+    Parquet is a columnar storage format optimized for analytics workloads.
+    This pipeline uses Polars for fast and efficient Parquet serialization.
+
+    Example:
+        from silkworm.pipelines import PolarsPipeline
+
+        pipeline = PolarsPipeline("data/items.parquet")
+        # Or append to existing file:
+        pipeline = PolarsPipeline("data/items.parquet", mode="append")
+
+    Reading Parquet files:
+        import polars as pl
+
+        # Read entire dataset
+        df = pl.read_parquet("data/items.parquet")
+
+        # Or read with filters/projections (memory efficient)
+        df = pl.scan_parquet("data/items.parquet").filter(
+            pl.col("author") == "John"
+        ).collect()
+    """
+
+    def __init__(
+        self,
+        path: str | Path = "items.parquet",
+        *,
+        mode: str = "write",
+    ) -> None:
+        """
+        Initialize PolarsPipeline.
+
+        Args:
+            path: Path to the output file (default: "items.parquet")
+            mode: Write mode - "write" (overwrite) or "append" (default: "write")
+        """
+        if not POLARS_AVAILABLE:
+            raise ImportError(
+                "polars is required for PolarsPipeline. Install it with: pip install silkworm-rs[polars]"
+            )
+        if mode not in ("write", "append"):
+            raise ValueError(f"mode must be 'write' or 'append', got '{mode}'")
+
+        self.path = Path(path)
+        self.mode = mode
+        self._items: list[JSONValue] = []
+        self.logger = get_logger(component="PolarsPipeline")
+
+    async def open(self, spider: "Spider") -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._items = []
+        self.logger.info(
+            "Opened Polars pipeline", path=str(self.path), mode=self.mode
+        )
+
+    async def close(self, spider: "Spider") -> None:
+        if self._items:
+            df = pl.DataFrame(self._items)
+            if self.mode == "append" and self.path.exists():
+                # Read existing data and concatenate
+                existing_df = pl.read_parquet(self.path)
+                df = pl.concat([existing_df, df])
+            df.write_parquet(self.path)
+        self.logger.info("Closed Polars pipeline", path=str(self.path))
+
+    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+        self._items.append(item)
+        self.logger.debug(
+            "Buffered item for Parquet", path=str(self.path), spider=spider.name
+        )
+        return item
+
+
+class ExcelPipeline:
+    """
+    Pipeline that writes items to an Excel file (.xlsx).
+
+    Example:
+        from silkworm.pipelines import ExcelPipeline
+
+        pipeline = ExcelPipeline("data/items.xlsx", sheet_name="quotes")
+    """
+
+    def __init__(
+        self,
+        path: str | Path = "items.xlsx",
+        *,
+        sheet_name: str = "Sheet1",
+    ) -> None:
+        """
+        Initialize ExcelPipeline.
+
+        Args:
+            path: Path to the output file (default: "items.xlsx")
+            sheet_name: Name of the Excel sheet (default: "Sheet1")
+        """
+        if not OPENPYXL_AVAILABLE:
+            raise ImportError(
+                "openpyxl is required for ExcelPipeline. Install it with: pip install silkworm-rs[excel]"
+            )
+
+        self.path = Path(path)
+        self.sheet_name = sheet_name
+        self._items: list[JSONValue] = []
+        self.logger = get_logger(component="ExcelPipeline")
+
+    async def open(self, spider: "Spider") -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._items = []
+        self.logger.info("Opened Excel pipeline", path=str(self.path))
+
+    async def close(self, spider: "Spider") -> None:
+        if self._items:
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = self.sheet_name
+
+            # Get fieldnames from first item
+            if isinstance(self._items[0], Mapping):
+                flat_items: list[dict[str, JSONValue | str]] = []
+                for item in self._items:
+                    if isinstance(item, Mapping):
+                        flat_items.append(self._flatten_dict(item))
+                    else:
+                        flat_items.append({"value": str(item)})
+                fieldnames = list(flat_items[0].keys())
+                
+                # Write header
+                ws.append(fieldnames)
+                
+                # Write data
+                for item in flat_items:
+                    ws.append([item.get(field) for field in fieldnames])
+            else:
+                # Simple values
+                ws.append(["value"])
+                for item in self._items:
+                    ws.append([str(item)])
+
+            wb.save(self.path)
+        self.logger.info("Closed Excel pipeline", path=str(self.path))
+
+    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+        self._items.append(item)
+        self.logger.debug(
+            "Buffered item for Excel", path=str(self.path), spider=spider.name
+        )
+        return item
+
+    def _flatten_dict(
+        self, data: Mapping[str, JSONValue], parent_key: str = "", sep: str = "_"
+    ) -> dict[str, JSONValue | str]:
+        """Flatten a nested dictionary structure."""
+        items: list[tuple[str, JSONValue | str]] = []
+        for key, value in data.items():
+            new_key = f"{parent_key}{sep}{key}" if parent_key else key
+            if isinstance(value, Mapping):
+                items.extend(self._flatten_dict(value, new_key, sep=sep).items())
+            elif isinstance(value, list):
+                # Convert list to comma-separated string
+                items.append((new_key, ", ".join(str(v) for v in value)))
+            else:
+                items.append((new_key, value))
+        return dict(items)
+
+
+class YAMLPipeline:
+    """
+    Pipeline that writes items to a YAML file.
+
+    Example:
+        from silkworm.pipelines import YAMLPipeline
+
+        pipeline = YAMLPipeline("data/items.yaml")
+    """
+
+    def __init__(
+        self,
+        path: str | Path = "items.yaml",
+    ) -> None:
+        """
+        Initialize YAMLPipeline.
+
+        Args:
+            path: Path to the output file (default: "items.yaml")
+        """
+        if not YAML_AVAILABLE:
+            raise ImportError(
+                "pyyaml is required for YAMLPipeline. Install it with: pip install silkworm-rs[yaml]"
+            )
+
+        self.path = Path(path)
+        self._items: list[JSONValue] = []
+        self.logger = get_logger(component="YAMLPipeline")
+
+    async def open(self, spider: "Spider") -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._items = []
+        self.logger.info("Opened YAML pipeline", path=str(self.path))
+
+    async def close(self, spider: "Spider") -> None:
+        if self._items:
+            with self.path.open("w", encoding="utf-8") as f:
+                yaml.dump(self._items, f, default_flow_style=False, allow_unicode=True)
+        self.logger.info("Closed YAML pipeline", path=str(self.path))
+
+    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+        self._items.append(item)
+        self.logger.debug(
+            "Buffered item for YAML", path=str(self.path), spider=spider.name
+        )
+        return item
+
+
+class AvroPipeline:
+    """
+    Pipeline that writes items to an Avro file.
+
+    Avro is a row-oriented data serialization system with compact binary format.
+
+    Example:
+        from silkworm.pipelines import AvroPipeline
+
+        schema = {
+            "type": "record",
+            "name": "Quote",
+            "fields": [
+                {"name": "text", "type": "string"},
+                {"name": "author", "type": "string"},
+                {"name": "tags", "type": {"type": "array", "items": "string"}},
+            ],
+        }
+        pipeline = AvroPipeline("data/items.avro", schema=schema)
+    """
+
+    def __init__(
+        self,
+        path: str | Path = "items.avro",
+        *,
+        schema: dict | None = None,
+    ) -> None:
+        """
+        Initialize AvroPipeline.
+
+        Args:
+            path: Path to the output file (default: "items.avro")
+            schema: Avro schema dict. If None, will infer from first item.
+        """
+        if not FASTAVRO_AVAILABLE:
+            raise ImportError(
+                "fastavro is required for AvroPipeline. Install it with: pip install silkworm-rs[avro]"
+            )
+
+        self.path = Path(path)
+        self.schema = schema
+        self._items: list[JSONValue] = []
+        self.logger = get_logger(component="AvroPipeline")
+
+    async def open(self, spider: "Spider") -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._items = []
+        self.logger.info("Opened Avro pipeline", path=str(self.path))
+
+    async def close(self, spider: "Spider") -> None:
+        if self._items:
+            schema = self.schema
+            if schema is None:
+                # Infer schema from first item
+                schema = self._infer_schema(self._items[0])
+            
+            with self.path.open("wb") as f:
+                fastavro.writer(f, schema, self._items)
+        self.logger.info("Closed Avro pipeline", path=str(self.path))
+
+    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+        self._items.append(item)
+        self.logger.debug(
+            "Buffered item for Avro", path=str(self.path), spider=spider.name
+        )
+        return item
+
+    def _infer_schema(self, item: JSONValue) -> dict:
+        """Infer a simple Avro schema from the first item."""
+        fields = []
+        if isinstance(item, dict):
+            for key, value in item.items():
+                field_type = self._infer_type(value)
+                fields.append({"name": key, "type": ["null", field_type]})
+        
+        return {
+            "type": "record",
+            "name": "ScrapedItem",
+            "fields": fields,
+        }
+
+    def _infer_type(self, value: JSONValue) -> str | dict:
+        """Infer Avro type from Python value."""
+        if isinstance(value, bool):
+            return "boolean"
+        elif isinstance(value, int):
+            return "long"
+        elif isinstance(value, float):
+            return "double"
+        elif isinstance(value, str):
+            return "string"
+        elif isinstance(value, list):
+            if value:
+                item_type = self._infer_type(value[0])
+                return {"type": "array", "items": item_type}
+            return {"type": "array", "items": "string"}
+        elif isinstance(value, dict):
+            # For nested dicts, convert to JSON string
+            return "string"
+        else:
+            return "string"
+
+
+class ElasticsearchPipeline:
+    """
+    Pipeline that sends items to an Elasticsearch index.
+
+    Example:
+        from silkworm.pipelines import ElasticsearchPipeline
+
+        pipeline = ElasticsearchPipeline(
+            hosts=["http://localhost:9200"],
+            index="quotes",
+        )
+    """
+
+    def __init__(
+        self,
+        hosts: list[str] | str = "http://localhost:9200",
+        *,
+        index: str = "items",
+        **es_kwargs,
+    ) -> None:
+        """
+        Initialize ElasticsearchPipeline.
+
+        Args:
+            hosts: Elasticsearch host(s)
+            index: Index name
+            **es_kwargs: Additional kwargs for AsyncElasticsearch client
+        """
+        if not ELASTICSEARCH_AVAILABLE:
+            raise ImportError(
+                "elasticsearch is required for ElasticsearchPipeline. Install it with: pip install silkworm-rs[elasticsearch]"
+            )
+
+        self.hosts = [hosts] if isinstance(hosts, str) else hosts
+        self.index = index
+        self.es_kwargs = es_kwargs
+        self._client: "AsyncElasticsearch | None" = None
+        self.logger = get_logger(component="ElasticsearchPipeline")
+
+    async def open(self, spider: "Spider") -> None:
+        self._client = AsyncElasticsearch(self.hosts, **self.es_kwargs)
+        self.logger.info(
+            "Opened Elasticsearch pipeline", hosts=self.hosts, index=self.index
+        )
+
+    async def close(self, spider: "Spider") -> None:
+        if self._client:
+            await self._client.close()
+            self._client = None
+            self.logger.info("Closed Elasticsearch pipeline", index=self.index)
+
+    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+        if not self._client:
+            raise RuntimeError("ElasticsearchPipeline not opened")
+        
+        await self._client.index(index=self.index, document=item)
+        self.logger.debug(
+            "Indexed item in Elasticsearch", index=self.index, spider=spider.name
+        )
+        return item
+
+
+class MongoDBPipeline:
+    """
+    Pipeline that sends items to a MongoDB collection.
+
+    Example:
+        from silkworm.pipelines import MongoDBPipeline
+
+        pipeline = MongoDBPipeline(
+            connection_string="mongodb://localhost:27017",
+            database="scraping",
+            collection="quotes",
+        )
+    """
+
+    def __init__(
+        self,
+        connection_string: str = "mongodb://localhost:27017",
+        *,
+        database: str = "scraping",
+        collection: str = "items",
+    ) -> None:
+        """
+        Initialize MongoDBPipeline.
+
+        Args:
+            connection_string: MongoDB connection string
+            database: Database name
+            collection: Collection name
+        """
+        if not MOTOR_AVAILABLE:
+            raise ImportError(
+                "motor is required for MongoDBPipeline. Install it with: pip install silkworm-rs[mongodb]"
+            )
+
+        self.connection_string = connection_string
+        self.database = database
+        self.collection = collection
+        self._client = None  # type: ignore[var-annotated]
+        self._db = None
+        self._coll = None
+        self.logger = get_logger(component="MongoDBPipeline")
+
+    async def open(self, spider: "Spider") -> None:
+        self._client = motor.motor_asyncio.AsyncIOMotorClient(self.connection_string)  # type: ignore[assignment]
+        self._db = self._client[self.database]  # type: ignore[index]
+        self._coll = self._db[self.collection]  # type: ignore[index]
+        self.logger.info(
+            "Opened MongoDB pipeline",
+            database=self.database,
+            collection=self.collection,
+        )
+
+    async def close(self, spider: "Spider") -> None:
+        if self._client:
+            self._client.close()
+            self._client = None
+            self._db = None
+            self._coll = None
+            self.logger.info("Closed MongoDB pipeline", collection=self.collection)
+
+    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+        if not self._coll:
+            raise RuntimeError("MongoDBPipeline not opened")
+        
+        await self._coll.insert_one(item)
+        self.logger.debug(
+            "Inserted item in MongoDB", collection=self.collection, spider=spider.name
+        )
+        return item
+
+
+class S3JsonLinesPipeline:
+    """
+    Pipeline that writes items to S3 in JSON Lines format using async OpenDAL.
+
+    Example:
+        from silkworm.pipelines import S3JsonLinesPipeline
+
+        pipeline = S3JsonLinesPipeline(
+            bucket="my-bucket",
+            key="data/items.jl",
+            region="us-east-1",
+        )
+    """
+
+    def __init__(
+        self,
+        bucket: str,
+        key: str = "items.jl",
+        *,
+        region: str = "us-east-1",
+        endpoint: str | None = None,
+        access_key_id: str | None = None,
+        secret_access_key: str | None = None,
+    ) -> None:
+        """
+        Initialize S3JsonLinesPipeline.
+
+        Args:
+            bucket: S3 bucket name
+            key: S3 object key (path)
+            region: AWS region
+            endpoint: Custom S3 endpoint (for S3-compatible services)
+            access_key_id: AWS access key ID (uses env vars if not provided)
+            secret_access_key: AWS secret access key (uses env vars if not provided)
+        """
+        if not OPENDAL_AVAILABLE:
+            raise ImportError(
+                "opendal is required for S3JsonLinesPipeline. Install it with: pip install silkworm-rs[s3]"
+            )
+
+        self.bucket = bucket
+        self.key = key
+        self.region = region
+        self.endpoint = endpoint
+        self.access_key_id = access_key_id
+        self.secret_access_key = secret_access_key
+        self._items: list[str] = []
+        self._operator: opendal.AsyncOperator | None = None
+        self.logger = get_logger(component="S3JsonLinesPipeline")
+
+    async def open(self, spider: "Spider") -> None:
+        # Configure OpenDAL operator for S3
+        config = {
+            "bucket": self.bucket,
+            "region": self.region,
+        }
+        if self.endpoint:
+            config["endpoint"] = self.endpoint
+        if self.access_key_id:
+            config["access_key_id"] = self.access_key_id
+        if self.secret_access_key:
+            config["secret_access_key"] = self.secret_access_key
+
+        self._operator = opendal.AsyncOperator("s3", **config)
+        self._items = []
+        self.logger.info(
+            "Opened S3 JSON Lines pipeline",
+            bucket=self.bucket,
+            key=self.key,
+            region=self.region,
+        )
+
+    async def close(self, spider: "Spider") -> None:
+        if self._items and self._operator:
+            # Write all buffered items to S3
+            content = "\n".join(self._items)
+            await self._operator.write(self.key, content.encode("utf-8"))
+        self._operator = None
+        self.logger.info("Closed S3 JSON Lines pipeline", key=self.key)
+
+    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+        line = json.dumps(item, ensure_ascii=False)
+        self._items.append(line)
+        self.logger.debug(
+            "Buffered item for S3", key=self.key, spider=spider.name
         )
         return item

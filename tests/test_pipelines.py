@@ -434,3 +434,312 @@ async def test_msgpack_pipeline_not_opened_raises_error():
 def test_msgpack_pipeline_invalid_mode_raises_error():
     with pytest.raises(ValueError, match="mode must be 'write' or 'append'"):
         MsgPackPipeline("test.msgpack", mode="invalid")
+
+
+# PolarsPipeline tests - skip if polars not installed
+try:
+    import polars as pl  # type: ignore
+    from silkworm.pipelines import PolarsPipeline
+
+    POLARS_AVAILABLE = True
+except ImportError:
+    POLARS_AVAILABLE = False
+
+
+@pytest.mark.skipif(not POLARS_AVAILABLE, reason="polars not installed")
+@pytest.mark.anyio("asyncio")
+async def test_polars_pipeline_writes_parquet():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        parquet_path = Path(tmpdir) / "test.parquet"
+        pipeline = PolarsPipeline(parquet_path)
+        spider = Spider()
+
+        await pipeline.open(spider)
+        await pipeline.process_item({"text": "Hello", "author": "John"}, spider)
+        await pipeline.process_item({"text": "World", "author": "Jane"}, spider)
+        await pipeline.close(spider)
+
+        # Read and verify Parquet data
+        df = pl.read_parquet(parquet_path)
+        assert len(df) == 2
+        assert df["text"].to_list() == ["Hello", "World"]
+        assert df["author"].to_list() == ["John", "Jane"]
+
+
+@pytest.mark.skipif(not POLARS_AVAILABLE, reason="polars not installed")
+@pytest.mark.anyio("asyncio")
+async def test_polars_pipeline_append_mode():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        parquet_path = Path(tmpdir) / "test.parquet"
+        spider = Spider()
+
+        # Write first item
+        pipeline1 = PolarsPipeline(parquet_path, mode="write")
+        await pipeline1.open(spider)
+        await pipeline1.process_item({"text": "First"}, spider)
+        await pipeline1.close(spider)
+
+        # Append second item
+        pipeline2 = PolarsPipeline(parquet_path, mode="append")
+        await pipeline2.open(spider)
+        await pipeline2.process_item({"text": "Second"}, spider)
+        await pipeline2.close(spider)
+
+        # Read and verify both items
+        df = pl.read_parquet(parquet_path)
+        assert len(df) == 2
+        assert df["text"].to_list() == ["First", "Second"]
+
+
+@pytest.mark.skipif(not POLARS_AVAILABLE, reason="polars not installed")
+def test_polars_pipeline_invalid_mode_raises_error():
+    with pytest.raises(ValueError, match="mode must be 'write' or 'append'"):
+        PolarsPipeline("test.parquet", mode="invalid")
+
+
+# ExcelPipeline tests - skip if openpyxl not installed
+try:
+    import openpyxl  # type: ignore
+    from silkworm.pipelines import ExcelPipeline
+
+    OPENPYXL_AVAILABLE = True
+except ImportError:
+    OPENPYXL_AVAILABLE = False
+
+
+@pytest.mark.skipif(not OPENPYXL_AVAILABLE, reason="openpyxl not installed")
+@pytest.mark.anyio("asyncio")
+async def test_excel_pipeline_writes_xlsx():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        excel_path = Path(tmpdir) / "test.xlsx"
+        pipeline = ExcelPipeline(excel_path, sheet_name="quotes")
+        spider = Spider()
+
+        await pipeline.open(spider)
+        await pipeline.process_item({"text": "Hello", "author": "John"}, spider)
+        await pipeline.process_item({"text": "World", "author": "Jane"}, spider)
+        await pipeline.close(spider)
+
+        # Read and verify Excel data
+        wb = openpyxl.load_workbook(excel_path)
+        ws = wb["quotes"]
+        
+        # Check header
+        header = [cell.value for cell in ws[1]]
+        assert set(header) == {"text", "author"}
+        
+        # Check data
+        rows = list(ws.iter_rows(min_row=2, values_only=True))
+        assert len(rows) == 2
+        assert any(row[header.index("text")] == "Hello" and row[header.index("author")] == "John" for row in rows)
+        assert any(row[header.index("text")] == "World" and row[header.index("author")] == "Jane" for row in rows)
+
+
+@pytest.mark.skipif(not OPENPYXL_AVAILABLE, reason="openpyxl not installed")
+@pytest.mark.anyio("asyncio")
+async def test_excel_pipeline_flattens_nested_dict():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        excel_path = Path(tmpdir) / "test.xlsx"
+        pipeline = ExcelPipeline(excel_path)
+        spider = Spider()
+
+        await pipeline.open(spider)
+        await pipeline.process_item(
+            {"name": "Alice", "address": {"city": "NYC", "zip": "10001"}}, spider
+        )
+        await pipeline.close(spider)
+
+        # Read and verify
+        wb = openpyxl.load_workbook(excel_path)
+        ws = wb.active
+        header = [cell.value for cell in ws[1]]
+        
+        assert "address_city" in header
+        assert "address_zip" in header
+
+
+# YAMLPipeline tests - skip if pyyaml not installed
+try:
+    import yaml  # type: ignore
+    from silkworm.pipelines import YAMLPipeline
+
+    YAML_AVAILABLE = True
+except ImportError:
+    YAML_AVAILABLE = False
+
+
+@pytest.mark.skipif(not YAML_AVAILABLE, reason="pyyaml not installed")
+@pytest.mark.anyio("asyncio")
+async def test_yaml_pipeline_writes_yaml():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        yaml_path = Path(tmpdir) / "test.yaml"
+        pipeline = YAMLPipeline(yaml_path)
+        spider = Spider()
+
+        await pipeline.open(spider)
+        await pipeline.process_item({"text": "Hello", "author": "John"}, spider)
+        await pipeline.process_item({"text": "World", "author": "Jane"}, spider)
+        await pipeline.close(spider)
+
+        # Read and verify YAML data
+        with open(yaml_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        
+        assert len(data) == 2
+        assert data[0] == {"text": "Hello", "author": "John"}
+        assert data[1] == {"text": "World", "author": "Jane"}
+
+
+@pytest.mark.skipif(not YAML_AVAILABLE, reason="pyyaml not installed")
+@pytest.mark.anyio("asyncio")
+async def test_yaml_pipeline_handles_nested_data():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        yaml_path = Path(tmpdir) / "test.yaml"
+        pipeline = YAMLPipeline(yaml_path)
+        spider = Spider()
+
+        await pipeline.open(spider)
+        await pipeline.process_item(
+            {"user": {"name": "Alice", "age": 30}, "tags": ["python", "web"]}, spider
+        )
+        await pipeline.close(spider)
+
+        # Read and verify
+        with open(yaml_path, "r", encoding="utf-8") as f:
+            data = yaml.safe_load(f)
+        
+        assert len(data) == 1
+        assert data[0] == {"user": {"name": "Alice", "age": 30}, "tags": ["python", "web"]}
+
+
+# AvroPipeline tests - skip if fastavro not installed
+try:
+    import fastavro  # type: ignore
+    from silkworm.pipelines import AvroPipeline
+
+    FASTAVRO_AVAILABLE = True
+except ImportError:
+    FASTAVRO_AVAILABLE = False
+
+
+@pytest.mark.skipif(not FASTAVRO_AVAILABLE, reason="fastavro not installed")
+@pytest.mark.anyio("asyncio")
+async def test_avro_pipeline_writes_with_schema():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        avro_path = Path(tmpdir) / "test.avro"
+        schema = {
+            "type": "record",
+            "name": "Quote",
+            "fields": [
+                {"name": "text", "type": "string"},
+                {"name": "author", "type": "string"},
+            ],
+        }
+        pipeline = AvroPipeline(avro_path, schema=schema)
+        spider = Spider()
+
+        await pipeline.open(spider)
+        await pipeline.process_item({"text": "Hello", "author": "John"}, spider)
+        await pipeline.process_item({"text": "World", "author": "Jane"}, spider)
+        await pipeline.close(spider)
+
+        # Read and verify Avro data
+        with open(avro_path, "rb") as f:
+            reader = fastavro.reader(f)
+            records = list(reader)
+        
+        assert len(records) == 2
+        assert records[0] == {"text": "Hello", "author": "John"}
+        assert records[1] == {"text": "World", "author": "Jane"}
+
+
+@pytest.mark.skipif(not FASTAVRO_AVAILABLE, reason="fastavro not installed")
+@pytest.mark.anyio("asyncio")
+async def test_avro_pipeline_infers_schema():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        avro_path = Path(tmpdir) / "test.avro"
+        pipeline = AvroPipeline(avro_path)  # No schema provided
+        spider = Spider()
+
+        await pipeline.open(spider)
+        await pipeline.process_item({"text": "Hello", "author": "John", "count": 5}, spider)
+        await pipeline.close(spider)
+
+        # Read and verify Avro data
+        with open(avro_path, "rb") as f:
+            reader = fastavro.reader(f)
+            records = list(reader)
+        
+        assert len(records) == 1
+        assert records[0]["text"] == "Hello"
+        assert records[0]["author"] == "John"
+        assert records[0]["count"] == 5
+
+
+# ElasticsearchPipeline tests - skip if elasticsearch not installed
+try:
+    from elasticsearch import AsyncElasticsearch  # noqa: F401
+    from silkworm.pipelines import ElasticsearchPipeline
+
+    ELASTICSEARCH_AVAILABLE = True
+except ImportError:
+    ELASTICSEARCH_AVAILABLE = False
+    ElasticsearchPipeline = None  # type: ignore
+
+
+@pytest.mark.skipif(not ELASTICSEARCH_AVAILABLE, reason="elasticsearch not installed")
+def test_elasticsearch_pipeline_initialization():
+    # Just test that we can initialize the pipeline
+    pipeline = ElasticsearchPipeline(  # type: ignore
+        hosts=["http://localhost:9200"],
+        index="test_index",
+    )
+    assert pipeline.index == "test_index"
+    assert pipeline.hosts == ["http://localhost:9200"]
+
+
+# MongoDBPipeline tests - skip if motor not installed
+try:
+    import motor.motor_asyncio  # noqa: F401
+    from silkworm.pipelines import MongoDBPipeline
+
+    MOTOR_AVAILABLE = True
+except ImportError:
+    MOTOR_AVAILABLE = False
+    MongoDBPipeline = None  # type: ignore
+
+
+@pytest.mark.skipif(not MOTOR_AVAILABLE, reason="motor not installed")
+def test_mongodb_pipeline_initialization():
+    # Just test that we can initialize the pipeline
+    pipeline = MongoDBPipeline(  # type: ignore
+        connection_string="mongodb://localhost:27017",
+        database="test_db",
+        collection="test_collection",
+    )
+    assert pipeline.database == "test_db"
+    assert pipeline.collection == "test_collection"
+
+
+# S3JsonLinesPipeline tests - skip if opendal not installed
+try:
+    import opendal  # noqa: F401
+    from silkworm.pipelines import S3JsonLinesPipeline
+
+    OPENDAL_AVAILABLE = True
+except ImportError:
+    OPENDAL_AVAILABLE = False
+    S3JsonLinesPipeline = None  # type: ignore
+
+
+@pytest.mark.skipif(not OPENDAL_AVAILABLE, reason="opendal not installed")
+def test_s3_jsonlines_pipeline_initialization():
+    # Just test that we can initialize the pipeline
+    pipeline = S3JsonLinesPipeline(  # type: ignore
+        bucket="test-bucket",
+        key="data/items.jl",
+        region="us-east-1",
+    )
+    assert pipeline.bucket == "test-bucket"
+    assert pipeline.key == "data/items.jl"
+    assert pipeline.region == "us-east-1"

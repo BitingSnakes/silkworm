@@ -106,6 +106,13 @@ from silkworm.pipelines import (
     SQLitePipeline,
     XMLPipeline,
     TaskiqPipeline,  # requires: pip install silkworm-rs[taskiq]
+    PolarsPipeline,  # requires: pip install silkworm-rs[polars]
+    ExcelPipeline,  # requires: pip install silkworm-rs[excel]
+    YAMLPipeline,  # requires: pip install silkworm-rs[yaml]
+    AvroPipeline,  # requires: pip install silkworm-rs[avro]
+    ElasticsearchPipeline,  # requires: pip install silkworm-rs[elasticsearch]
+    MongoDBPipeline,  # requires: pip install silkworm-rs[mongodb]
+    S3JsonLinesPipeline,  # requires: pip install silkworm-rs[s3]
 )
 
 run_spider(
@@ -135,6 +142,13 @@ run_spider(
 - `CSVPipeline` flattens nested dicts (e.g., `{"user": {"name": "Alice"}}` -> `user_name`) and joins lists with commas; `XMLPipeline` preserves nesting.
 - `MsgPackPipeline` writes items in binary MessagePack format using [ormsgpack](https://github.com/aviramha/ormsgpack) for fast and compact serialization (requires `pip install silkworm-rs[msgpack]`).
 - `TaskiqPipeline` sends items to a [Taskiq](https://taskiq-python.github.io/) queue for distributed processing (requires `pip install silkworm-rs[taskiq]`).
+- `PolarsPipeline` writes items to a Parquet file using Polars for efficient columnar storage (requires `pip install silkworm-rs[polars]`).
+- `ExcelPipeline` writes items to an Excel .xlsx file (requires `pip install silkworm-rs[excel]`).
+- `YAMLPipeline` writes items to a YAML file (requires `pip install silkworm-rs[yaml]`).
+- `AvroPipeline` writes items to an Avro file with optional schema (requires `pip install silkworm-rs[avro]`).
+- `ElasticsearchPipeline` sends items to an Elasticsearch index (requires `pip install silkworm-rs[elasticsearch]`).
+- `MongoDBPipeline` sends items to a MongoDB collection (requires `pip install silkworm-rs[mongodb]`).
+- `S3JsonLinesPipeline` writes items to AWS S3 in JSON Lines format using async OpenDAL (requires `pip install silkworm-rs[s3]`).
 
 ## Streaming items to a queue with TaskiqPipeline
 Stream scraped items to a [Taskiq](https://taskiq-python.github.io/) queue for distributed processing:
