@@ -23,7 +23,7 @@ from typing import Any, cast
 import rxml
 from pydantic import BaseModel, field_validator
 
-from silkworm import HTMLResponse, Response, Spider, run_spider
+from silkworm import HTMLResponse, Response, Spider, run_spider_uvloop
 from silkworm.logging import get_logger
 from silkworm.middlewares import (
     DelayMiddleware,
@@ -368,7 +368,7 @@ def main() -> None:
         JsonLinesPipeline(args.output),
     ]
 
-    run_spider(
+    run_spider_uvloop(
         SitemapSpider,
         request_middlewares=request_mw,
         response_middlewares=response_mw,
