@@ -66,31 +66,31 @@ class LobstersSpider(Spider):
         html = response
         self.pages_seen += 1
 
-        for story in await html.css("ol.stories > li.story"):
+        for story in await html.select("ol.stories > li.story"):
             short_id = story.attr("data-shortid") or story.attr("id") or ""
             short_id = short_id.replace("story_", "")
 
-            title_el = story.find("span.link a.u-url")
+            title_el = story.select_first("span.link a.u-url")
             title = title_el.text if title_el else ""
             href = title_el.attr("href") if title_el else ""
             url = urljoin(html.url, href)
 
-            domain_el = story.find("a.domain")
+            domain_el = story.select_first("a.domain")
             domain = domain_el.text if domain_el else None
 
-            tags = [tag.text for tag in story.css("span.tags a.tag")]
+            tags = [tag.text for tag in story.select("span.tags a.tag")]
 
-            author_el = story.find(".byline .u-author")
+            author_el = story.select_first(".byline .u-author")
             author = author_el.text if author_el else None
 
-            time_el = story.find(".byline time")
+            time_el = story.select_first(".byline time")
             age = time_el.text if time_el else None
 
-            comments_el = story.find(".comments_label a")
+            comments_el = story.select_first(".comments_label a")
             comments_text = comments_el.text.strip() if comments_el else ""
             comments = self._extract_number(comments_text)
 
-            points_el = story.find(".voters .upvoter")
+            points_el = story.select_first(".voters .upvoter")
             points = self._extract_number(points_el.text if points_el else None)
 
             try:
@@ -111,14 +111,12 @@ class LobstersSpider(Spider):
                     points=item.points,
                     comments=item.comments,
                 )
-                yield (
-                    item.model_dump() if hasattr(item, "model_dump") else item.dict()
-                )
+                yield item.model_dump()
             except ValidationError as exc:
                 self.logger.warning("Skipping invalid story", errors=exc.errors())
                 continue
 
-        next_links = await html.css("div.morelink a[href]")
+        next_links = await html.select("div.morelink a[href]")
         if len(next_links) > 0 and self.pages_seen < self.pages_requested:
             next_link = next_links[-1]
             href = next_link.attr("href")

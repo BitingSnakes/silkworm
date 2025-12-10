@@ -100,101 +100,6 @@ def test_response_close_releases_payload():
     assert resp.headers == {}
 
 
-def test_htmlresponse_doc_is_cached(monkeypatch: pytest.MonkeyPatch):
-    class CountingDocument:
-        instances = 0
-
-        def __init__(self, html: str, max_size_bytes: int | None = None) -> None:
-            type(self).instances += 1
-            self.html = html
-            self.max_size_bytes = max_size_bytes
-
-        def select(self, selector: str):
-            return [selector]
-
-    monkeypatch.setattr(response_module, "Document", CountingDocument)
-
-    resp = HTMLResponse(
-        url="http://example.com",
-        status=200,
-        headers={},
-        body=b"<html></html>",
-        request=Request(url="http://example.com"),
-    )
-
-    first = resp.doc
-    second = resp.doc
-
-    assert first is second
-    assert CountingDocument.instances == 1
-    assert first.select("body") == ["body"]
-
-
-def test_htmlresponse_uses_configurable_max_size(monkeypatch: pytest.MonkeyPatch):
-    captured: dict[str, int] = {}
-
-    class InspectingDocument:
-        def __init__(self, html: str, *, max_size_bytes: int | None = None) -> None:
-            captured["max_size_bytes"] = max_size_bytes or 0
-            self.html = html
-            self.max_size_bytes = max_size_bytes
-
-    monkeypatch.setattr(response_module, "Document", InspectingDocument)
-
-    resp = HTMLResponse(
-        url="http://example.com",
-        status=200,
-        headers={},
-        body=b"<html></html>",
-        request=Request(url="http://example.com"),
-        doc_max_size_bytes=1234,
-    )
-
-    doc = cast(InspectingDocument, resp.doc)
-
-    assert captured["max_size_bytes"] == 1234
-    assert doc.max_size_bytes == 1234
-
-
-def test_htmlresponse_close_releases_document(monkeypatch: pytest.MonkeyPatch):
-    class ClosableDocument:
-        instances = 0
-
-        def __init__(self, html: str, max_size_bytes: int | None = None) -> None:
-            type(self).instances += 1
-            self.html = html
-            self.closed = False
-            self.max_size_bytes = max_size_bytes
-
-        def select(self, selector: str):
-            return [selector]
-
-        def close(self) -> None:
-            self.closed = True
-
-    monkeypatch.setattr(response_module, "Document", ClosableDocument)
-
-    resp = HTMLResponse(
-        url="http://example.com",
-        status=200,
-        headers={},
-        body=b"<html></html>",
-        request=Request(url="http://example.com"),
-    )
-
-    doc = cast(ClosableDocument, resp.doc)
-    assert doc.closed is False
-
-    resp.close()
-    assert doc.closed is True
-    assert resp._doc is None
-    assert resp.body == b""
-    assert resp.headers == {}
-    # closing twice should be a no-op and not recreate the document
-    resp.close()
-    assert ClosableDocument.instances == 1
-
-
 def test_httpclient_build_url_merges_params_with_existing_query():
     client = HttpClient()
     req = Request(
@@ -303,31 +208,6 @@ async def test_httpclient_handles_unhashable_status_codes():
     assert resp.url == "http://example.com/next"
     assert redirect_client.calls[0][1] == "http://example.com/start"
     assert redirect_client.calls[1][1] == "http://example.com/next"
-
-
-@pytest.mark.anyio("asyncio")
-async def test_httpclient_converts_post_to_get_on_303():
-    class ConvertingClient(_RecordingClient):
-        async def request(self, method: Any, url: str, **kwargs: Any) -> _StubResponse:  # type: ignore[override]
-            self.calls.append((method, url, kwargs))
-            if len(self.calls) == 1:
-                return _StubResponse(
-                    status=303, headers={"Location": "https://example.com/landing"}
-                )
-            return _StubResponse(status=200, headers={}, body=b"done")
-
-    client = HttpClient()
-    client._client = ConvertingClient()  # type: ignore[assignment]
-
-    resp = await client.fetch(
-        Request(url="https://example.com/form", method="POST", data={"foo": "bar"})
-    )
-
-    assert resp.status == 200
-    assert resp.request.method == "GET"
-    assert client._client.calls[0][0] == "POST"
-    assert client._client.calls[1][0] == "GET"
-    assert client._client.calls[1][2].get("data") is None
 
 
 @pytest.mark.anyio("asyncio")

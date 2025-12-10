@@ -53,7 +53,7 @@ class QuotesSpider(Spider):
             return
 
         html = response
-        for el in await html.css(".quote"):
+        for el in await html.select(".quote"):
             try:
                 text_el = el.select_first(".text")
                 author_el = el.select_first(".author")
@@ -72,14 +72,12 @@ class QuotesSpider(Spider):
                     tags=len(quote.tags),
                 )
                 # Pipelines expect dict-like items; ensure conversion regardless of pydantic version.
-                yield (
-                    quote.model_dump() if hasattr(quote, "model_dump") else quote.dict()
-                )
+                yield quote.model_dump()
             except ValidationError as exc:
                 self.logger.warning("Skipping invalid quote", errors=exc.errors())
                 continue
 
-        next_link = await html.find("li.next > a")
+        next_link = await html.select_first("li.next > a")
         if next_link:
             href = next_link.attr("href")
             if href:

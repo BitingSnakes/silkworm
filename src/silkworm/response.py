@@ -4,10 +4,10 @@ from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
 from scraper_rs.asyncio import (
-    select,
-    # select_first,
+    select as select_async,
+    select_first as select_first_async,
     xpath as xpath_async,
-    # xpath_first as xpath_first_async,
+    xpath_first as xpath_first_async,
 )
 
 
@@ -56,23 +56,16 @@ class Response:
 @dataclass(slots=True)
 class HTMLResponse(Response):
     doc_max_size_bytes: int = 5_000_000
-    _doc: Document | None = field(default=None, init=False, repr=False, compare=False)
 
-    @property
-    def doc(self) -> Document:
-        """
-        Lazily parse and cache the HTML document.
-        """
-        if self._doc is None:
-            self._doc = Document(self.text, max_size_bytes=self.doc_max_size_bytes)
-        return self._doc
+    async def select(self, selector: str) -> list[Element]:
+        return await select_async(
+            self.text, selector, max_size_bytes=self.doc_max_size_bytes
+        )
 
-    async def css(self, selector: str) -> list[Element]:
-        return await select(self.text, selector, max_size_bytes=self.doc_max_size_bytes)
-
-    async def find(self, selector: str) -> Element | None:
-        data = await select(self.text, selector, max_size_bytes=self.doc_max_size_bytes)
-        return data[0] if data else None
+    async def select_first(self, selector: str) -> Element | None:
+        return await select_first_async(
+            self.text, selector, max_size_bytes=self.doc_max_size_bytes
+        )
 
     async def xpath(self, xpath: str) -> list[Element]:
         return await xpath_async(
@@ -80,10 +73,9 @@ class HTMLResponse(Response):
         )
 
     async def xpath_first(self, xpath: str) -> Element | None:
-        data = await xpath_async(
+        return await xpath_first_async(
             self.text, xpath, max_size_bytes=self.doc_max_size_bytes
         )
-        return data[0] if data else None
 
     def follow(
         self, href: str, callback: "Callback | None" = None, **kwargs: object
@@ -97,13 +89,6 @@ class HTMLResponse(Response):
         """
         if self._closed:
             return
-
-        if self._doc is not None:
-            # Ensure the underlying document releases any resources it may hold.
-            close_doc = getattr(self._doc, "close", None)
-            if close_doc is not None:
-                close_doc()
-            self._doc = None
 
         # Explicitly call base class to avoid zero-arg super issues with slotted dataclasses.
         Response.close(self)

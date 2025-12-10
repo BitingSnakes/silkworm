@@ -16,14 +16,14 @@ class QuotesSpider(Spider):
             return
 
         html = response
-        for quote in await html.css(".quote"):
+        for quote in await html.select(".quote"):
             yield {
                 "text": quote.select(".text")[0].text,
                 "author": quote.select(".author")[0].text,
                 "tags": [t.text for t in quote.select(".tag")],
             }
 
-        next_link = await html.find("li.next > a")
+        next_link = await html.select_first("li.next > a")
         if next_link is not None:
             href = next_link.attr("href")
             if href:

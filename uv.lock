@@ -2431,11 +2431,11 @@ wheels = [
 
 [[package]]
 name = "scraper-rust"
-version = "0.2.10"
+version = "0.2.12"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/8f/8a/ebebad25433b3dac6fc002eef9abae1dbf732f2a8050c438eb076c2bb249/scraper_rust-0.2.10.tar.gz", hash = "sha256:d8797f53e922809a7c3be83df299cf48dd065b888a8461d750b8ca122bf5a6a7", size = 31538, upload-time = "2025-12-10T13:42:46.539Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f9/01/e7d144a559b6e834b7838ea092626ca1eb00cea0c4463e4f604af7a0b431/scraper_rust-0.2.12.tar.gz", hash = "sha256:88bdcdaa6d075acec887bfcfe9dc7314496b07a24729dd54df2729aa60529035", size = 32006, upload-time = "2025-12-10T14:20:34.922Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c8/c3/66a8891892eeaa5f391b6573fcf97b2bb83fd26204c9cbb12ac71a2636bc/scraper_rust-0.2.10-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:61c049ed3c22535a4237ec975e5dc2a9b0f4ff7afca41cb0a9762b364c8f1033", size = 739550, upload-time = "2025-12-10T13:42:44.991Z" },
+    { url = "https://files.pythonhosted.org/packages/fc/9f/7c43e286f5529711ec8a151587b4a63880e43c31dc14491e320c61413d40/scraper_rust-0.2.12-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:230c30119759111f4ebb44bd163be5d6f2cb69720335979b72e4e8b5b5894f75", size = 739625, upload-time = "2025-12-10T14:20:32.593Z" },
 ]
 
 [[package]]
@@ -2563,6 +2563,7 @@ requires-dist = [
     { name = "rxml", specifier = ">=2.3.6" },
     { name = "scraper-rust", specifier = ">=0.2.10" },
     { name = "snowflake-connector-python", marker = "extra == 'snowflake'", specifier = ">=3.0.0" },
+    { name = "scraper-rust", specifier = ">=0.2.12" },
     { name = "taskiq", marker = "extra == 'taskiq'", specifier = ">=0.11.0" },
     { name = "trio", marker = "extra == 'trio'", specifier = ">=0.23.0" },
     { name = "trio-asyncio", marker = "extra == 'trio'", specifier = ">=0.13.0" },
@@ -2571,6 +2572,7 @@ requires-dist = [
     { name = "vortex-data", marker = "extra == 'vortex'", specifier = ">=0.50.0" },
 ]
 provides-extras = ["dev", "taskiq", "uvloop", "trio", "msgpack", "polars", "excel", "yaml", "avro", "elasticsearch", "mongodb", "s3", "vortex", "mysql", "postgresql", "gsheets", "snowflake"]
+provides-extras = ["dev", "taskiq", "uvloop", "trio", "msgpack", "polars", "excel", "yaml", "avro", "elasticsearch", "mongodb", "s3", "vortex", "mysql", "postgresql"]
 
 [package.metadata.requires-dev]
 dev = [

@@ -64,7 +64,7 @@ class TaskiqQuotesSpider(Spider):
             url=response.url,
         )
 
-        for quote in await html.css(".quote"):
+        for quote in await html.select(".quote"):
             yield {
                 "text": quote.select(".text")[0].text,
                 "author": quote.select(".author")[0].text,
@@ -73,7 +73,7 @@ class TaskiqQuotesSpider(Spider):
 
         # Follow next page link if we haven't reached max_pages
         if self.pages_scraped < self.max_pages:
-            next_link = await html.find("li.next > a")
+            next_link = await html.select_first("li.next > a")
             if next_link:
                 href = next_link.attr("href")
                 if href:

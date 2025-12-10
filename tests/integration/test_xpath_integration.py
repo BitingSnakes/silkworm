@@ -261,7 +261,7 @@ async def test_xpath_works_alongside_css():
     )
 
     # Use CSS selector
-    css_results = await resp.css(".text")
+    css_results = await resp.select(".text")
     assert len(css_results) == 2
 
     # Use XPath selector

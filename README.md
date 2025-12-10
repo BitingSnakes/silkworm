@@ -53,14 +53,14 @@ class QuotesSpider(Spider):
             return
 
         html = response
-        for quote in await html.css(".quote"):
+        for quote in await html.select(".quote"):
             yield {
                 "text": quote.select_first(".text").text,
                 "author": quote.select_first(".author").text,
                 "tags": [t.text for t in quote.select(".tag")],
             }
 
-        if next_link := await html.find("li.next > a"):
+        if next_link := await html.select_first("li.next > a"):
             yield html.follow(next_link.attr("href"), callback=self.parse)
 
 
