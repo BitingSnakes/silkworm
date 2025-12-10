@@ -2,6 +2,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import re
 import sqlite3
 import rxml
 from collections.abc import Mapping
@@ -81,10 +82,34 @@ try:
 except ImportError:
     VORTEX_AVAILABLE = False
 
+try:
+    import aiomysql  # type: ignore[import-not-found, import-untyped]
+
+    AIOMYSQL_AVAILABLE = True
+except ImportError:
+    AIOMYSQL_AVAILABLE = False
+
+try:
+    import asyncpg  # type: ignore[import-not-found, import-untyped]
+
+    ASYNCPG_AVAILABLE = True
+except ImportError:
+    ASYNCPG_AVAILABLE = False
+
 if True:
     from .spiders import Spider  # type: ignore
 from .logging import get_logger
 from ._types import JSONValue
+
+
+def _validate_table_name(table: str) -> str:
+    """Validate table name to prevent SQL injection."""
+    if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", table):
+        raise ValueError(
+            f"Invalid table name '{table}'. Table names must start with a letter or underscore "
+            "and contain only alphanumeric characters and underscores."
+        )
+    return table
 
 
 class ItemPipeline(Protocol):
@@ -202,9 +227,7 @@ class MsgPackPipeline:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         file_mode = "ab" if self.mode == "append" else "wb"
         self._fp = self.path.open(file_mode)  # type: ignore[assignment]
-        self.logger.info(
-            "Opened MsgPack pipeline", path=str(self.path), mode=self.mode
-        )
+        self.logger.info("Opened MsgPack pipeline", path=str(self.path), mode=self.mode)
 
     async def close(self, spider: "Spider") -> None:
         if self._fp:
@@ -227,7 +250,7 @@ class MsgPackPipeline:
 class SQLitePipeline:
     def __init__(self, path: str | Path = "items.db", table: str = "items") -> None:
         self.path = Path(path)
-        self.table = table
+        self.table = _validate_table_name(table)
         self._conn: sqlite3.Connection | None = None
         self.logger = get_logger(component="SQLitePipeline")
 
@@ -563,9 +586,7 @@ class PolarsPipeline:
     async def open(self, spider: "Spider") -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._items = []
-        self.logger.info(
-            "Opened Polars pipeline", path=str(self.path), mode=self.mode
-        )
+        self.logger.info("Opened Polars pipeline", path=str(self.path), mode=self.mode)
 
     async def close(self, spider: "Spider") -> None:
         if self._items:
@@ -638,10 +659,10 @@ class ExcelPipeline:
                     else:
                         flat_items.append({"value": str(item)})
                 fieldnames = list(flat_items[0].keys())
-                
+
                 # Write header
                 ws.append(fieldnames)
-                
+
                 # Write data
                 for item in flat_items:
                     ws.append([item.get(field) for field in fieldnames])
@@ -781,7 +802,7 @@ class AvroPipeline:
             if schema is None:
                 # Infer schema from first item
                 schema = self._infer_schema(self._items[0])
-            
+
             with self.path.open("wb") as f:
                 fastavro.writer(f, schema, self._items)
         self.logger.info("Closed Avro pipeline", path=str(self.path))
@@ -800,7 +821,7 @@ class AvroPipeline:
             for key, value in item.items():
                 field_type = self._infer_type(value)
                 fields.append({"name": key, "type": ["null", field_type]})
-        
+
         return {
             "type": "record",
             "name": "ScrapedItem",
@@ -883,7 +904,7 @@ class ElasticsearchPipeline:
     async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
         if not self._client:
             raise RuntimeError("ElasticsearchPipeline not opened")
-        
+
         await self._client.index(index=self.index, document=item)
         self.logger.debug(
             "Indexed item in Elasticsearch", index=self.index, spider=spider.name
@@ -954,7 +975,7 @@ class MongoDBPipeline:
     async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
         if not self._coll:
             raise RuntimeError("MongoDBPipeline not opened")
-        
+
         await self._coll.insert_one(item)
         self.logger.debug(
             "Inserted item in MongoDB", collection=self.collection, spider=spider.name
@@ -1045,9 +1066,7 @@ class S3JsonLinesPipeline:
     async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
         line = json.dumps(item, ensure_ascii=False)
         self._items.append(line)
-        self.logger.debug(
-            "Buffered item for S3", key=self.key, spider=spider.name
-        )
+        self.logger.debug("Buffered item for S3", key=self.key, spider=spider.name)
         return item
 
 
@@ -1064,14 +1083,14 @@ class VortexPipeline:
         from silkworm.pipelines import VortexPipeline
 
         pipeline = VortexPipeline("data/items.vortex")
-    
+
     Reading Vortex files:
         import vortex
 
         # Open and read a Vortex file
         vortex_file = vortex.file.open("data/items.vortex")
         arrow_table = vortex_file.to_arrow().read_all()
-        
+
         # Or convert to other formats
         df = vortex_file.to_polars()  # Polars DataFrame
         df = vortex_file.to_dataset().to_table()  # PyArrow Table
@@ -1108,23 +1127,233 @@ class VortexPipeline:
             import pyarrow as pa
 
             table = pa.Table.from_pylist(self._items)
-            
+
             # Write the table to a Vortex file
             vortex.io.write(table, str(self.path))
-            
+
             self.logger.info(
                 "Closed Vortex pipeline",
                 path=str(self.path),
                 items_written=len(self._items),
             )
         else:
-            self.logger.info(
-                "Closed Vortex pipeline (no items)", path=str(self.path)
-            )
+            self.logger.info("Closed Vortex pipeline (no items)", path=str(self.path))
 
     async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
         self._items.append(item)
         self.logger.debug(
             "Buffered item for Vortex", path=str(self.path), spider=spider.name
+        )
+        return item
+
+
+class MySQLPipeline:
+    """
+    Pipeline that sends items to a MySQL database.
+
+    Example:
+        from silkworm.pipelines import MySQLPipeline
+
+        pipeline = MySQLPipeline(
+            host="localhost",
+            port=3306,
+            user="root",
+            password="password",
+            database="scraping",
+            table="items",
+        )
+    """
+
+    def __init__(
+        self,
+        host: str = "localhost",
+        port: int = 3306,
+        user: str = "root",
+        password: str = "",
+        database: str = "scraping",
+        *,
+        table: str = "items",
+    ) -> None:
+        """
+        Initialize MySQLPipeline.
+
+        Args:
+            host: MySQL host
+            port: MySQL port
+            user: MySQL user
+            password: MySQL password
+            database: Database name
+            table: Table name
+        """
+        if not AIOMYSQL_AVAILABLE:
+            raise ImportError(
+                "aiomysql is required for MySQLPipeline. Install it with: pip install silkworm-rs[mysql]"
+            )
+
+        self.host = host
+        self.port = port
+        self.user = user
+        self.password = password
+        self.database = database
+        self.table = _validate_table_name(table)
+        self._pool = None  # type: ignore[var-annotated]
+        self.logger = get_logger(component="MySQLPipeline")
+
+    async def open(self, spider: "Spider") -> None:
+        self._pool = await aiomysql.create_pool(
+            host=self.host,
+            port=self.port,
+            user=self.user,
+            password=self.password,
+            db=self.database,
+        )
+
+        # Create table if it doesn't exist
+        async with self._pool.acquire() as conn:  # type: ignore[union-attr, attr-defined]
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    f"""
+                    CREATE TABLE IF NOT EXISTS {self.table} (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        spider VARCHAR(255) NOT NULL,
+                        data JSON NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """
+                )
+                await conn.commit()
+
+        self.logger.info(
+            "Opened MySQL pipeline",
+            host=self.host,
+            database=self.database,
+            table=self.table,
+        )
+
+    async def close(self, spider: "Spider") -> None:
+        if self._pool:
+            self._pool.close()
+            await self._pool.wait_closed()
+            self._pool = None
+            self.logger.info("Closed MySQL pipeline", table=self.table)
+
+    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+        if not self._pool:
+            raise RuntimeError("MySQLPipeline not opened")
+
+        async with self._pool.acquire() as conn:  # type: ignore[union-attr, attr-defined]
+            async with conn.cursor() as cur:
+                await cur.execute(
+                    f"INSERT INTO {self.table} (spider, data) VALUES (%s, %s)",
+                    (spider.name, json.dumps(item, ensure_ascii=False)),
+                )
+                await conn.commit()
+
+        self.logger.debug(
+            "Inserted item in MySQL", table=self.table, spider=spider.name
+        )
+        return item
+
+
+class PostgreSQLPipeline:
+    """
+    Pipeline that sends items to a PostgreSQL database.
+
+    Example:
+        from silkworm.pipelines import PostgreSQLPipeline
+
+        pipeline = PostgreSQLPipeline(
+            host="localhost",
+            port=5432,
+            user="postgres",
+            password="password",
+            database="scraping",
+            table="items",
+        )
+    """
+
+    def __init__(
+        self,
+        host: str = "localhost",
+        port: int = 5432,
+        user: str = "postgres",
+        password: str = "",
+        database: str = "scraping",
+        *,
+        table: str = "items",
+    ) -> None:
+        """
+        Initialize PostgreSQLPipeline.
+
+        Args:
+            host: PostgreSQL host
+            port: PostgreSQL port
+            user: PostgreSQL user
+            password: PostgreSQL password
+            database: Database name
+            table: Table name
+        """
+        if not ASYNCPG_AVAILABLE:
+            raise ImportError(
+                "asyncpg is required for PostgreSQLPipeline. Install it with: pip install silkworm-rs[postgresql]"
+            )
+
+        self.host = host
+        self.port = port
+        self.user = user
+        self.password = password
+        self.database = database
+        self.table = _validate_table_name(table)
+        self._pool = None  # type: ignore[var-annotated]
+        self.logger = get_logger(component="PostgreSQLPipeline")
+
+    async def open(self, spider: "Spider") -> None:
+        self._pool = await asyncpg.create_pool(
+            host=self.host,
+            port=self.port,
+            user=self.user,
+            password=self.password,
+            database=self.database,
+        )
+
+        # Create table if it doesn't exist
+        async with self._pool.acquire() as conn:  # type: ignore[union-attr, attr-defined]
+            await conn.execute(
+                f"""
+                CREATE TABLE IF NOT EXISTS {self.table} (
+                    id SERIAL PRIMARY KEY,
+                    spider VARCHAR(255) NOT NULL,
+                    data JSONB NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+
+        self.logger.info(
+            "Opened PostgreSQL pipeline",
+            host=self.host,
+            database=self.database,
+            table=self.table,
+        )
+
+    async def close(self, spider: "Spider") -> None:
+        if self._pool:
+            await self._pool.close()
+            self._pool = None
+            self.logger.info("Closed PostgreSQL pipeline", table=self.table)
+
+    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+        if not self._pool:
+            raise RuntimeError("PostgreSQLPipeline not opened")
+
+        async with self._pool.acquire() as conn:  # type: ignore[union-attr, attr-defined]
+            await conn.execute(
+                f"INSERT INTO {self.table} (spider, data) VALUES ($1, $2)",
+                spider.name,
+                json.dumps(item, ensure_ascii=False),
+            )
+
+        self.logger.debug(
+            "Inserted item in PostgreSQL", table=self.table, spider=spider.name
         )
         return item
