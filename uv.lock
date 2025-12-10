@@ -2561,9 +2561,8 @@ requires-dist = [
     { name = "rnet", specifier = ">=3.0.0rc14" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "rxml", specifier = ">=2.3.6" },
-    { name = "scraper-rust", specifier = ">=0.2.10" },
-    { name = "snowflake-connector-python", marker = "extra == 'snowflake'", specifier = ">=3.0.0" },
     { name = "scraper-rust", specifier = ">=0.2.12" },
+    { name = "snowflake-connector-python", marker = "extra == 'snowflake'", specifier = ">=3.0.0" },
     { name = "taskiq", marker = "extra == 'taskiq'", specifier = ">=0.11.0" },
     { name = "trio", marker = "extra == 'trio'", specifier = ">=0.23.0" },
     { name = "trio-asyncio", marker = "extra == 'trio'", specifier = ">=0.13.0" },
@@ -2572,7 +2571,6 @@ requires-dist = [
     { name = "vortex-data", marker = "extra == 'vortex'", specifier = ">=0.50.0" },
 ]
 provides-extras = ["dev", "taskiq", "uvloop", "trio", "msgpack", "polars", "excel", "yaml", "avro", "elasticsearch", "mongodb", "s3", "vortex", "mysql", "postgresql", "gsheets", "snowflake"]
-provides-extras = ["dev", "taskiq", "uvloop", "trio", "msgpack", "polars", "excel", "yaml", "avro", "elasticsearch", "mongodb", "s3", "vortex", "mysql", "postgresql"]
 
 [package.metadata.requires-dev]
 dev = [
