@@ -25,9 +25,9 @@ for module_name in modules_to_reload:
 
 # Now import the real modules
 try:
-    import scraper_rs  # noqa: F401
-    import logly  # noqa: F401
-    import rnet  # noqa: F401
+    import scraper_rs  # type: ignore[import-untyped]  # noqa: F401
+    import logly  # type: ignore[import-untyped]  # noqa: F401
+    import rnet  # type: ignore[import-untyped]  # noqa: F401
 except ImportError:
     pass  # It's okay if some aren't installed
 

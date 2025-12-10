@@ -706,7 +706,7 @@ async def test_avro_pipeline_infers_schema():
 
 # ElasticsearchPipeline tests - skip if elasticsearch not installed
 try:
-    from elasticsearch import AsyncElasticsearch  # noqa: F401
+    from elasticsearch import AsyncElasticsearch  # type: ignore[import-not-found]  # noqa: F401
     from silkworm.pipelines import ElasticsearchPipeline
 
     ELASTICSEARCH_AVAILABLE = True
@@ -728,7 +728,7 @@ def test_elasticsearch_pipeline_initialization():
 
 # MongoDBPipeline tests - skip if motor not installed
 try:
-    import motor.motor_asyncio  # noqa: F401
+    import motor.motor_asyncio  # type: ignore[import-not-found]  # noqa: F401
     from silkworm.pipelines import MongoDBPipeline
 
     MOTOR_AVAILABLE = True
@@ -751,7 +751,7 @@ def test_mongodb_pipeline_initialization():
 
 # S3JsonLinesPipeline tests - skip if opendal not installed
 try:
-    import opendal  # noqa: F401
+    import opendal  # type: ignore[import-not-found]  # noqa: F401
     from silkworm.pipelines import S3JsonLinesPipeline
 
     OPENDAL_AVAILABLE = True
@@ -775,7 +775,7 @@ def test_s3_jsonlines_pipeline_initialization():
 
 # VortexPipeline tests - skip if vortex not installed
 try:
-    import vortex  # noqa: F401
+    import vortex  # type: ignore[import-not-found]  # noqa: F401
     from silkworm.pipelines import VortexPipeline
 
     VORTEX_AVAILABLE = True
@@ -891,7 +891,7 @@ async def test_vortex_pipeline_handles_various_types():
 
 # MySQLPipeline tests - skip if aiomysql not installed
 try:
-    import aiomysql  # noqa: F401
+    import aiomysql  # type: ignore[import-not-found]  # noqa: F401
     from silkworm.pipelines import MySQLPipeline
 
     AIOMYSQL_AVAILABLE = True
@@ -933,7 +933,7 @@ def test_mysql_pipeline_invalid_table_name():
 
 # PostgreSQLPipeline tests - skip if asyncpg not installed
 try:
-    import asyncpg  # noqa: F401
+    import asyncpg  # type: ignore[import-not-found]  # noqa: F401
     from silkworm.pipelines import PostgreSQLPipeline
 
     ASYNCPG_AVAILABLE = True
@@ -1120,7 +1120,7 @@ async def test_snowflake_pipeline_not_opened_raises_error():
 
 # FTPPipeline tests - skip if aioftp not installed
 try:
-    import aioftp  # noqa: F401
+    import aioftp  # type: ignore[import-not-found]  # noqa: F401
     from silkworm.pipelines import FTPPipeline
 
     AIOFTP_AVAILABLE = True
@@ -1148,7 +1148,7 @@ def test_ftp_pipeline_initialization():
 
 # SFTPPipeline tests - skip if asyncssh not installed
 try:
-    import asyncssh  # noqa: F401
+    import asyncssh  # type: ignore[import-not-found]  # noqa: F401
     from silkworm.pipelines import SFTPPipeline
 
     ASYNCSSH_AVAILABLE = True
@@ -1204,7 +1204,7 @@ def test_sftp_pipeline_requires_password_or_key():
 
 # CassandraPipeline tests - skip if cassandra-driver not installed
 try:
-    from cassandra.cluster import Cluster  # noqa: F401
+    from cassandra.cluster import Cluster  # type: ignore[import-not-found]  # noqa: F401
     from silkworm.pipelines import CassandraPipeline
 
     CASSANDRA_AVAILABLE = True
@@ -1261,7 +1261,7 @@ async def test_cassandra_pipeline_not_opened_raises_error():
 
 # CouchDBPipeline tests - skip if aiocouch not installed
 try:
-    import aiocouch  # noqa: F401
+    import aiocouch  # type: ignore[import-not-found]  # noqa: F401
     from silkworm.pipelines import CouchDBPipeline
 
     AIOCOUCH_AVAILABLE = True
@@ -1300,7 +1300,7 @@ async def test_couchdb_pipeline_not_opened_raises_error():
 
 # DynamoDBPipeline tests - skip if aioboto3 not installed
 try:
-    import aioboto3  # noqa: F401
+    import aioboto3  # type: ignore[import-not-found]  # noqa: F401
     from silkworm.pipelines import DynamoDBPipeline
 
     AIOBOTO3_AVAILABLE = True

@@ -7,7 +7,7 @@ import sqlite3
 import rxml
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 try:
     from taskiq import AsyncBroker  # type: ignore[import-not-found]
@@ -32,7 +32,7 @@ except ImportError:
     POLARS_AVAILABLE = False
 
 try:
-    import openpyxl  # type: ignore[import-not-found]
+    import openpyxl  # type: ignore[import-not-found, import-untyped]
 
     OPENPYXL_AVAILABLE = True
 except ImportError:
@@ -1188,7 +1188,7 @@ class VortexPipeline:
         if self._items:
             # Convert items list to PyArrow Table
             # Vortex can directly accept PyArrow tables for efficient writing
-            import pyarrow as pa
+            import pyarrow as pa  # type: ignore[import-not-found]
 
             table = pa.Table.from_pylist(self._items)
 
@@ -1497,7 +1497,7 @@ class WebhookPipeline:
                 try:
                     result = closer()
                     if hasattr(result, "__await__"):
-                        await result # type: ignore
+                        await result  # type: ignore
                 except Exception:
                     pass
             self._client = None
@@ -1538,13 +1538,13 @@ class WebhookPipeline:
             if self.timeout is not None:
                 kwargs["timeout"] = self.timeout
 
-            response = await self._client.request(method_enum, self.url, **kwargs)  # type: ignore[union-attr]
+            response = await self._client.request(method_enum, self.url, **kwargs)  # type: ignore[union-attr, arg-type]
 
             # Try to get status code
             status = getattr(response, "status", None)
             if status is None:
                 status = getattr(response, "status_code", None)
-            if hasattr(status, "value"):
+            if status is not None and hasattr(status, "value"):
                 status = status.value
 
             # Close response if possible
@@ -1555,7 +1555,7 @@ class WebhookPipeline:
                 try:
                     result = closer()
                     if hasattr(result, "__await__"):
-                        await result # type: ignore
+                        await result  # type: ignore
                 except Exception:
                     pass
 
@@ -1682,7 +1682,7 @@ class GoogleSheetsPipeline:
                     if self._fieldnames is None:
                         self._fieldnames = list(flat_item.keys())
                     row = [flat_item.get(field) for field in self._fieldnames]  # type: ignore[misc]
-                    rows.append(row) # type: ignore
+                    rows.append(row)  # type: ignore
                 else:
                     # Simple value
                     if self._fieldnames is None:
@@ -1822,11 +1822,13 @@ class SnowflakePipeline:
         if self.role:
             conn_params["role"] = self.role
 
-        self._conn = snowflake.connector.connect(**conn_params)  # type: ignore[attr-defined]
-        self._cursor = self._conn.cursor()
+        conn = snowflake.connector.connect(**conn_params)  # type: ignore[attr-defined]
+        cursor = conn.cursor()
+        self._conn = conn
+        self._cursor = cursor
 
         # Create table if it doesn't exist
-        self._cursor.execute(
+        cursor.execute(
             f"""
             CREATE TABLE IF NOT EXISTS {self.table} (
                 id NUMBER AUTOINCREMENT PRIMARY KEY,
@@ -2035,6 +2037,8 @@ class SFTPPipeline:
         if self._items:
             # Connect to SFTP server and upload all buffered items
             try:
+                conn: Any | None = None
+                sftp: Any | None = None
                 connect_kwargs = {
                     "host": self.host,
                     "port": self.port,
@@ -2046,15 +2050,17 @@ class SFTPPipeline:
                 if self.private_key:
                     connect_kwargs["client_keys"] = [self.private_key]
 
-                self._conn = await asyncssh.connect(**connect_kwargs)  # type: ignore[attr-defined]
-                self._sftp = await self._conn.start_sftp_client()  # type: ignore[union-attr]
+                conn = await asyncssh.connect(**connect_kwargs)  # type: ignore[attr-defined]
+                self._conn = conn
+                sftp = await conn.start_sftp_client()  # type: ignore[attr-defined]
+                self._sftp = sftp
 
                 # Write items to a temporary buffer
                 content = "\n".join(self._items) + "\n"
                 buffer = io.BytesIO(content.encode("utf-8"))
 
                 # Upload the file
-                async with self._sftp.open(self.remote_path, "wb") as remote_file:  # type: ignore[union-attr]
+                async with sftp.open(self.remote_path, "wb") as remote_file:  # type: ignore[union-attr]
                     await remote_file.write(buffer.getvalue())
 
                 self.logger.info(
@@ -2064,12 +2070,12 @@ class SFTPPipeline:
                     count=len(self._items),
                 )
             finally:
-                if self._sftp:
-                    self._sftp.exit()
+                if sftp:
+                    sftp.exit()
                     self._sftp = None
-                if self._conn:
-                    self._conn.close()
-                    await self._conn.wait_closed()  # type: ignore[union-attr]
+                if conn:
+                    conn.close()
+                    await conn.wait_closed()  # type: ignore[union-attr]
                     self._conn = None
 
         self.logger.info("Closed SFTP pipeline", remote_path=self.remote_path)
@@ -2145,13 +2151,15 @@ class CassandraPipeline:
             )
 
         # Connect to Cassandra cluster
-        self._cluster = Cluster(  # type: ignore[misc]
+        cluster = Cluster(  # type: ignore[misc]
             self.hosts, port=self.port, auth_provider=auth_provider
         )
-        self._session = self._cluster.connect()
+        session = cluster.connect()
+        self._cluster = cluster
+        self._session = session
 
         # Create keyspace if it doesn't exist
-        self._session.execute(
+        session.execute(
             f"""
             CREATE KEYSPACE IF NOT EXISTS {self.keyspace}
             WITH replication = {{'class': 'SimpleStrategy', 'replication_factor': 1}}
@@ -2159,10 +2167,10 @@ class CassandraPipeline:
         )
 
         # Use the keyspace
-        self._session.set_keyspace(self.keyspace)
+        session.set_keyspace(self.keyspace)
 
         # Create table if it doesn't exist
-        self._session.execute(
+        session.execute(
             f"""
             CREATE TABLE IF NOT EXISTS {self.table} (
                 id uuid PRIMARY KEY,
@@ -2269,11 +2277,15 @@ class CouchDBPipeline:
         else:
             self._client = await aiocouch.CouchDB(self.url).__aenter__()  # type: ignore[attr-defined]
 
+        client = self._client
+        if client is None:
+            raise RuntimeError("Failed to initialize CouchDB client")
+
         # Create database if it doesn't exist
         try:
-            self._db = await self._client[self.database]  # type: ignore[index]
+            self._db = await client[self.database]  # type: ignore[index]
         except KeyError:
-            self._db = await self._client.create(self.database)  # type: ignore[union-attr]
+            self._db = await client.create(self.database)  # type: ignore[union-attr]
 
         self.logger.info(
             "Opened CouchDB pipeline", url=self.url, database=self.database
@@ -2360,34 +2372,38 @@ class DynamoDBPipeline:
             session_kwargs["aws_access_key_id"] = self.aws_access_key_id
             session_kwargs["aws_secret_access_key"] = self.aws_secret_access_key
 
-        self._session = aioboto3.Session(**session_kwargs)  # type: ignore[attr-defined]
+        session = aioboto3.Session(**session_kwargs)  # type: ignore[attr-defined]
+        self._session = session
 
         # Create resource and client
         resource_kwargs = {}
         if self.endpoint_url:
             resource_kwargs["endpoint_url"] = self.endpoint_url
 
-        self._resource = await self._session.resource(
+        resource = await session.resource(  # type: ignore[attr-defined]
             "dynamodb", **resource_kwargs
-        ).__aenter__()  # type: ignore[union-attr]
-        self._client = await self._session.client(
+        ).__aenter__()
+        client = await session.client(  # type: ignore[attr-defined]
             "dynamodb", **resource_kwargs
-        ).__aenter__()  # type: ignore[union-attr]
+        ).__aenter__()
+        self._resource = resource
+        self._client = client
 
         # Create table if it doesn't exist
         try:
-            await self._client.describe_table(TableName=self.table_name)  # type: ignore[union-attr]
-            self._table = await self._resource.Table(self.table_name)  # type: ignore[union-attr]
-        except self._client.exceptions.ResourceNotFoundException:  # type: ignore[union-attr]
+            await client.describe_table(TableName=self.table_name)  # type: ignore[union-attr]
+            table = await resource.Table(self.table_name)  # type: ignore[union-attr]
+        except client.exceptions.ResourceNotFoundException:  # type: ignore[union-attr]
             # Create table with a simple schema (id as primary key)
-            self._table = await self._resource.create_table(  # type: ignore[union-attr]
+            table = await resource.create_table(  # type: ignore[union-attr]
                 TableName=self.table_name,
                 KeySchema=[{"AttributeName": "id", "KeyType": "HASH"}],
                 AttributeDefinitions=[{"AttributeName": "id", "AttributeType": "S"}],
                 BillingMode="PAY_PER_REQUEST",
             )
             # Wait for table to be created
-            await self._table.wait_until_exists()  # type: ignore[union-attr]
+            await table.wait_until_exists()  # type: ignore[union-attr]
+        self._table = table
 
         self.logger.info(
             "Opened DynamoDB pipeline",
