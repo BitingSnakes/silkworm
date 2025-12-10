@@ -1009,13 +1009,7 @@ async def test_webhook_pipeline_not_opened_raises_error():
 
 
 # GoogleSheetsPipeline tests - skip if google-api-python-client not installed
-try:
-    from silkworm.pipelines import GoogleSheetsPipeline
-
-    GOOGLE_SHEETS_AVAILABLE = True
-except ImportError:
-    GOOGLE_SHEETS_AVAILABLE = False
-    GoogleSheetsPipeline = None  # type: ignore
+from silkworm.pipelines import GOOGLE_SHEETS_AVAILABLE, GoogleSheetsPipeline  # type: ignore
 
 
 @pytest.mark.skipif(
@@ -1050,13 +1044,7 @@ async def test_google_sheets_pipeline_not_opened_raises_error():
 
 
 # SnowflakePipeline tests - skip if snowflake-connector-python not installed
-try:
-    from silkworm.pipelines import SnowflakePipeline
-
-    SNOWFLAKE_AVAILABLE = True
-except ImportError:
-    SNOWFLAKE_AVAILABLE = False
-    SnowflakePipeline = None  # type: ignore
+from silkworm.pipelines import SNOWFLAKE_AVAILABLE, SnowflakePipeline  # type: ignore
 
 
 @pytest.mark.skipif(
