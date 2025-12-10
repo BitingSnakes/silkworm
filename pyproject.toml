@@ -67,6 +67,24 @@ trio = [
 msgpack = [
   "ormsgpack>=1.7.0",
 ]
+polars = [
+  "polars>=1.0.0",
+]
+excel = [
+  "openpyxl>=3.1.0",
+]
+avro = [
+  "fastavro>=1.9.0",
+]
+elasticsearch = [
+  "elasticsearch>=8.0.0",
+]
+mongodb = [
+  "motor>=3.3.0",
+]
+s3 = [
+  "opendal>=0.45.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/BitingSnakes/silkworm"
