@@ -53,7 +53,7 @@ class QuotesSpider(Spider):
             return
 
         html = response
-        for el in await html.css(".quote"):
+        for el in await html.select(".quote"):
             try:
                 text_el = el.select_first(".text")
                 author_el = el.select_first(".author")
@@ -77,7 +77,7 @@ class QuotesSpider(Spider):
                 self.logger.warning("Skipping invalid quote", errors=exc.errors())
                 continue
 
-        next_link = await html.find("li.next > a")
+        next_link = await html.select_first("li.next > a")
         if next_link:
             href = next_link.attr("href")
             if href:

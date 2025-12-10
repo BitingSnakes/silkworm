@@ -113,7 +113,7 @@ class UrlTitlesSpider(Spider):
 
         page_title = ""
         if html_response:
-            title_el = await html_response.find("title")
+            title_el = await html_response.select_first("title")
             if title_el and title_el.text:
                 page_title = title_el.text.strip()
 

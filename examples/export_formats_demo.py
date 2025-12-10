@@ -66,7 +66,7 @@ class ExportFormatsSpider(Spider):
         html = response
         self.logger.info("Parsing page", url=html.url, pages_scraped=self.pages_scraped)
 
-        for el in await html.css(".quote"):
+        for el in await html.select(".quote"):
             try:
                 text_el = el.select_first(".text")
                 author_el = el.select_first(".author")
@@ -77,7 +77,7 @@ class ExportFormatsSpider(Spider):
                 quote = Quote(
                     text=text_el.text,
                     author=author_el.text,
-                    tags=[t.text for t in el.css(".tag")],
+                    tags=[t.text for t in el.select(".tag")],
                 )
                 self.logger.debug("Scraped quote", author=quote.author)
                 yield quote.model_dump()
@@ -89,7 +89,7 @@ class ExportFormatsSpider(Spider):
 
         # Follow pagination up to max_pages
         if self.pages_scraped < self.max_pages:
-            next_link = await html.find("li.next > a")
+            next_link = await html.select_first("li.next > a")
             if next_link:
                 href = next_link.attr("href")
                 if href:

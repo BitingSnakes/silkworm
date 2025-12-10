@@ -59,30 +59,30 @@ class HackerNewsSpider(Spider):
         html = response
         self.pages_seen += 1
 
-        for row in await html.css("tr.athing"):
+        for row in await html.select("tr.athing"):
             post_id = row.attr("id")
-            rank_el = row.find(".rank")
+            rank_el = row.select_first(".rank")
             rank = None
             if rank_el:
                 rank_text = rank_el.text.replace(".", "").strip()
                 rank = int(rank_text) if rank_text.isdigit() else None
 
-            title_el = row.find("span.titleline a, a.storylink")
+            title_el = row.select_first("span.titleline a, a.storylink")
             title = title_el.text if title_el else ""
             href = title_el.attr("href") if title_el else ""
             url = urljoin(html.url, href)
 
             subtext = (
-                await html.find(f"tr.athing[id='{post_id}'] + tr .subtext")
+                await html.select_first(f"tr.athing[id='{post_id}'] + tr .subtext")
                 if post_id
                 else None
             )
 
             points = self._parse_points(subtext)
             comments = self._parse_comments(subtext)
-            author_el = subtext.find("a.hnuser") if subtext else None
+            author_el = subtext.select_first("a.hnuser") if subtext else None
             author = author_el.text if author_el else None
-            age_el = subtext.find(".age a") if subtext else None
+            age_el = subtext.select_first(".age a") if subtext else None
             age = age_el.text if age_el else None
 
             try:
@@ -107,7 +107,7 @@ class HackerNewsSpider(Spider):
                 self.logger.warning("Skipping invalid story", errors=exc.errors())
                 continue
 
-        more_link = await html.find("a.morelink")
+        more_link = await html.select_first("a.morelink")
         if more_link and self.pages_seen < self.pages_requested:
             href = more_link.attr("href")
             if href:
@@ -117,7 +117,7 @@ class HackerNewsSpider(Spider):
     def _parse_points(subtext) -> int | None:
         if not subtext:
             return None
-        score_el = subtext.find(".score")
+        score_el = subtext.select_first(".score")
         if not score_el or not score_el.text:
             return None
         value = score_el.text.split()[0]
