@@ -5,7 +5,7 @@ This example shows how to configure a logger when creating a spider instance,
 rather than manually calling get_logger() in the __init__ method.
 """
 
-from silkworm import Spider, run_spider, Response
+from silkworm import Spider, Response
 from silkworm.logging import get_logger
 
 

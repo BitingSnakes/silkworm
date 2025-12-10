@@ -36,6 +36,7 @@ class Spider:
         if logger is not None:
             if isinstance(logger, dict):
                 # If logger is a dict, use it as context for get_logger
+                # Import here to avoid circular dependency at module level
                 from .logging import get_logger
                 self.logger: "_Logger | None" = get_logger(**logger)
             else:

@@ -29,7 +29,13 @@ class _RecordingLogger:
 
 @pytest.fixture
 def recording_logger(monkeypatch: pytest.MonkeyPatch) -> _RecordingLogger:
-    """Provide a mock logger for testing."""
+    """
+    Provide a mock logger for testing.
+    
+    Resets module-level globals (_configured and _typed_logger) to ensure
+    each test gets a fresh logger configuration state and prevent test
+    interference.
+    """
     logger = _RecordingLogger()
     # Reset module globals so we reconfigure for each test
     monkeypatch.setattr(logging_mod, "_configured", False)
@@ -79,7 +85,7 @@ def test_spider_logger_preserved_with_other_params(recording_logger: _RecordingL
 def test_spider_subclass_can_override_logger():
     """Test that spider subclasses can still manually set logger."""
     class CustomSpider(Spider):
-        def __init__(self, **kwargs):
+        def __init__(self, **kwargs) -> None:
             super().__init__(**kwargs)
             # Subclass can still override logger if desired
             if self.logger is None:
@@ -93,7 +99,7 @@ def test_spider_subclass_can_override_logger():
 def test_spider_subclass_respects_passed_logger():
     """Test that passed logger is respected even in subclasses."""
     class CustomSpider(Spider):
-        def __init__(self, **kwargs):
+        def __init__(self, **kwargs) -> None:
             super().__init__(**kwargs)
             # Subclass can add additional setup after super().__init__
             pass
