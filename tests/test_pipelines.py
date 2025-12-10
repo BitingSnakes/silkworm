@@ -906,6 +906,19 @@ def test_mysql_pipeline_initialization():
     assert pipeline.table == "test_table"
 
 
+@pytest.mark.skipif(not AIOMYSQL_AVAILABLE, reason="aiomysql not installed")
+def test_mysql_pipeline_invalid_table_name():
+    # Test that invalid table names are rejected
+    with pytest.raises(ValueError, match="Invalid table name"):
+        MySQLPipeline(table="invalid-table-name")  # type: ignore
+
+    with pytest.raises(ValueError, match="Invalid table name"):
+        MySQLPipeline(table="123invalid")  # type: ignore
+
+    with pytest.raises(ValueError, match="Invalid table name"):
+        MySQLPipeline(table="table; DROP TABLE users;")  # type: ignore
+
+
 # PostgreSQLPipeline tests - skip if asyncpg not installed
 try:
     import asyncpg  # noqa: F401
@@ -933,3 +946,16 @@ def test_postgresql_pipeline_initialization():
     assert pipeline.user == "postgres"
     assert pipeline.database == "test_db"
     assert pipeline.table == "test_table"
+
+
+@pytest.mark.skipif(not ASYNCPG_AVAILABLE, reason="asyncpg not installed")
+def test_postgresql_pipeline_invalid_table_name():
+    # Test that invalid table names are rejected
+    with pytest.raises(ValueError, match="Invalid table name"):
+        PostgreSQLPipeline(table="invalid-table-name")  # type: ignore
+
+    with pytest.raises(ValueError, match="Invalid table name"):
+        PostgreSQLPipeline(table="123invalid")  # type: ignore
+
+    with pytest.raises(ValueError, match="Invalid table name"):
+        PostgreSQLPipeline(table="table; DROP TABLE users;")  # type: ignore

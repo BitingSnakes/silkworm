@@ -1184,9 +1184,21 @@ class MySQLPipeline:
         self.user = user
         self.password = password
         self.database = database
-        self.table = table
+        self.table = self._validate_table_name(table)
         self._pool = None  # type: ignore[var-annotated]
         self.logger = get_logger(component="MySQLPipeline")
+
+    @staticmethod
+    def _validate_table_name(table: str) -> str:
+        """Validate table name to prevent SQL injection."""
+        import re
+
+        if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", table):
+            raise ValueError(
+                f"Invalid table name '{table}'. Table names must start with a letter or underscore "
+                "and contain only alphanumeric characters and underscores."
+            )
+        return table
 
     async def open(self, spider: "Spider") -> None:
         self._pool = await aiomysql.create_pool(
@@ -1292,9 +1304,21 @@ class PostgreSQLPipeline:
         self.user = user
         self.password = password
         self.database = database
-        self.table = table
+        self.table = self._validate_table_name(table)
         self._pool = None  # type: ignore[var-annotated]
         self.logger = get_logger(component="PostgreSQLPipeline")
+
+    @staticmethod
+    def _validate_table_name(table: str) -> str:
+        """Validate table name to prevent SQL injection."""
+        import re
+
+        if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", table):
+            raise ValueError(
+                f"Invalid table name '{table}'. Table names must start with a letter or underscore "
+                "and contain only alphanumeric characters and underscores."
+            )
+        return table
 
     async def open(self, spider: "Spider") -> None:
         self._pool = await asyncpg.create_pool(
