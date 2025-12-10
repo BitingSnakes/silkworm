@@ -113,6 +113,7 @@ from silkworm.pipelines import (
     ElasticsearchPipeline,  # requires: pip install silkworm-rs[elasticsearch]
     MongoDBPipeline,  # requires: pip install silkworm-rs[mongodb]
     S3JsonLinesPipeline,  # requires: pip install silkworm-rs[s3]
+    VortexPipeline,  # requires: pip install silkworm-rs[vortex]
 )
 
 run_spider(
@@ -149,6 +150,7 @@ run_spider(
 - `ElasticsearchPipeline` sends items to an Elasticsearch index (requires `pip install silkworm-rs[elasticsearch]`).
 - `MongoDBPipeline` sends items to a MongoDB collection (requires `pip install silkworm-rs[mongodb]`).
 - `S3JsonLinesPipeline` writes items to AWS S3 in JSON Lines format using async OpenDAL (requires `pip install silkworm-rs[s3]`).
+- `VortexPipeline` writes items to a [Vortex](https://github.com/spiraldb/vortex) file for high-performance columnar storage with 100x faster random access and 10-20x faster scans compared to Parquet (requires `pip install silkworm-rs[vortex]`).
 
 ## Streaming items to a queue with TaskiqPipeline
 Stream scraped items to a [Taskiq](https://taskiq-python.github.io/) queue for distributed processing:

@@ -88,6 +88,9 @@ mongodb = [
 s3 = [
   "opendal>=0.45.0",
 ]
+vortex = [
+  "vortex-data>=0.50.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/BitingSnakes/silkworm"

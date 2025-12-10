@@ -743,3 +743,119 @@ def test_s3_jsonlines_pipeline_initialization():
     assert pipeline.bucket == "test-bucket"
     assert pipeline.key == "data/items.jl"
     assert pipeline.region == "us-east-1"
+
+
+# VortexPipeline tests - skip if vortex not installed
+try:
+    import vortex  # noqa: F401
+    from silkworm.pipelines import VortexPipeline
+
+    VORTEX_AVAILABLE = True
+except ImportError:
+    VORTEX_AVAILABLE = False
+    VortexPipeline = None  # type: ignore
+
+
+@pytest.mark.skipif(not VORTEX_AVAILABLE, reason="vortex not installed")
+@pytest.mark.anyio("asyncio")
+async def test_vortex_pipeline_writes_vortex_file():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        vortex_path = Path(tmpdir) / "test.vortex"
+        pipeline = VortexPipeline(vortex_path)  # type: ignore
+        spider = Spider()
+
+        await pipeline.open(spider)
+        await pipeline.process_item({"text": "Hello", "author": "John"}, spider)
+        await pipeline.process_item({"text": "World", "author": "Jane"}, spider)
+        await pipeline.close(spider)
+
+        # Verify Vortex file was created and can be read
+        assert vortex_path.exists()
+        vortex_file = vortex.file.open(str(vortex_path))
+        arrow_reader = vortex_file.to_arrow()
+        table = arrow_reader.read_all()
+        
+        assert len(table) == 2
+        data = table.to_pydict()
+        assert data["text"] == ["Hello", "World"]
+        assert data["author"] == ["John", "Jane"]
+
+
+@pytest.mark.skipif(not VORTEX_AVAILABLE, reason="vortex not installed")
+@pytest.mark.anyio("asyncio")
+async def test_vortex_pipeline_handles_nested_data():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        vortex_path = Path(tmpdir) / "test.vortex"
+        pipeline = VortexPipeline(vortex_path)  # type: ignore
+        spider = Spider()
+
+        await pipeline.open(spider)
+        await pipeline.process_item(
+            {"user": {"name": "Alice", "age": 30}, "tags": ["python", "web"]}, spider
+        )
+        await pipeline.close(spider)
+
+        # Verify data can be read back
+        vortex_file = vortex.file.open(str(vortex_path))
+        arrow_reader = vortex_file.to_arrow()
+        table = arrow_reader.read_all()
+        
+        assert len(table) == 1
+        # Vortex/Arrow preserves nested structures
+
+
+@pytest.mark.skipif(not VORTEX_AVAILABLE, reason="vortex not installed")
+@pytest.mark.anyio("asyncio")
+async def test_vortex_pipeline_handles_empty():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        vortex_path = Path(tmpdir) / "test.vortex"
+        pipeline = VortexPipeline(vortex_path)  # type: ignore
+        spider = Spider()
+
+        await pipeline.open(spider)
+        await pipeline.close(spider)
+
+        # File should not be created when no items
+        assert not vortex_path.exists()
+
+
+@pytest.mark.skipif(not VORTEX_AVAILABLE, reason="vortex not installed")
+def test_vortex_pipeline_initialization():
+    # Just test that we can initialize the pipeline
+    pipeline = VortexPipeline("test.vortex")  # type: ignore
+    assert pipeline.path == Path("test.vortex")
+
+
+@pytest.mark.skipif(not VORTEX_AVAILABLE, reason="vortex not installed")
+@pytest.mark.anyio("asyncio")
+async def test_vortex_pipeline_handles_various_types():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        vortex_path = Path(tmpdir) / "test.vortex"
+        pipeline = VortexPipeline(vortex_path)  # type: ignore
+        spider = Spider()
+
+        await pipeline.open(spider)
+        await pipeline.process_item(
+            {
+                "string": "test",
+                "integer": 42,
+                "float": 3.14,
+                "boolean": True,
+                "null": None,
+                "list": [1, 2, 3],
+            },
+            spider,
+        )
+        await pipeline.close(spider)
+
+        # Verify data types are preserved
+        vortex_file = vortex.file.open(str(vortex_path))
+        arrow_reader = vortex_file.to_arrow()
+        table = arrow_reader.read_all()
+        
+        assert len(table) == 1
+        data = table.to_pydict()
+        assert data["string"] == ["test"]
+        assert data["integer"] == [42]
+        assert abs(data["float"][0] - 3.14) < 0.01
+        assert data["boolean"] == [True]
