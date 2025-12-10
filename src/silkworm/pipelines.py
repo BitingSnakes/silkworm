@@ -2,6 +2,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+import re
 import sqlite3
 import rxml
 from collections.abc import Mapping
@@ -82,14 +83,14 @@ except ImportError:
     VORTEX_AVAILABLE = False
 
 try:
-    import aiomysql  # type: ignore[import-not-found]
+    import aiomysql  # type: ignore[import-not-found, import-untyped]
 
     AIOMYSQL_AVAILABLE = True
 except ImportError:
     AIOMYSQL_AVAILABLE = False
 
 try:
-    import asyncpg  # type: ignore[import-not-found]
+    import asyncpg  # type: ignore[import-not-found, import-untyped]
 
     ASYNCPG_AVAILABLE = True
 except ImportError:
@@ -99,6 +100,16 @@ if True:
     from .spiders import Spider  # type: ignore
 from .logging import get_logger
 from ._types import JSONValue
+
+
+def _validate_table_name(table: str) -> str:
+    """Validate table name to prevent SQL injection."""
+    if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", table):
+        raise ValueError(
+            f"Invalid table name '{table}'. Table names must start with a letter or underscore "
+            "and contain only alphanumeric characters and underscores."
+        )
+    return table
 
 
 class ItemPipeline(Protocol):
@@ -239,7 +250,7 @@ class MsgPackPipeline:
 class SQLitePipeline:
     def __init__(self, path: str | Path = "items.db", table: str = "items") -> None:
         self.path = Path(path)
-        self.table = table
+        self.table = _validate_table_name(table)
         self._conn: sqlite3.Connection | None = None
         self.logger = get_logger(component="SQLitePipeline")
 
@@ -1184,21 +1195,9 @@ class MySQLPipeline:
         self.user = user
         self.password = password
         self.database = database
-        self.table = self._validate_table_name(table)
+        self.table = _validate_table_name(table)
         self._pool = None  # type: ignore[var-annotated]
         self.logger = get_logger(component="MySQLPipeline")
-
-    @staticmethod
-    def _validate_table_name(table: str) -> str:
-        """Validate table name to prevent SQL injection."""
-        import re
-
-        if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", table):
-            raise ValueError(
-                f"Invalid table name '{table}'. Table names must start with a letter or underscore "
-                "and contain only alphanumeric characters and underscores."
-            )
-        return table
 
     async def open(self, spider: "Spider") -> None:
         self._pool = await aiomysql.create_pool(
@@ -1304,21 +1303,9 @@ class PostgreSQLPipeline:
         self.user = user
         self.password = password
         self.database = database
-        self.table = self._validate_table_name(table)
+        self.table = _validate_table_name(table)
         self._pool = None  # type: ignore[var-annotated]
         self.logger = get_logger(component="PostgreSQLPipeline")
-
-    @staticmethod
-    def _validate_table_name(table: str) -> str:
-        """Validate table name to prevent SQL injection."""
-        import re
-
-        if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", table):
-            raise ValueError(
-                f"Invalid table name '{table}'. Table names must start with a letter or underscore "
-                "and contain only alphanumeric characters and underscores."
-            )
-        return table
 
     async def open(self, spider: "Spider") -> None:
         self._pool = await asyncpg.create_pool(

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from silkworm.pipelines import CSVPipeline, XMLPipeline
+from silkworm.pipelines import CSVPipeline, SQLitePipeline, XMLPipeline
 from silkworm.spiders import Spider
 
 
@@ -225,6 +225,18 @@ async def test_csv_pipeline_handles_extra_fields():
         assert "John" in content
         # text should not be in output
         assert "Hello" not in content
+
+
+def test_sqlite_pipeline_invalid_table_name():
+    # Test that invalid table names are rejected
+    with pytest.raises(ValueError, match="Invalid table name"):
+        SQLitePipeline(table="invalid-table-name")
+
+    with pytest.raises(ValueError, match="Invalid table name"):
+        SQLitePipeline(table="123invalid")
+
+    with pytest.raises(ValueError, match="Invalid table name"):
+        SQLitePipeline(table="table; DROP TABLE users;")
 
 
 # TaskiqPipeline tests - skip if taskiq not installed
