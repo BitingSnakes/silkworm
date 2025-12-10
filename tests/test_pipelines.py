@@ -417,7 +417,10 @@ async def test_msgpack_pipeline_handles_nested_data():
         items = list(unpacker)
 
         assert len(items) == 1
-        assert items[0] == {"user": {"name": "Alice", "age": 30}, "tags": ["python", "web"]}
+        assert items[0] == {
+            "user": {"name": "Alice", "age": 30},
+            "tags": ["python", "web"],
+        }
 
 
 @pytest.mark.skipif(not ORMSGPACK_AVAILABLE, reason="ormsgpack not installed")
@@ -523,16 +526,24 @@ async def test_excel_pipeline_writes_xlsx():
         # Read and verify Excel data
         wb = openpyxl.load_workbook(excel_path)
         ws = wb["quotes"]
-        
+
         # Check header
         header = [cell.value for cell in ws[1]]
         assert set(header) == {"text", "author"}
-        
+
         # Check data
         rows = list(ws.iter_rows(min_row=2, values_only=True))
         assert len(rows) == 2
-        assert any(row[header.index("text")] == "Hello" and row[header.index("author")] == "John" for row in rows)
-        assert any(row[header.index("text")] == "World" and row[header.index("author")] == "Jane" for row in rows)
+        assert any(
+            row[header.index("text")] == "Hello"
+            and row[header.index("author")] == "John"
+            for row in rows
+        )
+        assert any(
+            row[header.index("text")] == "World"
+            and row[header.index("author")] == "Jane"
+            for row in rows
+        )
 
 
 @pytest.mark.skipif(not OPENPYXL_AVAILABLE, reason="openpyxl not installed")
@@ -553,7 +564,7 @@ async def test_excel_pipeline_flattens_nested_dict():
         wb = openpyxl.load_workbook(excel_path)
         ws = wb.active
         header = [cell.value for cell in ws[1]]
-        
+
         assert "address_city" in header
         assert "address_zip" in header
 
@@ -584,7 +595,7 @@ async def test_yaml_pipeline_writes_yaml():
         # Read and verify YAML data
         with open(yaml_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
-        
+
         assert len(data) == 2
         assert data[0] == {"text": "Hello", "author": "John"}
         assert data[1] == {"text": "World", "author": "Jane"}
@@ -607,9 +618,12 @@ async def test_yaml_pipeline_handles_nested_data():
         # Read and verify
         with open(yaml_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
-        
+
         assert len(data) == 1
-        assert data[0] == {"user": {"name": "Alice", "age": 30}, "tags": ["python", "web"]}
+        assert data[0] == {
+            "user": {"name": "Alice", "age": 30},
+            "tags": ["python", "web"],
+        }
 
 
 # AvroPipeline tests - skip if fastavro not installed
@@ -647,7 +661,7 @@ async def test_avro_pipeline_writes_with_schema():
         with open(avro_path, "rb") as f:
             reader = fastavro.reader(f)
             records = list(reader)
-        
+
         assert len(records) == 2
         assert records[0] == {"text": "Hello", "author": "John"}
         assert records[1] == {"text": "World", "author": "Jane"}
@@ -662,14 +676,16 @@ async def test_avro_pipeline_infers_schema():
         spider = Spider()
 
         await pipeline.open(spider)
-        await pipeline.process_item({"text": "Hello", "author": "John", "count": 5}, spider)
+        await pipeline.process_item(
+            {"text": "Hello", "author": "John", "count": 5}, spider
+        )
         await pipeline.close(spider)
 
         # Read and verify Avro data
         with open(avro_path, "rb") as f:
             reader = fastavro.reader(f)
             records = list(reader)
-        
+
         assert len(records) == 1
         assert records[0]["text"] == "Hello"
         assert records[0]["author"] == "John"
@@ -774,7 +790,7 @@ async def test_vortex_pipeline_writes_vortex_file():
         vortex_file = vortex.file.open(str(vortex_path))
         arrow_reader = vortex_file.to_arrow()
         table = arrow_reader.read_all()
-        
+
         assert len(table) == 2
         data = table.to_pydict()
         assert data["text"] == ["Hello", "World"]
@@ -799,7 +815,7 @@ async def test_vortex_pipeline_handles_nested_data():
         vortex_file = vortex.file.open(str(vortex_path))
         arrow_reader = vortex_file.to_arrow()
         table = arrow_reader.read_all()
-        
+
         assert len(table) == 1
         # Vortex/Arrow preserves nested structures
 
@@ -852,10 +868,68 @@ async def test_vortex_pipeline_handles_various_types():
         vortex_file = vortex.file.open(str(vortex_path))
         arrow_reader = vortex_file.to_arrow()
         table = arrow_reader.read_all()
-        
+
         assert len(table) == 1
         data = table.to_pydict()
         assert data["string"] == ["test"]
         assert data["integer"] == [42]
         assert abs(data["float"][0] - 3.14) < 0.01
         assert data["boolean"] == [True]
+
+
+# MySQLPipeline tests - skip if aiomysql not installed
+try:
+    import aiomysql  # noqa: F401
+    from silkworm.pipelines import MySQLPipeline
+
+    AIOMYSQL_AVAILABLE = True
+except ImportError:
+    AIOMYSQL_AVAILABLE = False
+    MySQLPipeline = None  # type: ignore
+
+
+@pytest.mark.skipif(not AIOMYSQL_AVAILABLE, reason="aiomysql not installed")
+def test_mysql_pipeline_initialization():
+    # Just test that we can initialize the pipeline
+    pipeline = MySQLPipeline(  # type: ignore
+        host="localhost",
+        port=3306,
+        user="root",
+        password="password",
+        database="test_db",
+        table="test_table",
+    )
+    assert pipeline.host == "localhost"
+    assert pipeline.port == 3306
+    assert pipeline.user == "root"
+    assert pipeline.database == "test_db"
+    assert pipeline.table == "test_table"
+
+
+# PostgreSQLPipeline tests - skip if asyncpg not installed
+try:
+    import asyncpg  # noqa: F401
+    from silkworm.pipelines import PostgreSQLPipeline
+
+    ASYNCPG_AVAILABLE = True
+except ImportError:
+    ASYNCPG_AVAILABLE = False
+    PostgreSQLPipeline = None  # type: ignore
+
+
+@pytest.mark.skipif(not ASYNCPG_AVAILABLE, reason="asyncpg not installed")
+def test_postgresql_pipeline_initialization():
+    # Just test that we can initialize the pipeline
+    pipeline = PostgreSQLPipeline(  # type: ignore
+        host="localhost",
+        port=5432,
+        user="postgres",
+        password="password",
+        database="test_db",
+        table="test_table",
+    )
+    assert pipeline.host == "localhost"
+    assert pipeline.port == 5432
+    assert pipeline.user == "postgres"
+    assert pipeline.database == "test_db"
+    assert pipeline.table == "test_table"

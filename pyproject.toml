@@ -91,6 +91,12 @@ s3 = [
 vortex = [
   "vortex-data>=0.50.0",
 ]
+mysql = [
+  "aiomysql>=0.2.0",
+]
+postgresql = [
+  "asyncpg>=0.29.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/BitingSnakes/silkworm"

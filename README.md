@@ -112,6 +112,8 @@ from silkworm.pipelines import (
     AvroPipeline,  # requires: pip install silkworm-rs[avro]
     ElasticsearchPipeline,  # requires: pip install silkworm-rs[elasticsearch]
     MongoDBPipeline,  # requires: pip install silkworm-rs[mongodb]
+    MySQLPipeline,  # requires: pip install silkworm-rs[mysql]
+    PostgreSQLPipeline,  # requires: pip install silkworm-rs[postgresql]
     S3JsonLinesPipeline,  # requires: pip install silkworm-rs[s3]
     VortexPipeline,  # requires: pip install silkworm-rs[vortex]
 )
@@ -149,6 +151,8 @@ run_spider(
 - `AvroPipeline` writes items to an Avro file with optional schema (requires `pip install silkworm-rs[avro]`).
 - `ElasticsearchPipeline` sends items to an Elasticsearch index (requires `pip install silkworm-rs[elasticsearch]`).
 - `MongoDBPipeline` sends items to a MongoDB collection (requires `pip install silkworm-rs[mongodb]`).
+- `MySQLPipeline` sends items to a MySQL database table as JSON (requires `pip install silkworm-rs[mysql]`).
+- `PostgreSQLPipeline` sends items to a PostgreSQL database table as JSONB (requires `pip install silkworm-rs[postgresql]`).
 - `S3JsonLinesPipeline` writes items to AWS S3 in JSON Lines format using async OpenDAL (requires `pip install silkworm-rs[s3]`).
 - `VortexPipeline` writes items to a [Vortex](https://github.com/spiraldb/vortex) file for high-performance columnar storage with 100x faster random access and 10-20x faster scans compared to Parquet (requires `pip install silkworm-rs[vortex]`).
 
