@@ -96,6 +96,32 @@ try:
 except ImportError:
     ASYNCPG_AVAILABLE = False
 
+try:
+    from google.oauth2.service_account import Credentials  # type: ignore[import-not-found]
+    from googleapiclient.discovery import build  # type: ignore[import-not-found, import-untyped]
+
+    GOOGLE_SHEETS_AVAILABLE = True
+except ImportError:
+    Credentials = None  # type: ignore
+    build = None  # type: ignore
+    GOOGLE_SHEETS_AVAILABLE = False
+
+try:
+    import snowflake.connector  # type: ignore[import-not-found]
+
+    SNOWFLAKE_AVAILABLE = True
+except ImportError:
+    SNOWFLAKE_AVAILABLE = False
+
+try:
+    from rnet import Client, Method  # type: ignore[import]
+
+    RNET_AVAILABLE = True
+except ImportError:
+    Client = None  # type: ignore
+    Method = None  # type: ignore
+    RNET_AVAILABLE = False
+
 if True:
     from .spiders import Spider  # type: ignore
 from .logging import get_logger
@@ -1355,5 +1381,455 @@ class PostgreSQLPipeline:
 
         self.logger.debug(
             "Inserted item in PostgreSQL", table=self.table, spider=spider.name
+        )
+        return item
+
+
+class WebhookPipeline:
+    """
+    Pipeline that sends items to a webhook endpoint using rnet HTTP client.
+
+    This pipeline uses the same HTTP client (rnet) as the spider itself for
+    sending data to webhooks, ensuring consistent behavior and browser impersonation.
+
+    Example:
+        from silkworm.pipelines import WebhookPipeline
+
+        pipeline = WebhookPipeline(
+            url="https://webhook.site/unique-id",
+            method="POST",
+            headers={"Authorization": "Bearer token123"},
+        )
+    """
+
+    def __init__(
+        self,
+        url: str,
+        *,
+        method: str = "POST",
+        headers: dict[str, str] | None = None,
+        timeout: float | None = 30.0,
+        batch_size: int = 1,
+    ) -> None:
+        """
+        Initialize WebhookPipeline.
+
+        Args:
+            url: Webhook endpoint URL
+            method: HTTP method (default: "POST")
+            headers: Optional HTTP headers to send with each request
+            timeout: Request timeout in seconds (default: 30.0)
+            batch_size: Number of items to batch before sending (default: 1 for immediate sending)
+        """
+        if not RNET_AVAILABLE:
+            raise ImportError(
+                "rnet is required for WebhookPipeline but appears to be unavailable. "
+                "This should not happen as rnet is a core dependency."
+            )
+
+        self.url = url
+        self.method = method
+        self.headers = headers or {}
+        self.timeout = timeout
+        self.batch_size = batch_size
+        self._client: "Client | None" = None  # type: ignore[name-defined]
+        self._batch: list[JSONValue] = []
+        self.logger = get_logger(component="WebhookPipeline")
+
+    async def open(self, spider: "Spider") -> None:
+        self._client = Client()  # type: ignore[misc]
+        self._batch = []
+        self.logger.info(
+            "Opened Webhook pipeline",
+            url=self.url,
+            method=self.method,
+            batch_size=self.batch_size,
+        )
+
+    async def close(self, spider: "Spider") -> None:
+        # Send any remaining batched items
+        if self._batch:
+            await self._send_batch()
+
+        if self._client:
+            closer = getattr(self._client, "aclose", None) or getattr(
+                self._client, "close", None
+            )
+            if closer and callable(closer):
+                try:
+                    result = closer()
+                    if hasattr(result, "__await__"):
+                        await result
+                except Exception:
+                    pass
+            self._client = None
+
+        self.logger.info("Closed Webhook pipeline", url=self.url)
+
+    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+        if not self._client:
+            raise RuntimeError("WebhookPipeline not opened")
+
+        self._batch.append(item)
+
+        if len(self._batch) >= self.batch_size:
+            await self._send_batch()
+
+        return item
+
+    async def _send_batch(self) -> None:
+        """Send the current batch of items to the webhook."""
+        if not self._batch or not self._client:
+            return
+
+        # Prepare payload
+        payload = self._batch[0] if len(self._batch) == 1 else self._batch
+
+        try:
+            # Use rnet client to send the request
+            method_upper = self.method.upper()
+            if not hasattr(Method, method_upper):  # type: ignore[attr-defined]
+                raise ValueError(
+                    f"Invalid HTTP method '{self.method}'. Must be one of: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS"
+                )
+            method_enum = getattr(Method, method_upper)  # type: ignore[attr-defined]
+            kwargs = {
+                "headers": self.headers,
+                "json": payload,
+            }
+            if self.timeout is not None:
+                kwargs["timeout"] = self.timeout
+
+            response = await self._client.request(method_enum, self.url, **kwargs)  # type: ignore[union-attr]
+
+            # Try to get status code
+            status = getattr(response, "status", None)
+            if status is None:
+                status = getattr(response, "status_code", None)
+            if hasattr(status, "value"):
+                status = status.value
+
+            # Close response if possible
+            closer = getattr(response, "aclose", None) or getattr(
+                response, "close", None
+            )
+            if closer and callable(closer):
+                try:
+                    result = closer()
+                    if hasattr(result, "__await__"):
+                        await result
+                except Exception:
+                    pass
+
+            self.logger.debug(
+                "Sent items to webhook",
+                url=self.url,
+                count=len(self._batch),
+                status=status,
+            )
+        except Exception as exc:
+            self.logger.error(
+                "Failed to send items to webhook",
+                url=self.url,
+                count=len(self._batch),
+                error=str(exc),
+            )
+            raise
+
+        # Clear the batch after sending
+        self._batch = []
+
+
+class GoogleSheetsPipeline:
+    """
+    Pipeline that appends items to a Google Sheet.
+
+    Requires Google Sheets API credentials (service account JSON file).
+
+    Example:
+        from silkworm.pipelines import GoogleSheetsPipeline
+
+        pipeline = GoogleSheetsPipeline(
+            spreadsheet_id="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms",
+            credentials_file="path/to/credentials.json",
+            sheet_name="Sheet1",
+        )
+    """
+
+    def __init__(
+        self,
+        spreadsheet_id: str,
+        credentials_file: str,
+        *,
+        sheet_name: str = "Sheet1",
+        batch_size: int = 100,
+    ) -> None:
+        """
+        Initialize GoogleSheetsPipeline.
+
+        Args:
+            spreadsheet_id: Google Sheets spreadsheet ID (from the URL)
+            credentials_file: Path to service account credentials JSON file
+            sheet_name: Name of the sheet to append to (default: "Sheet1")
+            batch_size: Number of items to batch before writing (default: 100)
+        """
+        if not GOOGLE_SHEETS_AVAILABLE:
+            raise ImportError(
+                "google-api-python-client and google-auth are required for GoogleSheetsPipeline. "
+                "Install them with: pip install silkworm-rs[gsheets]"
+            )
+
+        self.spreadsheet_id = spreadsheet_id
+        self.credentials_file = credentials_file
+        self.sheet_name = sheet_name
+        self.batch_size = batch_size
+        self._service = None  # type: ignore[var-annotated]
+        self._batch: list[JSONValue] = []
+        self._fieldnames: list[str] | None = None
+        self._header_written = False
+        self.logger = get_logger(component="GoogleSheetsPipeline")
+
+    async def open(self, spider: "Spider") -> None:
+        # Initialize Google Sheets API client
+        creds = Credentials.from_service_account_file(  # type: ignore[union-attr]
+            self.credentials_file,
+            scopes=["https://www.googleapis.com/auth/spreadsheets"],
+        )
+        self._service = build("sheets", "v4", credentials=creds)  # type: ignore[misc]
+        self._batch = []
+        self._fieldnames = None
+        self._header_written = False
+        self.logger.info(
+            "Opened Google Sheets pipeline",
+            spreadsheet_id=self.spreadsheet_id,
+            sheet_name=self.sheet_name,
+        )
+
+    async def close(self, spider: "Spider") -> None:
+        # Write any remaining batched items
+        if self._batch:
+            await self._write_batch()
+
+        self._service = None
+        self.logger.info(
+            "Closed Google Sheets pipeline",
+            spreadsheet_id=self.spreadsheet_id,
+            sheet_name=self.sheet_name,
+        )
+
+    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+        if not self._service:
+            raise RuntimeError("GoogleSheetsPipeline not opened")
+
+        self._batch.append(item)
+
+        if len(self._batch) >= self.batch_size:
+            await self._write_batch()
+
+        return item
+
+    async def _write_batch(self) -> None:
+        """Write the current batch of items to Google Sheets."""
+        if not self._batch or not self._service:
+            return
+
+        try:
+            # Flatten items if they are dicts
+            rows: list[list[str | int | float | bool | None]] = []
+
+            for item in self._batch:
+                if isinstance(item, Mapping):
+                    flat_item = self._flatten_dict(item)
+                    # Initialize fieldnames from first item
+                    if self._fieldnames is None:
+                        self._fieldnames = list(flat_item.keys())
+                    row = [flat_item.get(field) for field in self._fieldnames]  # type: ignore[misc]
+                    rows.append(row)
+                else:
+                    # Simple value
+                    if self._fieldnames is None:
+                        self._fieldnames = ["value"]
+                    rows.append([str(item)])
+
+            # Write header if first batch
+            if not self._header_written and self._fieldnames:
+                header_range = f"{self.sheet_name}!A1"
+                header_body = {"values": [self._fieldnames]}
+                self._service.spreadsheets().values().append(
+                    spreadsheetId=self.spreadsheet_id,
+                    range=header_range,
+                    valueInputOption="RAW",
+                    body=header_body,
+                ).execute()
+                self._header_written = True
+
+            # Append data rows
+            if rows:
+                data_range = f"{self.sheet_name}!A2"
+                body = {"values": rows}
+                self._service.spreadsheets().values().append(
+                    spreadsheetId=self.spreadsheet_id,
+                    range=data_range,
+                    valueInputOption="RAW",
+                    body=body,
+                ).execute()
+
+            self.logger.debug(
+                "Wrote items to Google Sheets",
+                spreadsheet_id=self.spreadsheet_id,
+                sheet_name=self.sheet_name,
+                count=len(self._batch),
+            )
+        except Exception as exc:
+            self.logger.error(
+                "Failed to write items to Google Sheets",
+                spreadsheet_id=self.spreadsheet_id,
+                sheet_name=self.sheet_name,
+                count=len(self._batch),
+                error=str(exc),
+            )
+            raise
+
+        # Clear the batch after writing
+        self._batch = []
+
+    def _flatten_dict(
+        self, data: Mapping[str, JSONValue], parent_key: str = "", sep: str = "_"
+    ) -> dict[str, JSONValue | str]:
+        """Flatten a nested dictionary structure."""
+        items: list[tuple[str, JSONValue | str]] = []
+        for key, value in data.items():
+            new_key = f"{parent_key}{sep}{key}" if parent_key else key
+            if isinstance(value, Mapping):
+                items.extend(self._flatten_dict(value, new_key, sep=sep).items())
+            elif isinstance(value, list):
+                # Convert list to comma-separated string
+                items.append((new_key, ", ".join(str(v) for v in value)))
+            else:
+                items.append((new_key, value))
+        return dict(items)
+
+
+class SnowflakePipeline:
+    """
+    Pipeline that sends items to a Snowflake data warehouse.
+
+    Example:
+        from silkworm.pipelines import SnowflakePipeline
+
+        pipeline = SnowflakePipeline(
+            account="myaccount",
+            user="myuser",
+            password="mypassword",
+            database="mydatabase",
+            schema="myschema",
+            warehouse="mywarehouse",
+            table="items",
+        )
+    """
+
+    def __init__(
+        self,
+        account: str,
+        user: str,
+        password: str,
+        database: str,
+        schema: str,
+        warehouse: str,
+        *,
+        table: str = "items",
+        role: str | None = None,
+    ) -> None:
+        """
+        Initialize SnowflakePipeline.
+
+        Args:
+            account: Snowflake account identifier
+            user: Snowflake username
+            password: Snowflake password
+            database: Database name
+            schema: Schema name
+            warehouse: Warehouse name
+            table: Table name (default: "items")
+            role: Optional role name
+        """
+        if not SNOWFLAKE_AVAILABLE:
+            raise ImportError(
+                "snowflake-connector-python is required for SnowflakePipeline. "
+                "Install it with: pip install silkworm-rs[snowflake]"
+            )
+
+        self.account = account
+        self.user = user
+        self.password = password
+        self.database = database
+        self.schema = schema
+        self.warehouse = warehouse
+        self.table = _validate_table_name(table)
+        self.role = role
+        self._conn = None  # type: ignore[var-annotated]
+        self._cursor = None  # type: ignore[var-annotated]
+        self.logger = get_logger(component="SnowflakePipeline")
+
+    async def open(self, spider: "Spider") -> None:
+        # Connect to Snowflake
+        conn_params = {
+            "account": self.account,
+            "user": self.user,
+            "password": self.password,
+            "database": self.database,
+            "schema": self.schema,
+            "warehouse": self.warehouse,
+        }
+        if self.role:
+            conn_params["role"] = self.role
+
+        self._conn = snowflake.connector.connect(**conn_params)  # type: ignore[attr-defined]
+        self._cursor = self._conn.cursor()
+
+        # Create table if it doesn't exist
+        self._cursor.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS {self.table} (
+                id NUMBER AUTOINCREMENT PRIMARY KEY,
+                spider VARCHAR(255) NOT NULL,
+                data VARIANT NOT NULL,
+                created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+            )
+            """
+        )
+
+        self.logger.info(
+            "Opened Snowflake pipeline",
+            account=self.account,
+            database=self.database,
+            schema=self.schema,
+            table=self.table,
+        )
+
+    async def close(self, spider: "Spider") -> None:
+        if self._cursor:
+            self._cursor.close()
+            self._cursor = None
+
+        if self._conn:
+            self._conn.close()
+            self._conn = None
+
+        self.logger.info("Closed Snowflake pipeline", table=self.table)
+
+    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+        if not self._cursor or not self._conn:
+            raise RuntimeError("SnowflakePipeline not opened")
+
+        # Insert item into Snowflake
+        self._cursor.execute(
+            f"INSERT INTO {self.table} (spider, data) VALUES (%s, %s)",
+            (spider.name, json.dumps(item, ensure_ascii=False)),
+        )
+        self._conn.commit()
+
+        self.logger.debug(
+            "Inserted item in Snowflake", table=self.table, spider=spider.name
         )
         return item
