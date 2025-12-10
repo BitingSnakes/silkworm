@@ -116,8 +116,16 @@ async def _dummy_select(doc: Any, selector: str) -> Any:
     return []
 
 
+async def _dummy_select_first(doc: Any, selector: str) -> Any:
+    return None
+
+
 async def _dummy_xpath(doc: Any, xpath: str) -> Any:
     return []
+
+
+async def _dummy_xpath_first(doc: Any, xpath: str) -> Any:
+    return None
 
 
 scraper_module: Any = types.ModuleType("scraper_rs")
@@ -125,7 +133,9 @@ scraper_module.Document = _DummyDocument
 scraper_asyncio_module: Any = types.ModuleType("scraper_rs.asyncio")
 scraper_asyncio_module.Document = _DummyDocument
 scraper_asyncio_module.select = _dummy_select
+scraper_asyncio_module.select_first = _dummy_select_first
 scraper_asyncio_module.xpath = _dummy_xpath
+scraper_asyncio_module.xpath_first = _dummy_xpath_first
 
 sys.modules["logly"] = logly_module
 sys.modules["rnet"] = rnet_module
