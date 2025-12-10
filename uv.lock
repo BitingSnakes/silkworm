@@ -2453,11 +2453,11 @@ wheels = [
 
 [[package]]
 name = "scraper-rust"
-version = "0.2.12"
+version = "0.2.13"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/f9/01/e7d144a559b6e834b7838ea092626ca1eb00cea0c4463e4f604af7a0b431/scraper_rust-0.2.12.tar.gz", hash = "sha256:88bdcdaa6d075acec887bfcfe9dc7314496b07a24729dd54df2729aa60529035", size = 32006, upload-time = "2025-12-10T14:20:34.922Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fc/8a/9778585a604ff14a931cdb5547e8ce72baae122c1c810516ec26b8052640/scraper_rust-0.2.13.tar.gz", hash = "sha256:a565293a8cda87509bae830cb1957021b4eab327be651864fd7e445059226180", size = 32011, upload-time = "2025-12-10T14:58:12.231Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fc/9f/7c43e286f5529711ec8a151587b4a63880e43c31dc14491e320c61413d40/scraper_rust-0.2.12-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:230c30119759111f4ebb44bd163be5d6f2cb69720335979b72e4e8b5b5894f75", size = 739625, upload-time = "2025-12-10T14:20:32.593Z" },
+    { url = "https://files.pythonhosted.org/packages/1d/b5/ba8fb7c135cdcec0e7c0d5726d96a2fa995c25b12cd01cc8d37e41798ef4/scraper_rust-0.2.13-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:770a7857490c3b789455bdc81acfcbc20751f2d4f3b5dbf84f99a3b68055f6c0", size = 739761, upload-time = "2025-12-10T14:58:10.334Z" },
 ]
 
 [[package]]
@@ -2475,7 +2475,7 @@ wheels = [
 
 [[package]]
 name = "silkworm-rs"
-version = "0.2.8"
+version = "0.2.9"
 source = { editable = "." }
 dependencies = [
     { name = "asyncio" },
@@ -2591,7 +2591,7 @@ requires-dist = [
     { name = "rnet", specifier = ">=3.0.0rc14" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "rxml", specifier = ">=2.3.6" },
-    { name = "scraper-rust", specifier = ">=0.2.12" },
+    { name = "scraper-rust", specifier = ">=0.2.13" },
     { name = "snowflake-connector-python", marker = "extra == 'snowflake'", specifier = ">=3.0.0" },
     { name = "taskiq", marker = "extra == 'taskiq'", specifier = ">=0.11.0" },
     { name = "trio", marker = "extra == 'trio'", specifier = ">=0.23.0" },
