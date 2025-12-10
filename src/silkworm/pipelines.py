@@ -122,6 +122,20 @@ except ImportError:
     Method = None  # type: ignore
     RNET_AVAILABLE = False
 
+try:
+    import aioftp  # type: ignore[import-not-found]
+
+    AIOFTP_AVAILABLE = True
+except ImportError:
+    AIOFTP_AVAILABLE = False
+
+try:
+    import asyncssh  # type: ignore[import-not-found]
+
+    ASYNCSSH_AVAILABLE = True
+except ImportError:
+    ASYNCSSH_AVAILABLE = False
+
 if True:
     from .spiders import Spider  # type: ignore
 from .logging import get_logger
@@ -1831,5 +1845,215 @@ class SnowflakePipeline:
 
         self.logger.debug(
             "Inserted item in Snowflake", table=self.table, spider=spider.name
+        )
+        return item
+
+
+class FTPPipeline:
+    """
+    Pipeline that writes items to an FTP server in JSON Lines format.
+
+    Example:
+        from silkworm.pipelines import FTPPipeline
+
+        pipeline = FTPPipeline(
+            host="ftp.example.com",
+            user="username",
+            password="password",
+            remote_path="data/items.jl",
+        )
+    """
+
+    def __init__(
+        self,
+        host: str,
+        user: str,
+        password: str,
+        remote_path: str = "items.jl",
+        *,
+        port: int = 21,
+    ) -> None:
+        """
+        Initialize FTPPipeline.
+
+        Args:
+            host: FTP server hostname
+            user: FTP username
+            password: FTP password
+            remote_path: Remote file path (default: "items.jl")
+            port: FTP port (default: 21)
+        """
+        if not AIOFTP_AVAILABLE:
+            raise ImportError(
+                "aioftp is required for FTPPipeline. Install it with: pip install silkworm-rs[ftp]"
+            )
+
+        self.host = host
+        self.user = user
+        self.password = password
+        self.remote_path = remote_path
+        self.port = port
+        self._items: list[str] = []
+        self._client: "aioftp.Client | None" = None  # type: ignore[name-defined]
+        self.logger = get_logger(component="FTPPipeline")
+
+    async def open(self, spider: "Spider") -> None:
+        self._items = []
+        self.logger.info(
+            "Opened FTP pipeline",
+            host=self.host,
+            port=self.port,
+            remote_path=self.remote_path,
+        )
+
+    async def close(self, spider: "Spider") -> None:
+        if self._items:
+            # Connect to FTP server and upload all buffered items
+            self._client = aioftp.Client()  # type: ignore[attr-defined]
+            try:
+                await self._client.connect(self.host, self.port)  # type: ignore[union-attr]
+                await self._client.login(self.user, self.password)  # type: ignore[union-attr]
+
+                # Write items to a temporary buffer
+                content = "\n".join(self._items) + "\n"
+                buffer = io.BytesIO(content.encode("utf-8"))
+
+                # Upload the file
+                await self._client.upload_stream(buffer, self.remote_path)  # type: ignore[union-attr]
+
+                self.logger.info(
+                    "Uploaded items to FTP",
+                    host=self.host,
+                    remote_path=self.remote_path,
+                    count=len(self._items),
+                )
+            finally:
+                if self._client:
+                    await self._client.quit()  # type: ignore[union-attr]
+                    self._client = None
+
+        self.logger.info("Closed FTP pipeline", remote_path=self.remote_path)
+
+    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+        line = json.dumps(item, ensure_ascii=False)
+        self._items.append(line)
+        self.logger.debug(
+            "Buffered item for FTP", remote_path=self.remote_path, spider=spider.name
+        )
+        return item
+
+
+class SFTPPipeline:
+    """
+    Pipeline that writes items to an SFTP server in JSON Lines format.
+
+    Example:
+        from silkworm.pipelines import SFTPPipeline
+
+        pipeline = SFTPPipeline(
+            host="sftp.example.com",
+            user="username",
+            password="password",
+            remote_path="data/items.jl",
+        )
+    """
+
+    def __init__(
+        self,
+        host: str,
+        user: str,
+        password: str | None = None,
+        remote_path: str = "items.jl",
+        *,
+        port: int = 22,
+        private_key: str | None = None,
+    ) -> None:
+        """
+        Initialize SFTPPipeline.
+
+        Args:
+            host: SFTP server hostname
+            user: SFTP username
+            password: SFTP password (optional if using private_key)
+            remote_path: Remote file path (default: "items.jl")
+            port: SFTP port (default: 22)
+            private_key: Path to private key file for key-based authentication (optional)
+        """
+        if not ASYNCSSH_AVAILABLE:
+            raise ImportError(
+                "asyncssh is required for SFTPPipeline. Install it with: pip install silkworm-rs[sftp]"
+            )
+
+        if password is None and private_key is None:
+            raise ValueError("Either password or private_key must be provided")
+
+        self.host = host
+        self.user = user
+        self.password = password
+        self.remote_path = remote_path
+        self.port = port
+        self.private_key = private_key
+        self._items: list[str] = []
+        self._conn = None  # type: ignore[var-annotated]
+        self._sftp = None  # type: ignore[var-annotated]
+        self.logger = get_logger(component="SFTPPipeline")
+
+    async def open(self, spider: "Spider") -> None:
+        self._items = []
+        self.logger.info(
+            "Opened SFTP pipeline",
+            host=self.host,
+            port=self.port,
+            remote_path=self.remote_path,
+        )
+
+    async def close(self, spider: "Spider") -> None:
+        if self._items:
+            # Connect to SFTP server and upload all buffered items
+            try:
+                connect_kwargs = {
+                    "host": self.host,
+                    "port": self.port,
+                    "username": self.user,
+                    "known_hosts": None,  # Disable host key verification for simplicity
+                }
+                if self.password:
+                    connect_kwargs["password"] = self.password
+                if self.private_key:
+                    connect_kwargs["client_keys"] = [self.private_key]
+
+                self._conn = await asyncssh.connect(**connect_kwargs)  # type: ignore[attr-defined]
+                self._sftp = await self._conn.start_sftp_client()  # type: ignore[union-attr]
+
+                # Write items to a temporary buffer
+                content = "\n".join(self._items) + "\n"
+                buffer = io.BytesIO(content.encode("utf-8"))
+
+                # Upload the file
+                async with self._sftp.open(self.remote_path, "wb") as remote_file:  # type: ignore[union-attr]
+                    await remote_file.write(buffer.getvalue())
+
+                self.logger.info(
+                    "Uploaded items to SFTP",
+                    host=self.host,
+                    remote_path=self.remote_path,
+                    count=len(self._items),
+                )
+            finally:
+                if self._sftp:
+                    self._sftp.exit()
+                    self._sftp = None
+                if self._conn:
+                    self._conn.close()
+                    await self._conn.wait_closed()  # type: ignore[union-attr]
+                    self._conn = None
+
+        self.logger.info("Closed SFTP pipeline", remote_path=self.remote_path)
+
+    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+        line = json.dumps(item, ensure_ascii=False)
+        self._items.append(line)
+        self.logger.debug(
+            "Buffered item for SFTP", remote_path=self.remote_path, spider=spider.name
         )
         return item
