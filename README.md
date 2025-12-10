@@ -255,6 +255,7 @@ This runs your spider using trio as the async backend via trio-asyncio compatibi
 - `python examples/url_titles_spider.py --urls-file data/url_titles.jl --output data/titles.jl` (includes `SkipNonHTMLMiddleware` and stricter HTML size limits)
 - `python examples/export_formats_demo.py --pages 2` → JSONL, XML, and CSV outputs in `data/`
 - `python examples/taskiq_quotes_spider.py --pages 2` → demonstrates TaskiqPipeline for queue-based processing
+- `python examples/sitemap_spider.py --sitemap-url https://example.com/sitemap.xml --pages 50` → `data/sitemap_meta.jl` (extracts meta tags and Open Graph data from sitemap URLs)
 
 ## Convenience API
 For one-off fetches without a full spider, use `fetch_html`:
