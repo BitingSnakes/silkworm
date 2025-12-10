@@ -20,9 +20,9 @@ def extract_select(html: str, max_size_bytes: int, selector: str) -> list["Eleme
 
 def extract_find(html: str, max_size_bytes: int, selector: str) -> "Element" | None:
     doc = Document(html, max_size_bytes=max_size_bytes)
-    elements = doc.find(selector)
+    element = doc.find(selector)
     doc.close()
-    return elements
+    return element
 
 
 def extract_xpath(html: str, max_size_bytes: int, xpath: str) -> list["Element"]:
@@ -34,9 +34,9 @@ def extract_xpath(html: str, max_size_bytes: int, xpath: str) -> list["Element"]
 
 def extract_xpath_first(html: str, max_size_bytes: int, xpath: str) -> "Element" | None:
     doc = Document(html, max_size_bytes=max_size_bytes)
-    elements = doc.xpath_first(xpath)
+    element = doc.xpath_first(xpath)
     doc.close()
-    return elements
+    return element
 
 
 @dataclass(slots=True)
