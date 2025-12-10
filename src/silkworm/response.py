@@ -4,20 +4,21 @@ from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 from asyncio import to_thread
 
-from scraper_rs import Document, Element  # type: ignore[import]
+from scraper_rs import Document  # type: ignore[import]
 
 if TYPE_CHECKING:
+    from scraper_rs import Element  # type: ignore[import]
     from .request import Callback, Request
 
 
-def extract_select(html: str, max_size_bytes: int, selector: str) -> list[Element]:
+def extract_select(html: str, max_size_bytes: int, selector: str) -> list["Element"]:
     doc = Document(html, max_size_bytes=max_size_bytes)
     elements = doc.select(selector)
     doc.close()
     return elements
 
 
-def extract_find(html: str, max_size_bytes: int, selector: str) -> Element | None:
+def extract_find(html: str, max_size_bytes: int, selector: str) -> "Element" | None:
     doc = Document(html, max_size_bytes=max_size_bytes)
     elements = doc.find(selector)
     doc.close()
@@ -64,6 +65,16 @@ class Response:
 @dataclass(slots=True)
 class HTMLResponse(Response):
     doc_max_size_bytes: int = 5_000_000
+    _doc: Document | None = field(default=None, init=False, repr=False, compare=False)
+
+    @property
+    def doc(self) -> Document:
+        """
+        Lazily parse and cache the HTML document.
+        """
+        if self._doc is None:
+            self._doc = Document(self.text, max_size_bytes=self.doc_max_size_bytes)
+        return self._doc
 
     async def css(self, selector: str) -> list[Element]:
         return await to_thread(
@@ -87,6 +98,13 @@ class HTMLResponse(Response):
         """
         if self._closed:
             return
+
+        if self._doc is not None:
+            # Ensure the underlying document releases any resources it may hold.
+            close_doc = getattr(self._doc, "close", None)
+            if close_doc is not None:
+                close_doc()
+            self._doc = None
 
         # Explicitly call base class to avoid zero-arg super issues with slotted dataclasses.
         Response.close(self)
