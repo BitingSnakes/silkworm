@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling>=1.24"]
+requires = ["hatchling==1.24.2"]
 build-backend = "hatchling.build"
 
 [project]
@@ -37,87 +37,87 @@ classifiers = [
 ]
 
 dependencies = [
-  "rnet>=3.0.0rc14",
-  "scraper-rust>=0.2.14",
-  "logly>=0.1.6",
-  "rxml>=2.3.6",
-  "asyncio>=4.0.0",
+  "rnet==3.0.0rc14",
+  "scraper-rust==0.2.14",
+  "logly==0.1.6",
+  "rxml==2.3.6",
+  "asyncio==4.0.0",
 ]
 
 [project.optional-dependencies]
 dev = [
-  "build",
-  "mypy",
-  "pydantic>=2.12.5",
-  "pytest",
-  "pytest-anyio",
-  "ruff",
-  "twine",
+  "build==1.3.0",
+  "mypy==1.19.0",
+  "pydantic==2.12.5",
+  "pytest==9.0.2",
+  "pytest-anyio==0.0.0",
+  "ruff==0.14.8",
+  "twine==6.2.0",
 ]
 taskiq = [
-  "taskiq>=0.11.0",
+  "taskiq==0.12.1",
 ]
 uvloop = [
-  "uvloop>=0.19.0",
+  "uvloop==0.22.1",
 ]
 trio = [
-  "trio>=0.23.0",
-  "trio-asyncio>=0.13.0",
+  "trio==0.32.0",
+  "trio-asyncio==0.15.0",
 ]
 msgpack = [
-  "ormsgpack>=1.7.0",
+  "ormsgpack==1.12.0",
 ]
 polars = [
-  "polars>=1.0.0",
+  "polars==1.36.1",
 ]
 excel = [
-  "openpyxl>=3.1.0",
+  "openpyxl==3.1.5",
 ]
 yaml = [
-  "pyyaml>=6.0",
+  "pyyaml==6.0.3",
 ]
 avro = [
-  "fastavro>=1.9.0",
+  "fastavro==1.12.1",
 ]
 elasticsearch = [
-  "elasticsearch>=8.0.0",
+  "elasticsearch==9.2.0",
 ]
 mongodb = [
-  "motor>=3.3.0",
+  "motor==3.7.1",
 ]
 s3 = [
-  "opendal>=0.45.0",
+  "opendal==0.46.0",
 ]
 vortex = [
-  "vortex-data>=0.50.0",
+  "vortex-data==0.56.0",
 ]
 mysql = [
-  "aiomysql>=0.2.0",
+  "aiomysql==0.3.2",
 ]
 postgresql = [
-  "asyncpg>=0.29.0",
+  "asyncpg==0.31.0",
 ]
 gsheets = [
-  "google-api-python-client>=2.0.0",
-  "google-auth>=2.0.0",
+  "google-api-python-client==2.187.0",
+  "google-auth==2.43.0",
 ]
 snowflake = [
-  "snowflake-connector-python>=3.0.0",
+  "snowflake-connector-python==4.1.1",
 ]
 ftp = [
-  "aioftp>=0.22.0",
+  "aioftp==0.27.2",
 ]
 sftp = [
-  "asyncssh>=2.14.0",
+  "asyncssh==2.21.1",
 ]
 cassandra = [
-  "cassandra-driver>=3.29.0",
+  "cassandra-driver==3.29.3",
 ]
 couchdb = [
-  "aiocouch>=3.0.0",
+  "aiocouch==4.0.1",
 ]
 dynamodb = [
-  "aioboto3>=13.0.0",
+  "aioboto3==15.5.0",
 ]
 
 [project.urls]
@@ -134,13 +134,13 @@ force-include = {"src/silkworm/py.typed" = "silkworm/py.typed"}
 
 [dependency-groups]
 dev = [
-    "build",
-    "memray>=1.19.1",
-    "mypy",
-    "py-spy>=0.4.1",
-    "pydantic>=2.12.5",
-    "pytest",
-    "pytest-anyio",
-    "ruff",
-    "twine",
+    "build==1.3.0",
+    "memray==1.19.1",
+    "mypy==1.19.0",
+    "py-spy==0.4.1",
+    "pydantic==2.12.5",
+    "pytest==9.0.2",
+    "pytest-anyio==0.0.0",
+    "ruff==0.14.8",
+    "twine==6.2.0",
 ]
