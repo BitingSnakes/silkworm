@@ -16,6 +16,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import asyncio
 from typing import Any
 from xml.etree import ElementTree as ET
 
@@ -102,6 +103,7 @@ class SitemapSpider(Spider):
         self.sitemap_url = sitemap_url
         self.max_pages = max_pages
         self.pages_scraped = 0
+        self._pages_lock = asyncio.Lock()  # Protect counter from concurrent access
         self.logger = get_logger(component="SitemapSpider", spider=self.name)
 
     async def start_requests(self):
@@ -175,18 +177,20 @@ class SitemapSpider(Spider):
                 if elem.text:
                     url = elem.text.strip()
 
-                    # Check if we've reached the max pages limit
-                    if (
-                        self.max_pages is not None
-                        and self.pages_scraped >= self.max_pages
-                    ):
-                        self.logger.info(
-                            "Reached max pages limit",
-                            max_pages=self.max_pages,
-                        )
-                        return
+                    # Check if we've reached the max pages limit (with lock for concurrent safety)
+                    async with self._pages_lock:
+                        if (
+                            self.max_pages is not None
+                            and self.pages_scraped >= self.max_pages
+                        ):
+                            self.logger.info(
+                                "Reached max pages limit",
+                                max_pages=self.max_pages,
+                            )
+                            return
 
-                    self.pages_scraped += 1
+                        self.pages_scraped += 1
+
                     yield Request(
                         url=url,
                         callback=self.parse_page,
