@@ -31,13 +31,14 @@ class Spider:
         )
         # Copy to avoid mutating a shared mapping.
         self.custom_settings = dict(base_settings)
-        
+
         # Configure logger if provided
         if logger is not None:
             if isinstance(logger, dict):
                 # If logger is a dict, use it as context for get_logger
                 # Import here to avoid circular dependency at module level
                 from .logging import get_logger
+
                 self.logger: "_Logger | None" = get_logger(**logger)
             else:
                 # If logger is already a _Logger instance, use it directly

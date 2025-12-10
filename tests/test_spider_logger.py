@@ -31,7 +31,7 @@ class _RecordingLogger:
 def recording_logger(monkeypatch: pytest.MonkeyPatch) -> _RecordingLogger:
     """
     Provide a mock logger for testing.
-    
+
     Resets module-level globals (_configured and _typed_logger) to ensure
     each test gets a fresh logger configuration state and prevent test
     interference.
@@ -52,17 +52,20 @@ def test_spider_logger_defaults_to_none():
 def test_spider_logger_with_dict_context(recording_logger: _RecordingLogger):
     """Test that logger can be configured with a dict context."""
     spider = Spider(logger={"component": "test_spider", "custom_key": "value"})
-    
+
     assert spider.logger is not None
     assert spider.logger is recording_logger
-    assert recording_logger.bound_context == {"component": "test_spider", "custom_key": "value"}
+    assert recording_logger.bound_context == {
+        "component": "test_spider",
+        "custom_key": "value",
+    }
 
 
 def test_spider_logger_with_logger_instance():
     """Test that logger can be passed as an instance."""
     custom_logger = _RecordingLogger()
     spider = Spider(logger=custom_logger)
-    
+
     assert spider.logger is custom_logger
 
 
@@ -74,7 +77,7 @@ def test_spider_logger_preserved_with_other_params(recording_logger: _RecordingL
         custom_settings={"key": "value"},
         logger={"component": "my_component"},
     )
-    
+
     assert spider.name == "custom_spider"
     assert spider.start_urls == ("https://example.com",)
     assert spider.custom_settings == {"key": "value"}
@@ -84,13 +87,14 @@ def test_spider_logger_preserved_with_other_params(recording_logger: _RecordingL
 
 def test_spider_subclass_can_override_logger():
     """Test that spider subclasses can still manually set logger."""
+
     class CustomSpider(Spider):
         def __init__(self, **kwargs) -> None:
             super().__init__(**kwargs)
             # Subclass can still override logger if desired
             if self.logger is None:
                 self.logger = _RecordingLogger()
-    
+
     spider = CustomSpider()
     assert spider.logger is not None
     assert isinstance(spider.logger, _RecordingLogger)
@@ -98,12 +102,13 @@ def test_spider_subclass_can_override_logger():
 
 def test_spider_subclass_respects_passed_logger():
     """Test that passed logger is respected even in subclasses."""
+
     class CustomSpider(Spider):
         def __init__(self, **kwargs) -> None:
             super().__init__(**kwargs)
             # Subclass can add additional setup after super().__init__
             pass
-    
+
     custom_logger = _RecordingLogger()
     spider = CustomSpider(logger=custom_logger)
     assert spider.logger is custom_logger

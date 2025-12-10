@@ -11,7 +11,7 @@ from silkworm.logging import get_logger
 
 class LoggingSpider(Spider):
     """Spider that uses the logger configured during initialization."""
-    
+
     name = "logging_demo"
     start_urls = ("https://quotes.toscrape.com/",)
 
@@ -19,7 +19,7 @@ class LoggingSpider(Spider):
         # The logger is already configured and available as self.logger
         if self.logger:
             self.logger.info("Parsing page", url=response.url)
-        
+
         # Just a simple example - no actual scraping
         yield {"url": response.url, "status": response.status}
 
@@ -29,10 +29,10 @@ class ManualLoggerSpider(Spider):
     Alternative: Spider that manually creates its logger (old way).
     This still works for backward compatibility.
     """
-    
+
     name = "manual_logger_demo"
     start_urls = ("https://quotes.toscrape.com/",)
-    
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # Manually create logger if needed
@@ -77,11 +77,11 @@ def demo_4_via_run_spider():
 if __name__ == "__main__":
     print("Silkworm Spider Logger Configuration Examples")
     print("=" * 50)
-    
+
     demo_1_logger_from_dict()
     demo_2_logger_instance()
     demo_3_no_logger()
     demo_4_via_run_spider()
-    
+
     print("\n" + "=" * 50)
     print("All examples completed successfully!")
