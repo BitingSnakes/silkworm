@@ -66,7 +66,7 @@ class LobstersSpider(Spider):
         html = response
         self.pages_seen += 1
 
-        for story in html.css("ol.stories > li.story"):
+        for story in await html.css("ol.stories > li.story"):
             short_id = story.attr("data-shortid") or story.attr("id") or ""
             short_id = short_id.replace("story_", "")
 
@@ -78,7 +78,7 @@ class LobstersSpider(Spider):
             domain_el = story.find("a.domain")
             domain = domain_el.text if domain_el else None
 
-            tags = [tag.text for tag in story.select("span.tags a.tag")]
+            tags = [tag.text for tag in story.css("span.tags a.tag")]
 
             author_el = story.find(".byline .u-author")
             author = author_el.text if author_el else None
@@ -118,9 +118,9 @@ class LobstersSpider(Spider):
                 self.logger.warning("Skipping invalid story", errors=exc.errors())
                 continue
 
-        next_link = html.css("div.morelink a[href]")
-        if len(next_link) > 0 and self.pages_seen < self.pages_requested:
-            next_link = next_link[-1]
+        next_links = await html.css("div.morelink a[href]")
+        if len(next_links) > 0 and self.pages_seen < self.pages_requested:
+            next_link = next_links[-1]
             href = next_link.attr("href")
             if href:
                 yield html.follow(href, callback=self.parse)

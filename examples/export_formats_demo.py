@@ -58,12 +58,18 @@ class ExportFormatsSpider(Spider):
         html = response
         self.logger.info("Parsing page", url=html.url, pages_scraped=self.pages_scraped)
 
-        for el in html.css(".quote"):
+        for el in await html.css(".quote"):
             try:
+                text_el = el.select_first(".text")
+                author_el = el.select_first(".author")
+                if text_el is None or author_el is None:
+                    self.logger.warning("Skipping quote with missing fields")
+                    continue
+
                 quote = Quote(
-                    text=el.select(".text")[0].text,
-                    author=el.select(".author")[0].text,
-                    tags=[t.text for t in el.select(".tag")],
+                    text=text_el.text,
+                    author=author_el.text,
+                    tags=[t.text for t in el.css(".tag")],
                 )
                 self.logger.debug("Scraped quote", author=quote.author)
                 yield (
@@ -77,10 +83,11 @@ class ExportFormatsSpider(Spider):
 
         # Follow pagination up to max_pages
         if self.pages_scraped < self.max_pages:
-            next_link = html.find("li.next > a")
+            next_link = await html.find("li.next > a")
             if next_link:
                 href = next_link.attr("href")
-                yield html.follow(href, callback=self.parse)
+                if href:
+                    yield html.follow(href, callback=self.parse)
         else:
             self.logger.info("Reached max pages", max_pages=self.max_pages)
 

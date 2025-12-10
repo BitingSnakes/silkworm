@@ -53,11 +53,17 @@ class QuotesSpider(Spider):
             return
 
         html = response
-        for el in html.css(".quote"):
+        for el in await html.css(".quote"):
             try:
+                text_el = el.select_first(".text")
+                author_el = el.select_first(".author")
+                if text_el is None or author_el is None:
+                    self.logger.warning("Skipping quote with missing fields")
+                    continue
+
                 quote = Quote(
-                    text=el.select(".text")[0].text,
-                    author=el.select(".author")[0].text,
+                    text=text_el.text,
+                    author=author_el.text,
                     tags=[t.text for t in el.select(".tag")],
                 )
                 self.logger.debug(
@@ -73,10 +79,11 @@ class QuotesSpider(Spider):
                 self.logger.warning("Skipping invalid quote", errors=exc.errors())
                 continue
 
-        next_link = html.find("li.next > a")
+        next_link = await html.find("li.next > a")
         if next_link:
             href = next_link.attr("href")
-            yield html.follow(href, callback=self.parse)
+            if href:
+                yield html.follow(href, callback=self.parse)
 
 
 if __name__ == "__main__":

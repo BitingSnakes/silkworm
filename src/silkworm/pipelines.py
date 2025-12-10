@@ -1,7 +1,7 @@
 from __future__ import annotations
 import csv
 import io
-import orjson
+import json
 import sqlite3
 import rxml
 from collections.abc import Mapping
@@ -70,7 +70,7 @@ class JsonLinesPipeline:
     async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
         if not self._fp:
             raise RuntimeError("JsonLinesPipeline not opened")
-        line = orjson.dumps(item).decode("utf-8")
+        line = json.dumps(item, ensure_ascii=False)
         self._fp.write(line + "\n")
         self._fp.flush()
         self.logger.debug(
@@ -116,7 +116,7 @@ class SQLitePipeline:
         cur = self._conn.cursor()
         cur.execute(
             f"INSERT INTO {self.table} (spider, data) VALUES (?, ?)",
-            (spider.name, orjson.dumps(item)),
+            (spider.name, json.dumps(item, ensure_ascii=False)),
         )
         self._conn.commit()
         self.logger.debug("Stored item in SQLite", table=self.table, spider=spider.name)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import argparse
-import orjson
+import json
 from pathlib import Path
 from typing import Any, cast
 
@@ -48,8 +48,8 @@ class UrlTitlesSpider(Spider):
                 if not line:
                     continue
                 try:
-                    data = orjson.loads(line)
-                except orjson.JSONDecodeError as exc:
+                    data = json.loads(line)
+                except json.JSONDecodeError as exc:
                     self.logger.warning(
                         "Skipping invalid JSON line",
                         line_number=line_no,
@@ -113,7 +113,7 @@ class UrlTitlesSpider(Spider):
 
         page_title = ""
         if html_response:
-            title_el = html_response.find("title")
+            title_el = await html_response.find("title")
             if title_el and title_el.text:
                 page_title = title_el.text.strip()
 

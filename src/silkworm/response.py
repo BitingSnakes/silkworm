@@ -2,11 +2,26 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
+from asyncio import to_thread
 
-from scraper_rs import Document  # type: ignore[import]
+from scraper_rs import Document, Element  # type: ignore[import]
 
 if TYPE_CHECKING:
     from .request import Callback, Request
+
+
+def extract_select(html: str, max_size_bytes: int, selector: str) -> list[Element]:
+    doc = Document(html, max_size_bytes=max_size_bytes)
+    elements = doc.select(selector)
+    doc.close()
+    return elements
+
+
+def extract_find(html: str, max_size_bytes: int, selector: str) -> Element | None:
+    doc = Document(html, max_size_bytes=max_size_bytes)
+    elements = doc.find(selector)
+    doc.close()
+    return elements
 
 
 @dataclass(slots=True)
@@ -48,21 +63,17 @@ class Response:
 
 @dataclass(slots=True)
 class HTMLResponse(Response):
-    _doc: Document | None = None
     doc_max_size_bytes: int = 5_000_000
 
-    @property
-    def doc(self) -> Document:
-        if self._doc is None:
-            self._doc = Document(self.text, max_size_bytes=self.doc_max_size_bytes)
-        return self._doc
+    async def css(self, selector: str) -> list[Element]:
+        return await to_thread(
+            extract_select, self.text, self.doc_max_size_bytes, selector
+        )
 
-    # shortcuts
-    def css(self, selector: str):
-        return self.doc.select(selector)
-
-    def find(self, selector: str):
-        return self.doc.find(selector)
+    async def find(self, selector: str) -> Element | None:
+        return await to_thread(
+            extract_find, self.text, self.doc_max_size_bytes, selector
+        )
 
     def follow(
         self, href: str, callback: "Callback | None" = None, **kwargs: object
@@ -76,17 +87,6 @@ class HTMLResponse(Response):
         """
         if self._closed:
             return
-
-        doc = self._doc
-        self._doc = None
-        if doc is not None:
-            closer = getattr(doc, "close", None)
-            if closer and callable(closer):
-                try:
-                    closer()
-                except Exception:
-                    # Best-effort cleanup; avoid surfacing close errors.
-                    pass
 
         # Explicitly call base class to avoid zero-arg super issues with slotted dataclasses.
         Response.close(self)

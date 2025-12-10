@@ -59,7 +59,7 @@ class HackerNewsSpider(Spider):
         html = response
         self.pages_seen += 1
 
-        for row in html.css("tr.athing"):
+        for row in await html.css("tr.athing"):
             post_id = row.attr("id")
             rank_el = row.find(".rank")
             rank = None
@@ -73,7 +73,7 @@ class HackerNewsSpider(Spider):
             url = urljoin(html.url, href)
 
             subtext = (
-                html.find(f"tr.athing[id='{post_id}'] + tr .subtext")
+                await html.find(f"tr.athing[id='{post_id}'] + tr .subtext")
                 if post_id
                 else None
             )
@@ -109,7 +109,7 @@ class HackerNewsSpider(Spider):
                 self.logger.warning("Skipping invalid story", errors=exc.errors())
                 continue
 
-        more_link = html.find("a.morelink")
+        more_link = await html.find("a.morelink")
         if more_link and self.pages_seen < self.pages_requested:
             href = more_link.attr("href")
             if href:
