@@ -215,6 +215,8 @@ class SkipNonHTMLMiddleware:
     It checks the Content-Type header first, then falls back to a quick body
     sniff for "<html". Non-HTML responses keep flowing through the engine but
     execute a no-op callback so spider parse methods are skipped.
+    Set `request.meta["allow_non_html"] = True` to bypass filtering for a request
+    (useful for XML sitemaps, robots.txt fetches, etc.).
     """
 
     def __init__(
@@ -249,6 +251,10 @@ class SkipNonHTMLMiddleware:
     async def process_response(
         self, response: Response, spider: "Spider"
     ) -> Response | Request:
+        # Allow opt-out for requests that intentionally fetch non-HTML content
+        if response.request.meta.get("allow_non_html"):
+            return response
+
         if self._looks_like_html(response):
             return response
 

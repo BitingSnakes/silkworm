@@ -114,6 +114,7 @@ class SitemapSpider(Spider):
             url=self.sitemap_url,
             callback=self.parse_sitemap,
             dont_filter=True,
+            meta={"allow_non_html": True},  # allow XML through SkipNonHTMLMiddleware
         )
 
     async def parse_sitemap(self, response: Response):
@@ -159,6 +160,7 @@ class SitemapSpider(Spider):
                             url=loc_nodes[0].text.strip(),
                             callback=self.parse_sitemap,
                             dont_filter=True,
+                            meta={"allow_non_html": True},
                         )
                 return
 
