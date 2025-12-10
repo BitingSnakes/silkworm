@@ -1128,3 +1128,87 @@ async def test_snowflake_pipeline_not_opened_raises_error():
 
     with pytest.raises(RuntimeError, match="SnowflakePipeline not opened"):
         await pipeline.process_item({"test": "data"}, spider)
+
+
+# FTPPipeline tests - skip if aioftp not installed
+try:
+    import aioftp  # noqa: F401
+    from silkworm.pipelines import FTPPipeline
+
+    AIOFTP_AVAILABLE = True
+except ImportError:
+    AIOFTP_AVAILABLE = False
+    FTPPipeline = None  # type: ignore
+
+
+@pytest.mark.skipif(not AIOFTP_AVAILABLE, reason="aioftp not installed")
+def test_ftp_pipeline_initialization():
+    # Test that we can initialize the pipeline
+    pipeline = FTPPipeline(  # type: ignore
+        host="ftp.example.com",
+        user="username",
+        password="password",
+        remote_path="data/items.jl",
+        port=21,
+    )
+    assert pipeline.host == "ftp.example.com"
+    assert pipeline.user == "username"
+    assert pipeline.password == "password"
+    assert pipeline.remote_path == "data/items.jl"
+    assert pipeline.port == 21
+
+
+# SFTPPipeline tests - skip if asyncssh not installed
+try:
+    import asyncssh  # noqa: F401
+    from silkworm.pipelines import SFTPPipeline
+
+    ASYNCSSH_AVAILABLE = True
+except ImportError:
+    ASYNCSSH_AVAILABLE = False
+    SFTPPipeline = None  # type: ignore
+
+
+@pytest.mark.skipif(not ASYNCSSH_AVAILABLE, reason="asyncssh not installed")
+def test_sftp_pipeline_initialization():
+    # Test that we can initialize the pipeline
+    pipeline = SFTPPipeline(  # type: ignore
+        host="sftp.example.com",
+        user="username",
+        password="password",
+        remote_path="data/items.jl",
+        port=22,
+    )
+    assert pipeline.host == "sftp.example.com"
+    assert pipeline.user == "username"
+    assert pipeline.password == "password"
+    assert pipeline.remote_path == "data/items.jl"
+    assert pipeline.port == 22
+
+
+@pytest.mark.skipif(not ASYNCSSH_AVAILABLE, reason="asyncssh not installed")
+def test_sftp_pipeline_initialization_with_private_key():
+    # Test that we can initialize the pipeline with private key
+    pipeline = SFTPPipeline(  # type: ignore
+        host="sftp.example.com",
+        user="username",
+        remote_path="data/items.jl",
+        private_key="/path/to/key",
+    )
+    assert pipeline.host == "sftp.example.com"
+    assert pipeline.user == "username"
+    assert pipeline.password is None
+    assert pipeline.private_key == "/path/to/key"
+
+
+@pytest.mark.skipif(not ASYNCSSH_AVAILABLE, reason="asyncssh not installed")
+def test_sftp_pipeline_requires_password_or_key():
+    # Test that initializing without password or key raises error
+    with pytest.raises(
+        ValueError, match="Either password or private_key must be provided"
+    ):
+        SFTPPipeline(  # type: ignore
+            host="sftp.example.com",
+            user="username",
+            remote_path="data/items.jl",
+        )

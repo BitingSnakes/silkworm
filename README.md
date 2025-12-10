@@ -119,6 +119,8 @@ from silkworm.pipelines import (
     WebhookPipeline,  # sends items to webhook endpoints using rnet
     GoogleSheetsPipeline,  # requires: pip install silkworm-rs[gsheets]
     SnowflakePipeline,  # requires: pip install silkworm-rs[snowflake]
+    FTPPipeline,  # requires: pip install silkworm-rs[ftp]
+    SFTPPipeline,  # requires: pip install silkworm-rs[sftp]
 )
 
 run_spider(
@@ -161,6 +163,8 @@ run_spider(
 - `WebhookPipeline` sends items to webhook endpoints via HTTP POST/PUT using rnet (same HTTP client as the spider) with support for batching and custom headers.
 - `GoogleSheetsPipeline` appends items to Google Sheets with automatic flattening of nested data structures (requires `pip install silkworm-rs[gsheets]` and service account credentials).
 - `SnowflakePipeline` sends items to Snowflake data warehouse tables as JSON (requires `pip install silkworm-rs[snowflake]`).
+- `FTPPipeline` writes items to an FTP server in JSON Lines format (requires `pip install silkworm-rs[ftp]`).
+- `SFTPPipeline` writes items to an SFTP server in JSON Lines format with support for password or key-based authentication (requires `pip install silkworm-rs[sftp]`).
 
 ## Streaming items to a queue with TaskiqPipeline
 Stream scraped items to a [Taskiq](https://taskiq-python.github.io/) queue for distributed processing:

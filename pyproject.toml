@@ -104,6 +104,12 @@ gsheets = [
 snowflake = [
   "snowflake-connector-python>=3.0.0",
 ]
+ftp = [
+  "aioftp>=0.22.0",
+]
+sftp = [
+  "asyncssh>=2.14.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/BitingSnakes/silkworm"
