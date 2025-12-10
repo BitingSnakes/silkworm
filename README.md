@@ -121,6 +121,9 @@ from silkworm.pipelines import (
     SnowflakePipeline,  # requires: pip install silkworm-rs[snowflake]
     FTPPipeline,  # requires: pip install silkworm-rs[ftp]
     SFTPPipeline,  # requires: pip install silkworm-rs[sftp]
+    CassandraPipeline,  # requires: pip install silkworm-rs[cassandra]
+    CouchDBPipeline,  # requires: pip install silkworm-rs[couchdb]
+    DynamoDBPipeline,  # requires: pip install silkworm-rs[dynamodb]
 )
 
 run_spider(
@@ -165,6 +168,9 @@ run_spider(
 - `SnowflakePipeline` sends items to Snowflake data warehouse tables as JSON (requires `pip install silkworm-rs[snowflake]`).
 - `FTPPipeline` writes items to an FTP server in JSON Lines format (requires `pip install silkworm-rs[ftp]`).
 - `SFTPPipeline` writes items to an SFTP server in JSON Lines format with support for password or key-based authentication (requires `pip install silkworm-rs[sftp]`).
+- `CassandraPipeline` sends items to Apache Cassandra database tables (requires `pip install silkworm-rs[cassandra]`).
+- `CouchDBPipeline` sends items to CouchDB databases as documents (requires `pip install silkworm-rs[couchdb]`).
+- `DynamoDBPipeline` sends items to AWS DynamoDB tables with automatic table creation (requires `pip install silkworm-rs[dynamodb]`).
 
 ## Streaming items to a queue with TaskiqPipeline
 Stream scraped items to a [Taskiq](https://taskiq-python.github.io/) queue for distributed processing:

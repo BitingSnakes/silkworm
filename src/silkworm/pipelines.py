@@ -136,6 +136,30 @@ try:
 except ImportError:
     ASYNCSSH_AVAILABLE = False
 
+try:
+    from cassandra.cluster import Cluster  # type: ignore[import-not-found, import-untyped]
+    from cassandra.auth import PlainTextAuthProvider  # type: ignore[import-not-found, import-untyped]
+
+    CASSANDRA_AVAILABLE = True
+except ImportError:
+    Cluster = None  # type: ignore
+    PlainTextAuthProvider = None  # type: ignore
+    CASSANDRA_AVAILABLE = False
+
+try:
+    import aiocouch  # type: ignore[import-not-found]
+
+    AIOCOUCH_AVAILABLE = True
+except ImportError:
+    AIOCOUCH_AVAILABLE = False
+
+try:
+    import aioboto3  # type: ignore[import-not-found]
+
+    AIOBOTO3_AVAILABLE = True
+except ImportError:
+    AIOBOTO3_AVAILABLE = False
+
 if True:
     from .spiders import Spider  # type: ignore
 from .logging import get_logger
@@ -2055,5 +2079,340 @@ class SFTPPipeline:
         self._items.append(line)
         self.logger.debug(
             "Buffered item for SFTP", remote_path=self.remote_path, spider=spider.name
+        )
+        return item
+
+
+class CassandraPipeline:
+    """
+    Pipeline that sends items to an Apache Cassandra database.
+
+    Example:
+        from silkworm.pipelines import CassandraPipeline
+
+        pipeline = CassandraPipeline(
+            hosts=["127.0.0.1"],
+            keyspace="scraping",
+            table="items",
+            username="cassandra",
+            password="cassandra",
+        )
+    """
+
+    def __init__(
+        self,
+        hosts: list[str] | None = None,
+        keyspace: str = "scraping",
+        *,
+        table: str = "items",
+        username: str | None = None,
+        password: str | None = None,
+        port: int = 9042,
+    ) -> None:
+        """
+        Initialize CassandraPipeline.
+
+        Args:
+            hosts: List of Cassandra cluster hosts (default: ["127.0.0.1"])
+            keyspace: Keyspace name
+            table: Table name (default: "items")
+            username: Optional username for authentication
+            password: Optional password for authentication
+            port: Cassandra port (default: 9042)
+        """
+        if not CASSANDRA_AVAILABLE:
+            raise ImportError(
+                "cassandra-driver is required for CassandraPipeline. "
+                "Install it with: pip install silkworm-rs[cassandra]"
+            )
+
+        self.hosts = hosts or ["127.0.0.1"]
+        self.keyspace = keyspace
+        self.table = _validate_table_name(table)
+        self.username = username
+        self.password = password
+        self.port = port
+        self._cluster = None  # type: ignore[var-annotated]
+        self._session = None  # type: ignore[var-annotated]
+        self.logger = get_logger(component="CassandraPipeline")
+
+    async def open(self, spider: "Spider") -> None:
+        # Setup authentication if credentials provided
+        auth_provider = None
+        if self.username and self.password:
+            auth_provider = PlainTextAuthProvider(  # type: ignore[misc]
+                username=self.username, password=self.password
+            )
+
+        # Connect to Cassandra cluster
+        self._cluster = Cluster(  # type: ignore[misc]
+            self.hosts, port=self.port, auth_provider=auth_provider
+        )
+        self._session = self._cluster.connect()
+
+        # Create keyspace if it doesn't exist
+        self._session.execute(
+            f"""
+            CREATE KEYSPACE IF NOT EXISTS {self.keyspace}
+            WITH replication = {{'class': 'SimpleStrategy', 'replication_factor': 1}}
+            """
+        )
+
+        # Use the keyspace
+        self._session.set_keyspace(self.keyspace)
+
+        # Create table if it doesn't exist
+        self._session.execute(
+            f"""
+            CREATE TABLE IF NOT EXISTS {self.table} (
+                id uuid PRIMARY KEY,
+                spider text,
+                data text,
+                created_at timestamp
+            )
+            """
+        )
+
+        self.logger.info(
+            "Opened Cassandra pipeline",
+            hosts=self.hosts,
+            keyspace=self.keyspace,
+            table=self.table,
+        )
+
+    async def close(self, spider: "Spider") -> None:
+        if self._cluster:
+            self._cluster.shutdown()
+            self._cluster = None
+            self._session = None
+            self.logger.info("Closed Cassandra pipeline", table=self.table)
+
+    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+        if not self._session:
+            raise RuntimeError("CassandraPipeline not opened")
+
+        import uuid
+        from datetime import datetime
+
+        # Insert item into Cassandra
+        self._session.execute(
+            f"""
+            INSERT INTO {self.table} (id, spider, data, created_at)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (uuid.uuid4(), spider.name, json.dumps(item, ensure_ascii=False), datetime.now()),
+        )
+
+        self.logger.debug(
+            "Inserted item in Cassandra", table=self.table, spider=spider.name
+        )
+        return item
+
+
+class CouchDBPipeline:
+    """
+    Pipeline that sends items to a CouchDB database.
+
+    Example:
+        from silkworm.pipelines import CouchDBPipeline
+
+        pipeline = CouchDBPipeline(
+            url="http://localhost:5984",
+            database="scraping",
+            username="admin",
+            password="password",
+        )
+    """
+
+    def __init__(
+        self,
+        url: str = "http://localhost:5984",
+        database: str = "scraping",
+        *,
+        username: str | None = None,
+        password: str | None = None,
+    ) -> None:
+        """
+        Initialize CouchDBPipeline.
+
+        Args:
+            url: CouchDB server URL (default: "http://localhost:5984")
+            database: Database name (default: "scraping")
+            username: Optional username for authentication
+            password: Optional password for authentication
+        """
+        if not AIOCOUCH_AVAILABLE:
+            raise ImportError(
+                "aiocouch is required for CouchDBPipeline. "
+                "Install it with: pip install silkworm-rs[couchdb]"
+            )
+
+        self.url = url
+        self.database = database
+        self.username = username
+        self.password = password
+        self._client = None  # type: ignore[var-annotated]
+        self._db = None  # type: ignore[var-annotated]
+        self.logger = get_logger(component="CouchDBPipeline")
+
+    async def open(self, spider: "Spider") -> None:
+        # Connect to CouchDB
+        if self.username and self.password:
+            self._client = await aiocouch.CouchDB(  # type: ignore[attr-defined]
+                self.url, user=self.username, password=self.password
+            ).__aenter__()
+        else:
+            self._client = await aiocouch.CouchDB(self.url).__aenter__()  # type: ignore[attr-defined]
+
+        # Create database if it doesn't exist
+        try:
+            self._db = await self._client[self.database]  # type: ignore[index]
+        except KeyError:
+            self._db = await self._client.create(self.database)  # type: ignore[union-attr]
+
+        self.logger.info(
+            "Opened CouchDB pipeline", url=self.url, database=self.database
+        )
+
+    async def close(self, spider: "Spider") -> None:
+        if self._client:
+            await self._client.__aexit__(None, None, None)  # type: ignore[union-attr]
+            self._client = None
+            self._db = None
+            self.logger.info("Closed CouchDB pipeline", database=self.database)
+
+    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+        if not self._db:
+            raise RuntimeError("CouchDBPipeline not opened")
+
+        # Add spider name to item metadata
+        doc_data = {"spider": spider.name, "data": item}
+
+        # Create document in CouchDB
+        await self._db.create(doc_data)  # type: ignore[union-attr]
+
+        self.logger.debug(
+            "Inserted item in CouchDB", database=self.database, spider=spider.name
+        )
+        return item
+
+
+class DynamoDBPipeline:
+    """
+    Pipeline that sends items to AWS DynamoDB.
+
+    Example:
+        from silkworm.pipelines import DynamoDBPipeline
+
+        pipeline = DynamoDBPipeline(
+            table_name="items",
+            region_name="us-east-1",
+            aws_access_key_id="YOUR_KEY",
+            aws_secret_access_key="YOUR_SECRET",
+        )
+    """
+
+    def __init__(
+        self,
+        table_name: str = "items",
+        *,
+        region_name: str = "us-east-1",
+        aws_access_key_id: str | None = None,
+        aws_secret_access_key: str | None = None,
+        endpoint_url: str | None = None,
+    ) -> None:
+        """
+        Initialize DynamoDBPipeline.
+
+        Args:
+            table_name: DynamoDB table name (default: "items")
+            region_name: AWS region (default: "us-east-1")
+            aws_access_key_id: AWS access key ID (uses env vars/IAM if not provided)
+            aws_secret_access_key: AWS secret access key (uses env vars/IAM if not provided)
+            endpoint_url: Custom endpoint URL for DynamoDB Local or other services
+        """
+        if not AIOBOTO3_AVAILABLE:
+            raise ImportError(
+                "aioboto3 is required for DynamoDBPipeline. "
+                "Install it with: pip install silkworm-rs[dynamodb]"
+            )
+
+        self.table_name = table_name
+        self.region_name = region_name
+        self.aws_access_key_id = aws_access_key_id
+        self.aws_secret_access_key = aws_secret_access_key
+        self.endpoint_url = endpoint_url
+        self._session = None  # type: ignore[var-annotated]
+        self._client = None  # type: ignore[var-annotated]
+        self._resource = None  # type: ignore[var-annotated]
+        self._table = None  # type: ignore[var-annotated]
+        self.logger = get_logger(component="DynamoDBPipeline")
+
+    async def open(self, spider: "Spider") -> None:
+        # Create aioboto3 session
+        session_kwargs = {"region_name": self.region_name}
+        if self.aws_access_key_id and self.aws_secret_access_key:
+            session_kwargs["aws_access_key_id"] = self.aws_access_key_id
+            session_kwargs["aws_secret_access_key"] = self.aws_secret_access_key
+
+        self._session = aioboto3.Session(**session_kwargs)  # type: ignore[attr-defined]
+
+        # Create resource and client
+        resource_kwargs = {}
+        if self.endpoint_url:
+            resource_kwargs["endpoint_url"] = self.endpoint_url
+
+        self._resource = await self._session.resource("dynamodb", **resource_kwargs).__aenter__()  # type: ignore[union-attr]
+        self._client = await self._session.client("dynamodb", **resource_kwargs).__aenter__()  # type: ignore[union-attr]
+
+        # Create table if it doesn't exist
+        try:
+            await self._client.describe_table(TableName=self.table_name)  # type: ignore[union-attr]
+            self._table = await self._resource.Table(self.table_name)  # type: ignore[union-attr]
+        except self._client.exceptions.ResourceNotFoundException:  # type: ignore[union-attr]
+            # Create table with a simple schema (id as primary key)
+            self._table = await self._resource.create_table(  # type: ignore[union-attr]
+                TableName=self.table_name,
+                KeySchema=[{"AttributeName": "id", "KeyType": "HASH"}],
+                AttributeDefinitions=[{"AttributeName": "id", "AttributeType": "S"}],
+                BillingMode="PAY_PER_REQUEST",
+            )
+            # Wait for table to be created
+            await self._table.wait_until_exists()  # type: ignore[union-attr]
+
+        self.logger.info(
+            "Opened DynamoDB pipeline",
+            table_name=self.table_name,
+            region=self.region_name,
+        )
+
+    async def close(self, spider: "Spider") -> None:
+        if self._client:
+            await self._client.__aexit__(None, None, None)  # type: ignore[union-attr]
+            self._client = None
+        if self._resource:
+            await self._resource.__aexit__(None, None, None)  # type: ignore[union-attr]
+            self._resource = None
+            self._table = None
+        self.logger.info("Closed DynamoDB pipeline", table_name=self.table_name)
+
+    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+        if not self._table:
+            raise RuntimeError("DynamoDBPipeline not opened")
+
+        import uuid
+
+        # Create item with unique ID and spider metadata
+        dynamo_item = {
+            "id": str(uuid.uuid4()),
+            "spider": spider.name,
+            "data": json.dumps(item, ensure_ascii=False),
+        }
+
+        # Put item in DynamoDB
+        await self._table.put_item(Item=dynamo_item)  # type: ignore[union-attr]
+
+        self.logger.debug(
+            "Inserted item in DynamoDB", table_name=self.table_name, spider=spider.name
         )
         return item

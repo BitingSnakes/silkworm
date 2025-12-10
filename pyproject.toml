@@ -110,6 +110,15 @@ ftp = [
 sftp = [
   "asyncssh>=2.14.0",
 ]
+cassandra = [
+  "cassandra-driver>=3.29.0",
+]
+couchdb = [
+  "aiocouch>=3.0.0",
+]
+dynamodb = [
+  "aioboto3>=13.0.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/BitingSnakes/silkworm"
