@@ -38,7 +38,7 @@ classifiers = [
 
 dependencies = [
   "rnet>=3.0.0rc14",
-  "scraper-rust>=0.2.13",
+  "scraper-rust>=0.2.14",
   "logly>=0.1.6",
   "rxml>=2.3.6",
   "asyncio>=4.0.0",

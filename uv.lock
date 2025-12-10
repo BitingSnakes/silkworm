@@ -1045,7 +1045,7 @@ name = "importlib-metadata"
 version = "8.7.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "zipp", marker = "python_full_version < '3.13'" },
+    { name = "zipp" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/76/66/650a33bd90f786193e4de4b3ad86ea60b53c89b669a5c7be931fac31cdb0/importlib_metadata-8.7.0.tar.gz", hash = "sha256:d13b81ad223b890aa16c5471f2ac3056cf76c5f10f82d6f9292f0b415f389000", size = 56641, upload-time = "2025-04-27T15:29:01.736Z" }
 wheels = [
@@ -2586,11 +2586,11 @@ wheels = [
 
 [[package]]
 name = "scraper-rust"
-version = "0.2.13"
+version = "0.2.14"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/fc/8a/9778585a604ff14a931cdb5547e8ce72baae122c1c810516ec26b8052640/scraper_rust-0.2.13.tar.gz", hash = "sha256:a565293a8cda87509bae830cb1957021b4eab327be651864fd7e445059226180", size = 32011, upload-time = "2025-12-10T14:58:12.231Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/10/d0/ec1dbf8ceb5ef2c70054843fe2835553d448eabe4aec8d5ac29962ccceea/scraper_rust-0.2.14.tar.gz", hash = "sha256:1300a87ba3d89b2a11160031b5467d4000dfd18dc7dc7ad0c1316b3a5cbab0a8", size = 31982, upload-time = "2025-12-10T15:18:59.378Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/1d/b5/ba8fb7c135cdcec0e7c0d5726d96a2fa995c25b12cd01cc8d37e41798ef4/scraper_rust-0.2.13-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:770a7857490c3b789455bdc81acfcbc20751f2d4f3b5dbf84f99a3b68055f6c0", size = 739761, upload-time = "2025-12-10T14:58:10.334Z" },
+    { url = "https://files.pythonhosted.org/packages/4c/66/4106f2c65e8c89d65e146b7d49e2088e03bf74df866b1cfc6b556c4a9dea/scraper_rust-0.2.14-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:52034c1b842432096048ad40927cda16caa1ae224b275a0e7e2c67054442218f", size = 739788, upload-time = "2025-12-10T15:18:57.717Z" },
 ]
 
 [[package]]
@@ -2736,7 +2736,7 @@ requires-dist = [
     { name = "rnet", specifier = ">=3.0.0rc14" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "rxml", specifier = ">=2.3.6" },
-    { name = "scraper-rust", specifier = ">=0.2.13" },
+    { name = "scraper-rust", specifier = ">=0.2.14" },
     { name = "snowflake-connector-python", marker = "extra == 'snowflake'", specifier = ">=3.0.0" },
     { name = "taskiq", marker = "extra == 'taskiq'", specifier = ">=0.11.0" },
     { name = "trio", marker = "extra == 'trio'", specifier = ">=0.23.0" },
