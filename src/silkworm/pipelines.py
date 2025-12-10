@@ -2200,7 +2200,12 @@ class CassandraPipeline:
             INSERT INTO {self.table} (id, spider, data, created_at)
             VALUES (%s, %s, %s, %s)
             """,
-            (uuid.uuid4(), spider.name, json.dumps(item, ensure_ascii=False), datetime.now()),
+            (
+                uuid.uuid4(),
+                spider.name,
+                json.dumps(item, ensure_ascii=False),
+                datetime.now(),
+            ),
         )
 
         self.logger.debug(
@@ -2362,8 +2367,12 @@ class DynamoDBPipeline:
         if self.endpoint_url:
             resource_kwargs["endpoint_url"] = self.endpoint_url
 
-        self._resource = await self._session.resource("dynamodb", **resource_kwargs).__aenter__()  # type: ignore[union-attr]
-        self._client = await self._session.client("dynamodb", **resource_kwargs).__aenter__()  # type: ignore[union-attr]
+        self._resource = await self._session.resource(
+            "dynamodb", **resource_kwargs
+        ).__aenter__()  # type: ignore[union-attr]
+        self._client = await self._session.client(
+            "dynamodb", **resource_kwargs
+        ).__aenter__()  # type: ignore[union-attr]
 
         # Create table if it doesn't exist
         try:

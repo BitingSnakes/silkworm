@@ -12,7 +12,7 @@ from scraper_rs.asyncio import (
 
 
 if TYPE_CHECKING:
-    from scraper_rs import Element, Document  # type: ignore[import]
+    from scraper_rs import Element  # type: ignore[import]
     from .request import Callback, Request
 
 
