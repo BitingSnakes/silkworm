@@ -1212,3 +1212,140 @@ def test_sftp_pipeline_requires_password_or_key():
             user="username",
             remote_path="data/items.jl",
         )
+
+
+# CassandraPipeline tests - skip if cassandra-driver not installed
+try:
+    from cassandra.cluster import Cluster  # noqa: F401
+    from silkworm.pipelines import CassandraPipeline
+
+    CASSANDRA_AVAILABLE = True
+except ImportError:
+    CASSANDRA_AVAILABLE = False
+    CassandraPipeline = None  # type: ignore
+
+
+@pytest.mark.skipif(not CASSANDRA_AVAILABLE, reason="cassandra-driver not installed")
+def test_cassandra_pipeline_initialization():
+    # Test that we can initialize the pipeline
+    pipeline = CassandraPipeline(  # type: ignore
+        hosts=["127.0.0.1"],
+        keyspace="test_keyspace",
+        table="test_table",
+        username="cassandra",
+        password="cassandra",
+        port=9042,
+    )
+    assert pipeline.hosts == ["127.0.0.1"]
+    assert pipeline.keyspace == "test_keyspace"
+    assert pipeline.table == "test_table"
+    assert pipeline.username == "cassandra"
+    assert pipeline.password == "cassandra"
+    assert pipeline.port == 9042
+
+
+@pytest.mark.skipif(not CASSANDRA_AVAILABLE, reason="cassandra-driver not installed")
+def test_cassandra_pipeline_invalid_table_name():
+    # Test that invalid table names are rejected
+    with pytest.raises(ValueError, match="Invalid table name"):
+        CassandraPipeline(table="invalid-table-name")  # type: ignore
+
+    with pytest.raises(ValueError, match="Invalid table name"):
+        CassandraPipeline(table="123invalid")  # type: ignore
+
+    with pytest.raises(ValueError, match="Invalid table name"):
+        CassandraPipeline(table="table; DROP TABLE users;")  # type: ignore
+
+
+@pytest.mark.skipif(not CASSANDRA_AVAILABLE, reason="cassandra-driver not installed")
+@pytest.mark.anyio("asyncio")
+async def test_cassandra_pipeline_not_opened_raises_error():
+    pipeline = CassandraPipeline(  # type: ignore
+        hosts=["127.0.0.1"],
+        keyspace="test_keyspace",
+        table="test_table",
+    )
+    spider = Spider()
+
+    with pytest.raises(RuntimeError, match="CassandraPipeline not opened"):
+        await pipeline.process_item({"test": "data"}, spider)
+
+
+# CouchDBPipeline tests - skip if aiocouch not installed
+try:
+    import aiocouch  # noqa: F401
+    from silkworm.pipelines import CouchDBPipeline
+
+    AIOCOUCH_AVAILABLE = True
+except ImportError:
+    AIOCOUCH_AVAILABLE = False
+    CouchDBPipeline = None  # type: ignore
+
+
+@pytest.mark.skipif(not AIOCOUCH_AVAILABLE, reason="aiocouch not installed")
+def test_couchdb_pipeline_initialization():
+    # Test that we can initialize the pipeline
+    pipeline = CouchDBPipeline(  # type: ignore
+        url="http://localhost:5984",
+        database="test_db",
+        username="admin",
+        password="password",
+    )
+    assert pipeline.url == "http://localhost:5984"
+    assert pipeline.database == "test_db"
+    assert pipeline.username == "admin"
+    assert pipeline.password == "password"
+
+
+@pytest.mark.skipif(not AIOCOUCH_AVAILABLE, reason="aiocouch not installed")
+@pytest.mark.anyio("asyncio")
+async def test_couchdb_pipeline_not_opened_raises_error():
+    pipeline = CouchDBPipeline(  # type: ignore
+        url="http://localhost:5984",
+        database="test_db",
+    )
+    spider = Spider()
+
+    with pytest.raises(RuntimeError, match="CouchDBPipeline not opened"):
+        await pipeline.process_item({"test": "data"}, spider)
+
+
+# DynamoDBPipeline tests - skip if aioboto3 not installed
+try:
+    import aioboto3  # noqa: F401
+    from silkworm.pipelines import DynamoDBPipeline
+
+    AIOBOTO3_AVAILABLE = True
+except ImportError:
+    AIOBOTO3_AVAILABLE = False
+    DynamoDBPipeline = None  # type: ignore
+
+
+@pytest.mark.skipif(not AIOBOTO3_AVAILABLE, reason="aioboto3 not installed")
+def test_dynamodb_pipeline_initialization():
+    # Test that we can initialize the pipeline
+    pipeline = DynamoDBPipeline(  # type: ignore
+        table_name="test_table",
+        region_name="us-west-2",
+        aws_access_key_id="test_key",
+        aws_secret_access_key="test_secret",
+        endpoint_url="http://localhost:8000",
+    )
+    assert pipeline.table_name == "test_table"
+    assert pipeline.region_name == "us-west-2"
+    assert pipeline.aws_access_key_id == "test_key"
+    assert pipeline.aws_secret_access_key == "test_secret"
+    assert pipeline.endpoint_url == "http://localhost:8000"
+
+
+@pytest.mark.skipif(not AIOBOTO3_AVAILABLE, reason="aioboto3 not installed")
+@pytest.mark.anyio("asyncio")
+async def test_dynamodb_pipeline_not_opened_raises_error():
+    pipeline = DynamoDBPipeline(  # type: ignore
+        table_name="test_table",
+        region_name="us-east-1",
+    )
+    spider = Spider()
+
+    with pytest.raises(RuntimeError, match="DynamoDBPipeline not opened"):
+        await pipeline.process_item({"test": "data"}, spider)
