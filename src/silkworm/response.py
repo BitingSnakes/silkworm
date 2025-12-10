@@ -67,7 +67,8 @@ class HTMLResponse(Response):
     def follow(
         self, href: str, callback: "Callback | None" = None, **kwargs: object
     ) -> "Request":
-        return super().follow(href, callback=callback, **kwargs)
+        # Explicit base call avoids zero-arg super issues with slotted dataclasses.
+        return Response.follow(self, href, callback=callback, **kwargs)
 
     def close(self) -> None:
         """

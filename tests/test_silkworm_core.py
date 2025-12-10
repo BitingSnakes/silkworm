@@ -70,6 +70,19 @@ def test_response_follow_inherits_callback_and_joins_url():
     assert next_req.callback is callback
 
 
+def test_htmlresponse_follow_works_with_slots():
+    def callback(resp: Response) -> None:
+        return None
+
+    req = Request(url="http://example.com/dir/page", callback=callback)
+    resp = HTMLResponse(url=req.url, status=200, headers={}, body=b"", request=req)
+
+    next_req = resp.follow("next")
+
+    assert next_req.url == "http://example.com/dir/next"
+    assert next_req.callback is callback
+
+
 def test_response_close_releases_payload():
     req = Request(url="http://example.com")
     resp = Response(
