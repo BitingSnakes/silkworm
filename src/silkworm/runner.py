@@ -31,6 +31,7 @@ def run_spider_trio(
     log_stats_interval: float | None = None,
     max_pending_requests: int | None = None,
     html_max_size_bytes: int = 5_000_000,
+    keep_alive: bool = False,
     **spider_kwargs,
 ) -> None:
     """
@@ -49,6 +50,7 @@ def run_spider_trio(
         log_stats_interval: Interval for logging statistics
         max_pending_requests: Maximum pending requests in queue
         html_max_size_bytes: Maximum HTML size to parse
+        keep_alive: Enable HTTP keep-alive when supported by the HTTP client
         **spider_kwargs: Additional kwargs passed to spider constructor
 
     Raises:
@@ -83,6 +85,7 @@ def run_spider_trio(
                 log_stats_interval=log_stats_interval,
                 max_pending_requests=max_pending_requests,
                 html_max_size_bytes=html_max_size_bytes,
+                keep_alive=keep_alive,
                 **spider_kwargs,
             )
 
@@ -100,6 +103,7 @@ async def crawl(
     log_stats_interval: float | None = None,
     max_pending_requests: int | None = None,
     html_max_size_bytes: int = 5_000_000,
+    keep_alive: bool = False,
     **spider_kwargs,
 ) -> None:
     spider = spider_cls(**spider_kwargs)
@@ -113,6 +117,7 @@ async def crawl(
         log_stats_interval=log_stats_interval,
         max_pending_requests=max_pending_requests,
         html_max_size_bytes=html_max_size_bytes,
+        keep_alive=keep_alive,
     )
     await engine.run()
 
@@ -128,6 +133,7 @@ def run_spider(
     log_stats_interval: float | None = None,
     max_pending_requests: int | None = None,
     html_max_size_bytes: int = 5_000_000,
+    keep_alive: bool = False,
     **spider_kwargs,
 ) -> None:
     asyncio.run(
@@ -141,6 +147,7 @@ def run_spider(
             log_stats_interval=log_stats_interval,
             max_pending_requests=max_pending_requests,
             html_max_size_bytes=html_max_size_bytes,
+            keep_alive=keep_alive,
             **spider_kwargs,
         )
     )
@@ -157,6 +164,7 @@ def run_spider_uvloop(
     log_stats_interval: float | None = None,
     max_pending_requests: int | None = None,
     html_max_size_bytes: int = 5_000_000,
+    keep_alive: bool = False,
     **spider_kwargs,
 ) -> None:
     _install_uvloop()
@@ -170,5 +178,6 @@ def run_spider_uvloop(
         log_stats_interval=log_stats_interval,
         max_pending_requests=max_pending_requests,
         html_max_size_bytes=html_max_size_bytes,
+        keep_alive=keep_alive,
         **spider_kwargs,
     )

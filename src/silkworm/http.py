@@ -3,9 +3,9 @@ import asyncio
 import inspect
 from collections.abc import Mapping, Sequence
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit
-from typing import Any, cast
+from typing import Any, Callable, cast
 
-from rnet import Client, Impersonate, Method  # type: ignore[import]
+from rnet import Client, Emulation, Method  # type: ignore[import]
 
 from .exceptions import HttpError
 from ._types import Headers, QueryValue
@@ -19,18 +19,18 @@ class HttpClient:
         self,
         *,
         concurrency: int = 16,
-        impersonate: Impersonate = Impersonate.Firefox139,
+        emulation: Emulation = Emulation.Firefox139,
         default_headers: Headers | None = None,
         timeout: float | None = None,
         html_max_size_bytes: int = 5_000_000,
         follow_redirects: bool = True,
         max_redirects: int = 10,
-        emulation: str | None = None,
+        keep_alive: bool = False,
         **client_kwargs: object,
     ) -> None:
-        client_options: dict[str, object] = {"impersonate": impersonate}
-        if emulation is not None:
-            client_options["emulation"] = emulation
+        client_options: dict[str, object] = {"emulation": emulation}
+        if keep_alive and self._supports_kwarg(Client, "keep_alive"):
+            client_options["keep_alive"] = True
         client_options.update(client_kwargs)
 
         client_factory = cast(Any, Client)
@@ -44,6 +44,10 @@ class HttpClient:
         if max_redirects < 0:
             raise ValueError("max_redirects must be non-negative")
         self._max_redirects = max_redirects
+        self._keep_alive = keep_alive
+        self._supports_keep_alive_kwarg = self._supports_kwarg(
+            getattr(self._client, "request", None), "keep_alive"
+        )
         self.logger = get_logger(component="http")
 
     @property
@@ -80,19 +84,24 @@ class HttpClient:
                         if current_req.timeout is not None
                         else self._timeout
                     )
+                    headers = {**self._default_headers, **current_req.headers}
+                    if self._keep_alive and not self._has_connection_header(headers):
+                        headers["Connection"] = "keep-alive"
                     request_kwargs: dict[str, object] = dict(
-                        headers={**self._default_headers, **current_req.headers},
+                        headers=headers,
                         data=current_req.data,
                         json=current_req.json,
                         proxy=proxy,
                     )
                     if timeout is not None:
                         request_kwargs["timeout"] = timeout
+                    if self._keep_alive and self._supports_keep_alive_kwarg:
+                        request_kwargs["keep_alive"] = True
 
                     # Adjust keyword arguments to actual rnet.Client.request signature
-                    resp = await self._client.request(method, url, **request_kwargs)
+                    resp = await self._send_request(method, url, request_kwargs)
 
-                    status = resp.status
+                    status = self._normalize_status(resp.status)
                     headers = self._normalize_headers(resp.headers)
 
                     if self._should_follow_redirect(status, headers):
@@ -221,6 +230,40 @@ class HttpClient:
         except Exception:
             return str(data).encode("utf-8", errors="replace")
 
+    def _has_connection_header(self, headers: Mapping[str, object]) -> bool:
+        return any(str(k).lower() == "connection" for k in headers)
+
+    def _supports_kwarg(self, func: Callable[..., object] | None, name: str) -> bool:
+        if func is None:
+            return False
+
+        try:
+            sig = inspect.signature(func)
+        except (TypeError, ValueError):
+            return False
+
+        for param in sig.parameters.values():
+            if param.kind == inspect.Parameter.VAR_KEYWORD:
+                return True
+            if param.name == name:
+                return True
+        return False
+
+    async def _send_request(
+        self, method: Method | str, url: str, kwargs: dict[str, object]
+    ) -> object:
+        try:
+            return await self._client.request(method, url, **kwargs)
+        except TypeError as exc:
+            if self._keep_alive and kwargs.pop("keep_alive", None) is not None:
+                self._supports_keep_alive_kwarg = False
+                self.logger.debug(
+                    "HTTP client rejected keep_alive argument; retrying without",
+                    error=str(exc),
+                )
+                return await self._client.request(method, url, **kwargs)
+            raise
+
     @staticmethod
     def _textify(value: object) -> str:
         if isinstance(value, bytes):
@@ -268,6 +311,36 @@ class HttpClient:
             }
         except Exception:
             return {}
+
+    def _normalize_status(self, raw_status: Any) -> int:
+        """
+        Coerce various status code representations (ints, enums, rnet StatusCode)
+        into a plain integer for consistent comparison and hashing.
+        """
+        if isinstance(raw_status, int):
+            return raw_status
+
+        for attr in ("value", "code"):
+            candidate = getattr(raw_status, attr, None)
+            if isinstance(candidate, int):
+                return candidate
+
+        for converter_name in ("as_int", "as_integer", "as_u16"):
+            converter = getattr(raw_status, converter_name, None)
+            if callable(converter):
+                try:
+                    candidate = converter()
+                except Exception:
+                    continue
+                if isinstance(candidate, int):
+                    return candidate
+
+        try:
+            return int(raw_status)
+        except Exception as exc:
+            raise TypeError(
+                f"Invalid status code type: {type(raw_status).__name__}"
+            ) from exc
 
     def _build_url(self, req: Request) -> str:
         if not req.params:

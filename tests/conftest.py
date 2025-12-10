@@ -45,8 +45,8 @@ class _DummyRnetResponse:
 
 
 class _DummyClient:
-    def __init__(self, impersonate: Any = None, **_: Any) -> None:
-        self.impersonate = impersonate
+    def __init__(self, emulation: Any = None, **_: Any) -> None:
+        self.emulation = emulation
         self.calls: list[tuple[Any, str, dict[str, Any]]] = []
         self.closed = False
 
@@ -64,7 +64,7 @@ class _DummyClient:
         self.closed = True
 
 
-class _DummyImpersonate:
+class _DummyEmulation:
     Firefox139 = "Firefox139"
 
 
@@ -100,7 +100,7 @@ logly_module.logger = _DummyLogger()
 
 rnet_module: Any = types.ModuleType("rnet")
 rnet_module.Client = _DummyClient
-rnet_module.Impersonate = _DummyImpersonate
+rnet_module.Emulation = _DummyEmulation
 rnet_module.Method = _DummyMethod
 
 scraper_module: Any = types.ModuleType("scraper_rs")

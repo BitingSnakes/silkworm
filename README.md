@@ -29,7 +29,7 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 uv pip install -e .
 ```
 
-Targets Python 3.10+; dependencies are pinned in `pyproject.toml`.
+Targets Python 3.11+; dependencies are pinned in `pyproject.toml`.
 
 ## Quick start
 Define a spider by subclassing `Spider`, implementing `parse`, and yielding items or follow-up `Request` objects. This example writes quotes to `data/quotes.jl` and enables basic user agent, retry, and non-HTML filtering middlewares.
@@ -83,6 +83,7 @@ if __name__ == "__main__":
 - `concurrency`: number of concurrent HTTP requests; default 16.
 - `max_pending_requests`: queue bound to avoid unbounded memory use (defaults to `concurrency * 10`).
 - `request_timeout`: per-request timeout (seconds).
+- `keep_alive`: reuse HTTP connections when supported by the underlying client (sends `Connection: keep-alive`).
 - `html_max_size_bytes`: limit HTML parsed into `Document` to avoid huge payloads.
 - `log_stats_interval`: seconds between periodic stats logs; final stats are always emitted.
 - `request_middlewares` / `response_middlewares` / `item_pipelines`: plug-ins run on every request/response/item.

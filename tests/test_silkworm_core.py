@@ -14,7 +14,7 @@ from silkworm.spiders import Spider
 
 class _StubResponse:
     def __init__(
-        self, *, status: int = 200, headers: Any = None, body: bytes | str = b""
+        self, *, status: Any = 200, headers: Any = None, body: bytes | str = b""
     ) -> None:
         self.status = status
         self.headers = headers or {}
@@ -259,6 +259,40 @@ async def test_httpclient_detects_redirect_loops():
 
 
 @pytest.mark.anyio("asyncio")
+async def test_httpclient_handles_unhashable_status_codes():
+    class UnhashableStatus:
+        __hash__ = None
+
+        def __int__(self) -> int:
+            return 302
+
+    class RedirectClient(_RecordingClient):
+        async def request(  # type: ignore[override]
+            self, method: Any, url: str, **kwargs: Any
+        ) -> _StubResponse:
+            self.calls.append((method, url, kwargs))
+            if len(self.calls) == 1:
+                return _StubResponse(
+                    status=UnhashableStatus(),
+                    headers={"Location": "/next", "Content-Type": "text/plain"},
+                )
+            return _StubResponse(
+                status=200, headers={"Content-Type": "text/plain"}, body=b"done"
+            )
+
+    client = HttpClient()
+    redirect_client = RedirectClient()
+    client._client = redirect_client  # type: ignore[assignment]
+
+    resp = await client.fetch(Request(url="http://example.com/start"))
+
+    assert resp.status == 200
+    assert resp.url == "http://example.com/next"
+    assert redirect_client.calls[0][1] == "http://example.com/start"
+    assert redirect_client.calls[1][1] == "http://example.com/next"
+
+
+@pytest.mark.anyio("asyncio")
 async def test_httpclient_converts_post_to_get_on_303():
     class ConvertingClient(_RecordingClient):
         async def request(self, method: Any, url: str, **kwargs: Any) -> _StubResponse:  # type: ignore[override]
@@ -281,6 +315,62 @@ async def test_httpclient_converts_post_to_get_on_303():
     assert client._client.calls[0][0] == "POST"
     assert client._client.calls[1][0] == "GET"
     assert client._client.calls[1][2].get("data") is None
+
+
+@pytest.mark.anyio("asyncio")
+async def test_httpclient_sets_keep_alive():
+    client = HttpClient(keep_alive=True)
+    recording = _RecordingClient()
+    client._client = recording  # type: ignore[assignment]
+
+    await client.fetch(Request(url="http://example.com/keep-alive"))
+
+    assert recording.calls
+    kwargs = recording.calls[0][2]
+    assert kwargs.get("keep_alive") is True
+    assert kwargs["headers"].get("Connection") == "keep-alive"
+
+
+@pytest.mark.anyio("asyncio")
+async def test_httpclient_keep_alive_when_kwarg_not_supported():
+    class StrictClient:
+        def __init__(self) -> None:
+            self.calls: list[dict[str, Any]] = []
+
+        async def request(
+            self,
+            method: Any,
+            url: str,
+            *,
+            headers: dict[str, str],
+            data: Any = None,
+            json: Any = None,
+            proxy: Any = None,
+            timeout: Any = None,
+        ) -> _StubResponse:
+            self.calls.append(
+                {
+                    "method": method,
+                    "url": url,
+                    "headers": headers,
+                    "data": data,
+                    "json": json,
+                    "proxy": proxy,
+                    "timeout": timeout,
+                }
+            )
+            return _StubResponse(headers={"Content-Type": "text/plain"})
+
+    client = HttpClient(keep_alive=True)
+    strict = StrictClient()
+    client._client = strict  # type: ignore[assignment]
+
+    resp = await client.fetch(Request(url="http://example.com/no-kw"))
+
+    assert resp.status == 200
+    assert strict.calls
+    first_call = strict.calls[0]
+    assert first_call["headers"].get("Connection") == "keep-alive"
 
 
 @pytest.mark.anyio("asyncio")
