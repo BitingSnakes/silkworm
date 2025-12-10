@@ -23,6 +23,9 @@ jobs:
       - name: Init venv
         run: uv venv --python ${{ matrix.python-version }}
 
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libev-dev
+
       - name: Install dependencies
         run: |
           uv sync --group dev \
