@@ -180,6 +180,7 @@ def main() -> None:
         request_timeout=5,
         log_stats_interval=10,
         html_max_size_bytes=1_000_000,
+        keep_alive=True,
         urls_file=args.urls_file,
     )
 
