@@ -1483,11 +1483,16 @@ class WebhookPipeline:
             return
 
         # Prepare payload
-        payload = self._batch[0] if self.batch_size == 1 else self._batch
+        payload = self._batch[0] if len(self._batch) == 1 else self._batch
 
         try:
             # Use rnet client to send the request
-            method_enum = getattr(Method, self.method.upper(), self.method.upper())  # type: ignore[attr-defined]
+            method_upper = self.method.upper()
+            if not hasattr(Method, method_upper):  # type: ignore[attr-defined]
+                raise ValueError(
+                    f"Invalid HTTP method '{self.method}'. Must be one of: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS"
+                )
+            method_enum = getattr(Method, method_upper)  # type: ignore[attr-defined]
             kwargs = {
                 "headers": self.headers,
                 "json": payload,
