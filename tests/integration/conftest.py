@@ -7,6 +7,8 @@ to allow integration tests to use the real implementations.
 import sys
 from pathlib import Path
 
+import pytest
+
 # Add src to path
 ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "src"
@@ -27,8 +29,6 @@ try:
     import rnet  # noqa: F401
 except ImportError:
     pass  # It's okay if some aren't installed
-
-import pytest
 
 
 @pytest.fixture
