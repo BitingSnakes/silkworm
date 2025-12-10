@@ -322,7 +322,11 @@ def test_taskiq_pipeline_without_taskiq_raises_import_error():
 
 
 # MsgPackPipeline tests - skip if ormsgpack not installed
+# Note: We import both ormsgpack and msgpack. ormsgpack is required for the
+# MsgPackPipeline to work (for writing), but we use msgpack for reading in tests
+# because ormsgpack doesn't have an Unpacker class to read multiple objects from a stream.
 try:
+    import ormsgpack  # type: ignore  # noqa: F401
     import msgpack  # type: ignore
     from silkworm.pipelines import MsgPackPipeline
 
