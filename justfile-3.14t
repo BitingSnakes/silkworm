@@ -1,0 +1,11 @@
+set shell := ["bash", "-eu", "-c"]
+
+init: clean
+	uv venv --python python3.14t
+	uv sync --group dev
+
+clean:
+	just clean
+
+demo:
+	PYTHON_GIL=0 uv run python examples/url_titles_spider.py --urls-file ./data/lobsters.jl --output data/url_titles.jl

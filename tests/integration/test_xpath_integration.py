@@ -1,6 +1,7 @@
 """
 Integration tests for XPath functionality using real scraper_rs library.
 """
+
 import pytest
 
 from silkworm.request import Request

@@ -2,41 +2,18 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
-from asyncio import to_thread
 
-from scraper_rs import Document  # type: ignore[import]
+from scraper_rs.asyncio import (
+    select,
+    # select_first,
+    xpath as xpath_async,
+    # xpath_first as xpath_first_async,
+)
+
 
 if TYPE_CHECKING:
-    from scraper_rs import Element  # type: ignore[import]
+    from scraper_rs import Element, Document  # type: ignore[import]
     from .request import Callback, Request
-
-
-def extract_select(html: str, max_size_bytes: int, selector: str) -> list["Element"]:
-    doc = Document(html, max_size_bytes=max_size_bytes)
-    elements = doc.select(selector)
-    doc.close()
-    return elements
-
-
-def extract_find(html: str, max_size_bytes: int, selector: str) -> "Element" | None:
-    doc = Document(html, max_size_bytes=max_size_bytes)
-    element = doc.find(selector)
-    doc.close()
-    return element
-
-
-def extract_xpath(html: str, max_size_bytes: int, xpath: str) -> list["Element"]:
-    doc = Document(html, max_size_bytes=max_size_bytes)
-    elements = doc.xpath(xpath)
-    doc.close()
-    return elements
-
-
-def extract_xpath_first(html: str, max_size_bytes: int, xpath: str) -> "Element" | None:
-    doc = Document(html, max_size_bytes=max_size_bytes)
-    element = doc.xpath_first(xpath)
-    doc.close()
-    return element
 
 
 @dataclass(slots=True)
@@ -91,24 +68,22 @@ class HTMLResponse(Response):
         return self._doc
 
     async def css(self, selector: str) -> list[Element]:
-        return await to_thread(
-            extract_select, self.text, self.doc_max_size_bytes, selector
-        )
+        return await select(self.text, selector, max_size_bytes=self.doc_max_size_bytes)
 
     async def find(self, selector: str) -> Element | None:
-        return await to_thread(
-            extract_find, self.text, self.doc_max_size_bytes, selector
-        )
+        data = await select(self.text, selector, max_size_bytes=self.doc_max_size_bytes)
+        return data[0] if data else None
 
     async def xpath(self, xpath: str) -> list[Element]:
-        return await to_thread(
-            extract_xpath, self.text, self.doc_max_size_bytes, xpath
+        return await xpath_async(
+            self.text, xpath, max_size_bytes=self.doc_max_size_bytes
         )
 
     async def xpath_first(self, xpath: str) -> Element | None:
-        return await to_thread(
-            extract_xpath_first, self.text, self.doc_max_size_bytes, xpath
+        data = await xpath_async(
+            self.text, xpath, max_size_bytes=self.doc_max_size_bytes
         )
+        return data[0] if data else None
 
     def follow(
         self, href: str, callback: "Callback | None" = None, **kwargs: object
