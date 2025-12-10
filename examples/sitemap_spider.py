@@ -18,7 +18,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import re
-from typing import Any
+from typing import Any, cast
 
 import rxml
 from pydantic import BaseModel, field_validator
@@ -109,7 +109,7 @@ class SitemapSpider(Spider):
 
     async def start_requests(self):
         """Start by fetching the sitemap file."""
-        self.logger.info("Fetching sitemap", url=self.sitemap_url)
+        self.log.info("Fetching sitemap", url=self.sitemap_url)
         yield Request(
             url=self.sitemap_url,
             callback=self.parse_sitemap,
@@ -122,7 +122,7 @@ class SitemapSpider(Spider):
         Handles both regular sitemaps and sitemap index files.
         """
         if response.status != 200:
-            self.logger.error(
+            self.log.error(
                 "Failed to fetch sitemap",
                 url=response.url,
                 status=response.status,
@@ -135,28 +135,26 @@ class SitemapSpider(Spider):
             # Find first non-declaration, non-comment tag
             root_tag_match = re.search(r"<([a-zA-Z][\w-]*?)[\s>]", xml_text)
             if not root_tag_match:
-                self.logger.error(
+                self.log.error(
                     "Could not detect root tag in sitemap",
                     url=response.url,
                 )
                 return
 
             root_tag = root_tag_match.group(1)
-            root = rxml.read_string(xml_text, root_tag)
+            root = cast(Any, rxml.read_string(xml_text, root_tag))
 
             # Check if this is a sitemap index (contains other sitemaps)
             sitemap_elements = root.search_by_name("sitemap")
             if sitemap_elements:
-                self.logger.info(
+                self.log.info(
                     "Found sitemap index with sub-sitemaps",
                     count=len(sitemap_elements),
                 )
                 for sitemap_elem in sitemap_elements:
                     loc_nodes = sitemap_elem.search_by_name("loc")
                     if loc_nodes and len(loc_nodes) > 0 and loc_nodes[0].text:
-                        self.logger.debug(
-                            "Following sub-sitemap", url=loc_nodes[0].text
-                        )
+                        self.log.debug("Following sub-sitemap", url=loc_nodes[0].text)
                         yield Request(
                             url=loc_nodes[0].text.strip(),
                             callback=self.parse_sitemap,
@@ -168,13 +166,13 @@ class SitemapSpider(Spider):
             url_elements = root.search_by_name("url")
 
             if not url_elements:
-                self.logger.warning(
+                self.log.warning(
                     "No URLs found in sitemap",
                     url=response.url,
                 )
                 return
 
-            self.logger.info(
+            self.log.info(
                 "Found URLs in sitemap",
                 count=len(url_elements),
                 url=response.url,
@@ -192,7 +190,7 @@ class SitemapSpider(Spider):
                             self.max_pages is not None
                             and self.pages_scraped >= self.max_pages
                         ):
-                            self.logger.info(
+                            self.log.info(
                                 "Reached max pages limit",
                                 max_pages=self.max_pages,
                             )
@@ -207,7 +205,7 @@ class SitemapSpider(Spider):
                     )
 
         except Exception as exc:
-            self.logger.error(
+            self.log.error(
                 "Failed to parse sitemap XML",
                 url=response.url,
                 error=str(exc),
@@ -216,7 +214,7 @@ class SitemapSpider(Spider):
     async def parse_page(self, response: Response):
         """Extract metadata and Open Graph tags from the page."""
         if not isinstance(response, HTMLResponse):
-            self.logger.warning(
+            self.log.warning(
                 "Skipping non-HTML response",
                 url=response.url,
                 content_type=response.headers.get("content-type"),
@@ -289,8 +287,11 @@ class SitemapSpider(Spider):
         )
 
         # Create structured item
+        original_url = response.request.meta.get("original_url")
+        meta_url = original_url if isinstance(original_url, str) else response.url
+
         item = PageMetadata(
-            url=response.request.meta.get("original_url", response.url),
+            url=meta_url,
             final_url=response.url,
             status=response.status,
             title=title,
@@ -298,7 +299,7 @@ class SitemapSpider(Spider):
             **meta_data,
         )
 
-        self.logger.debug(
+        self.log.debug(
             "Scraped page metadata",
             url=response.url,
             title=item.title,

@@ -60,18 +60,18 @@ class ExportFormatsSpider(Spider):
 
     async def parse(self, response: Response):
         if not isinstance(response, HTMLResponse):
-            self.logger.warning("Skipping non-HTML response", url=response.url)
+            self.log.warning("Skipping non-HTML response", url=response.url)
             return
 
         html = response
-        self.logger.info("Parsing page", url=html.url, pages_scraped=self.pages_scraped)
+        self.log.info("Parsing page", url=html.url, pages_scraped=self.pages_scraped)
 
         for el in await html.select(".quote"):
             try:
                 text_el = el.select_first(".text")
                 author_el = el.select_first(".author")
                 if text_el is None or author_el is None:
-                    self.logger.warning("Skipping quote with missing fields")
+                    self.log.warning("Skipping quote with missing fields")
                     continue
 
                 quote = Quote(
@@ -79,10 +79,10 @@ class ExportFormatsSpider(Spider):
                     author=author_el.text,
                     tags=[t.text for t in el.select(".tag")],
                 )
-                self.logger.debug("Scraped quote", author=quote.author)
+                self.log.debug("Scraped quote", author=quote.author)
                 yield quote.model_dump()
             except Exception as exc:
-                self.logger.warning("Skipping invalid quote", error=str(exc))
+                self.log.warning("Skipping invalid quote", error=str(exc))
                 continue
 
         self.pages_scraped += 1
@@ -95,7 +95,7 @@ class ExportFormatsSpider(Spider):
                 if href:
                     yield html.follow(href, callback=self.parse)
         else:
-            self.logger.info("Reached max pages", max_pages=self.max_pages)
+            self.log.info("Reached max pages", max_pages=self.max_pages)
 
 
 if __name__ == "__main__":

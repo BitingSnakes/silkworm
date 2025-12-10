@@ -50,7 +50,7 @@ class UrlTitlesSpider(Spider):
                 try:
                     data = json.loads(line)
                 except json.JSONDecodeError as exc:
-                    self.logger.warning(
+                    self.log.warning(
                         "Skipping invalid JSON line",
                         line_number=line_no,
                         error=str(exc),
@@ -58,14 +58,14 @@ class UrlTitlesSpider(Spider):
                     continue
 
                 if not isinstance(data, dict):
-                    self.logger.warning(
+                    self.log.warning(
                         "Skipping non-object JSON line", line_number=line_no
                     )
                     continue
 
                 url = str(data.get("url", "")).strip()
                 if not url:
-                    self.logger.warning(
+                    self.log.warning(
                         "Skipping line without url field", line_number=line_no
                     )
                     continue
@@ -74,7 +74,7 @@ class UrlTitlesSpider(Spider):
                 count += 1
                 yield data
 
-        self.logger.info("Loaded URLs", count=count, path=str(path))
+        self.log.info("Loaded URLs", count=count, path=str(path))
 
     async def start_requests(self):
         for record in self._iter_records(self.urls_path):
@@ -105,7 +105,7 @@ class UrlTitlesSpider(Spider):
             )
         else:
             html_response = None
-            self.logger.debug(
+            self.log.debug(
                 "Non-HTML response received",
                 url=response.url,
                 content_type=response.headers.get("content-type"),
@@ -123,7 +123,7 @@ class UrlTitlesSpider(Spider):
             "final_url": response.url,
             "status": response.status,
         }
-        self.logger.debug("Scraped title", url=response.url, title=page_title)
+        self.log.debug("Scraped title", url=response.url, title=page_title)
         yield item
 
 

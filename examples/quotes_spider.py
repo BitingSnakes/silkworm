@@ -49,7 +49,7 @@ class QuotesSpider(Spider):
 
     async def parse(self, response: Response):
         if not isinstance(response, HTMLResponse):
-            self.logger.warning("Skipping non-HTML response", url=response.url)
+            self.log.warning("Skipping non-HTML response", url=response.url)
             return
 
         html = response
@@ -58,7 +58,7 @@ class QuotesSpider(Spider):
                 text_el = el.select_first(".text")
                 author_el = el.select_first(".author")
                 if text_el is None or author_el is None:
-                    self.logger.warning("Skipping quote with missing fields")
+                    self.log.warning("Skipping quote with missing fields")
                     continue
 
                 quote = Quote(
@@ -66,7 +66,7 @@ class QuotesSpider(Spider):
                     author=author_el.text,
                     tags=[t.text for t in el.select(".tag")],
                 )
-                self.logger.debug(
+                self.log.debug(
                     "Scraped quote",
                     author=quote.author,
                     tags=len(quote.tags),
@@ -74,7 +74,7 @@ class QuotesSpider(Spider):
                 # Pipelines expect dict-like items; ensure conversion regardless of pydantic version.
                 yield quote.model_dump()
             except ValidationError as exc:
-                self.logger.warning("Skipping invalid quote", errors=exc.errors())
+                self.log.warning("Skipping invalid quote", errors=exc.errors())
                 continue
 
         next_link = await html.select_first("li.next > a")

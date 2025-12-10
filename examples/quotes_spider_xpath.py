@@ -47,7 +47,7 @@ class QuotesSpiderXPath(Spider):
 
     async def parse(self, response: Response):
         if not isinstance(response, HTMLResponse):
-            self.logger.warning("Skipping non-HTML response", url=response.url)
+            self.log.warning("Skipping non-HTML response", url=response.url)
             return
 
         html = response
@@ -60,7 +60,7 @@ class QuotesSpiderXPath(Spider):
                 author_el = el.xpath_first(".//span[@class='author']")
 
                 if text_el is None or author_el is None:
-                    self.logger.warning("Skipping quote with missing fields")
+                    self.log.warning("Skipping quote with missing fields")
                     continue
 
                 # Extract tags using XPath
@@ -72,7 +72,7 @@ class QuotesSpiderXPath(Spider):
                     tags=[t.text for t in tag_elements],
                 )
 
-                self.logger.debug(
+                self.log.debug(
                     "Scraped quote with XPath",
                     author=quote.author,
                     tags=len(quote.tags),
@@ -81,7 +81,7 @@ class QuotesSpiderXPath(Spider):
                 # Pipelines expect dict-like items
                 yield quote.model_dump()
             except ValidationError as exc:
-                self.logger.warning("Skipping invalid quote", errors=exc.errors())
+                self.log.warning("Skipping invalid quote", errors=exc.errors())
                 continue
 
         # Use XPath to find the next page link
@@ -89,7 +89,7 @@ class QuotesSpiderXPath(Spider):
         if next_link:
             href = next_link.attr("href")
             if href:
-                self.logger.info("Following next page", href=href)
+                self.log.info("Following next page", href=href)
                 yield html.follow(href, callback=self.parse)
 
 

@@ -60,7 +60,7 @@ class LobstersSpider(Spider):
 
     async def parse(self, response: Response):
         if not isinstance(response, HTMLResponse):
-            self.logger.warning("Skipping non-HTML response", url=response.url)
+            self.log.warning("Skipping non-HTML response", url=response.url)
             return
 
         html = response
@@ -105,7 +105,7 @@ class LobstersSpider(Spider):
                     age=age,
                     domain=domain,
                 )
-                self.logger.debug(
+                self.log.debug(
                     "Scraped story",
                     title=item.title,
                     points=item.points,
@@ -113,7 +113,7 @@ class LobstersSpider(Spider):
                 )
                 yield item.model_dump()
             except ValidationError as exc:
-                self.logger.warning("Skipping invalid story", errors=exc.errors())
+                self.log.warning("Skipping invalid story", errors=exc.errors())
                 continue
 
         next_links = await html.select("div.morelink a[href]")

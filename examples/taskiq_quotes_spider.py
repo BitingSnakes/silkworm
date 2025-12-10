@@ -53,12 +53,12 @@ class TaskiqQuotesSpider(Spider):
 
     async def parse(self, response: Response):
         if not isinstance(response, HTMLResponse):
-            self.logger.warning("Skipping non-HTML response", url=response.url)
+            self.log.warning("Skipping non-HTML response", url=response.url)
             return
 
         html = response
         self.pages_scraped += 1
-        self.logger.info(
+        self.log.info(
             "Parsing page",
             page_number=self.pages_scraped,
             url=response.url,
