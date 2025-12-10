@@ -130,9 +130,10 @@ class SitemapSpider(Spider):
             return
 
         try:
-            # Detect root tag from XML content
+            # Detect root tag from XML content (skip XML declaration and comments)
             xml_text = response.text
-            root_tag_match = re.search(r"<(\w+)[\s>]", xml_text)
+            # Find first non-declaration, non-comment tag
+            root_tag_match = re.search(r"<([a-zA-Z][\w-]*?)[\s>]", xml_text)
             if not root_tag_match:
                 self.logger.error(
                     "Could not detect root tag in sitemap",
@@ -152,7 +153,7 @@ class SitemapSpider(Spider):
                 )
                 for sitemap_elem in sitemap_elements:
                     loc_nodes = sitemap_elem.search_by_name("loc")
-                    if loc_nodes and loc_nodes[0].text:
+                    if loc_nodes and len(loc_nodes) > 0 and loc_nodes[0].text:
                         self.logger.debug(
                             "Following sub-sitemap", url=loc_nodes[0].text
                         )
@@ -182,7 +183,7 @@ class SitemapSpider(Spider):
             # Extract and request each URL
             for url_elem in url_elements:
                 loc_nodes = url_elem.search_by_name("loc")
-                if loc_nodes and loc_nodes[0].text:
+                if loc_nodes and len(loc_nodes) > 0 and loc_nodes[0].text:
                     url = loc_nodes[0].text.strip()
 
                     # Check if we've reached the max pages limit (with lock for concurrent safety)
