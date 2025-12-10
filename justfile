@@ -6,7 +6,7 @@ help:
 	just -l
 
 init: clean
-	uv sync --group dev
+	uv sync --group dev --upgrade
 
 fmt:
 	uv run --group dev ruff format src examples tests

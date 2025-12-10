@@ -7,6 +7,15 @@ resolution-markers = [
 ]
 
 [[package]]
+name = "aioftp"
+version = "0.27.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/cc/a3/d1af4b69c09dc9955fdb329de5a9ea73f6a3ba50ac4861882453254ffa99/aioftp-0.27.2.tar.gz", hash = "sha256:7c048c3220081796c59832a6fd9fd8fad97e3cec12a50be3abccf2dcbbeb261a", size = 70248, upload-time = "2025-09-24T21:51:31.297Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7c/6c/d56c290696f91c4f0fa4be7cfdb38e710d9735c10c57e481cd4bd6066506/aioftp-0.27.2-py3-none-any.whl", hash = "sha256:83befd4091be0e26eeba44dadebb7e7bea653f7b6bda3ba9b6785d4372a93e10", size = 44292, upload-time = "2025-09-24T21:51:29.448Z" },
+]
+
+[[package]]
 name = "aiohappyeyeballs"
 version = "2.6.1"
 source = { registry = "https://pypi.org/simple" }
@@ -228,6 +237,19 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/ba/7a/15e37d45e7f7c94facc1e9148c0e455e8f33c08f0b8a0b1deb2c5171771b/asyncpg-0.31.0-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:8df714dba348efcc162d2adf02d213e5fab1bd9f557e1305633e851a61814a7a", size = 3429426, upload-time = "2025-11-24T23:26:41.032Z" },
     { url = "https://files.pythonhosted.org/packages/13/d5/71437c5f6ae5f307828710efbe62163974e71237d5d46ebd2869ea052d10/asyncpg-0.31.0-cp314-cp314t-win32.whl", hash = "sha256:1b41f1afb1033f2b44f3234993b15096ddc9cd71b21a42dbd87fc6a57b43d65d", size = 614495, upload-time = "2025-11-24T23:26:42.659Z" },
     { url = "https://files.pythonhosted.org/packages/3c/d7/8fb3044eaef08a310acfe23dae9a8e2e07d305edc29a53497e52bc76eca7/asyncpg-0.31.0-cp314-cp314t-win_amd64.whl", hash = "sha256:bd4107bb7cdd0e9e65fae66a62afd3a249663b844fa34d479f6d5b3bef9c04c3", size = 706062, upload-time = "2025-11-24T23:26:44.086Z" },
+]
+
+[[package]]
+name = "asyncssh"
+version = "2.21.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cryptography" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6b/b8/065c20bb5c9b8991648c0f25b13e445b4f51556cc3fdd0ad13ce4787c156/asyncssh-2.21.1.tar.gz", hash = "sha256:9943802955e2131536c2b1e71aacc68f56973a399937ed0b725086d7461c990c", size = 540515, upload-time = "2025-09-28T16:36:19.468Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/0e/89/4a9a61bc120ca68bce92b0ea176ddc0e550e58c60ab820603bd5246e7261/asyncssh-2.21.1-py3-none-any.whl", hash = "sha256:f218f9f303c78df6627d0646835e04039a156d15e174ad63c058d62de61e1968", size = 375529, upload-time = "2025-09-28T16:36:17.68Z" },
 ]
 
 [[package]]
@@ -2453,7 +2475,7 @@ wheels = [
 
 [[package]]
 name = "silkworm-rs"
-version = "0.2.7"
+version = "0.2.8"
 source = { editable = "." }
 dependencies = [
     { name = "asyncio" },
@@ -2482,6 +2504,9 @@ elasticsearch = [
 excel = [
     { name = "openpyxl" },
 ]
+ftp = [
+    { name = "aioftp" },
+]
 gsheets = [
     { name = "google-api-python-client" },
     { name = "google-auth" },
@@ -2503,6 +2528,9 @@ postgresql = [
 ]
 s3 = [
     { name = "opendal" },
+]
+sftp = [
+    { name = "asyncssh" },
 ]
 snowflake = [
     { name = "snowflake-connector-python" },
@@ -2539,9 +2567,11 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "aioftp", marker = "extra == 'ftp'", specifier = ">=0.22.0" },
     { name = "aiomysql", marker = "extra == 'mysql'", specifier = ">=0.2.0" },
     { name = "asyncio", specifier = ">=4.0.0" },
     { name = "asyncpg", marker = "extra == 'postgresql'", specifier = ">=0.29.0" },
+    { name = "asyncssh", marker = "extra == 'sftp'", specifier = ">=2.14.0" },
     { name = "build", marker = "extra == 'dev'" },
     { name = "elasticsearch", marker = "extra == 'elasticsearch'", specifier = ">=8.0.0" },
     { name = "fastavro", marker = "extra == 'avro'", specifier = ">=1.9.0" },
@@ -2570,7 +2600,7 @@ requires-dist = [
     { name = "uvloop", marker = "extra == 'uvloop'", specifier = ">=0.19.0" },
     { name = "vortex-data", marker = "extra == 'vortex'", specifier = ">=0.50.0" },
 ]
-provides-extras = ["dev", "taskiq", "uvloop", "trio", "msgpack", "polars", "excel", "yaml", "avro", "elasticsearch", "mongodb", "s3", "vortex", "mysql", "postgresql", "gsheets", "snowflake"]
+provides-extras = ["dev", "taskiq", "uvloop", "trio", "msgpack", "polars", "excel", "yaml", "avro", "elasticsearch", "mongodb", "s3", "vortex", "mysql", "postgresql", "gsheets", "snowflake", "ftp", "sftp"]
 
 [package.metadata.requires-dev]
 dev = [
