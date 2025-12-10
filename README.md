@@ -116,6 +116,9 @@ from silkworm.pipelines import (
     PostgreSQLPipeline,  # requires: pip install silkworm-rs[postgresql]
     S3JsonLinesPipeline,  # requires: pip install silkworm-rs[s3]
     VortexPipeline,  # requires: pip install silkworm-rs[vortex]
+    WebhookPipeline,  # sends items to webhook endpoints using rnet
+    GoogleSheetsPipeline,  # requires: pip install silkworm-rs[gsheets]
+    SnowflakePipeline,  # requires: pip install silkworm-rs[snowflake]
 )
 
 run_spider(
@@ -155,6 +158,9 @@ run_spider(
 - `PostgreSQLPipeline` sends items to a PostgreSQL database table as JSONB (requires `pip install silkworm-rs[postgresql]`).
 - `S3JsonLinesPipeline` writes items to AWS S3 in JSON Lines format using async OpenDAL (requires `pip install silkworm-rs[s3]`).
 - `VortexPipeline` writes items to a [Vortex](https://github.com/spiraldb/vortex) file for high-performance columnar storage with 100x faster random access and 10-20x faster scans compared to Parquet (requires `pip install silkworm-rs[vortex]`).
+- `WebhookPipeline` sends items to webhook endpoints via HTTP POST/PUT using rnet (same HTTP client as the spider) with support for batching and custom headers.
+- `GoogleSheetsPipeline` appends items to Google Sheets with automatic flattening of nested data structures (requires `pip install silkworm-rs[gsheets]` and service account credentials).
+- `SnowflakePipeline` sends items to Snowflake data warehouse tables as JSON (requires `pip install silkworm-rs[snowflake]`).
 
 ## Streaming items to a queue with TaskiqPipeline
 Stream scraped items to a [Taskiq](https://taskiq-python.github.io/) queue for distributed processing:

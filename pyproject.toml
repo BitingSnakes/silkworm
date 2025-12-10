@@ -97,6 +97,13 @@ mysql = [
 postgresql = [
   "asyncpg>=0.29.0",
 ]
+gsheets = [
+  "google-api-python-client>=2.0.0",
+  "google-auth>=2.0.0",
+]
+snowflake = [
+  "snowflake-connector-python>=3.0.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/BitingSnakes/silkworm"

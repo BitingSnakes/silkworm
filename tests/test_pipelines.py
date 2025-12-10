@@ -971,3 +971,160 @@ def test_postgresql_pipeline_invalid_table_name():
 
     with pytest.raises(ValueError, match="Invalid table name"):
         PostgreSQLPipeline(table="table; DROP TABLE users;")  # type: ignore
+
+
+# WebhookPipeline tests
+try:
+    from silkworm.pipelines import WebhookPipeline
+
+    WEBHOOK_AVAILABLE = True
+except ImportError:
+    WEBHOOK_AVAILABLE = False
+    WebhookPipeline = None  # type: ignore
+
+
+@pytest.mark.skipif(not WEBHOOK_AVAILABLE, reason="rnet not available")
+def test_webhook_pipeline_initialization():
+    # Test that we can initialize the pipeline
+    pipeline = WebhookPipeline(  # type: ignore
+        url="https://webhook.site/test",
+        method="POST",
+        headers={"Authorization": "Bearer token"},
+        batch_size=5,
+    )
+    assert pipeline.url == "https://webhook.site/test"
+    assert pipeline.method == "POST"
+    assert pipeline.headers == {"Authorization": "Bearer token"}
+    assert pipeline.batch_size == 5
+
+
+@pytest.mark.skipif(not WEBHOOK_AVAILABLE, reason="rnet not available")
+@pytest.mark.anyio("asyncio")
+async def test_webhook_pipeline_not_opened_raises_error():
+    pipeline = WebhookPipeline("https://webhook.site/test")  # type: ignore
+    spider = Spider()
+
+    with pytest.raises(RuntimeError, match="WebhookPipeline not opened"):
+        await pipeline.process_item({"test": "data"}, spider)
+
+
+# GoogleSheetsPipeline tests - skip if google-api-python-client not installed
+try:
+    from silkworm.pipelines import GoogleSheetsPipeline
+
+    GOOGLE_SHEETS_AVAILABLE = True
+except ImportError:
+    GOOGLE_SHEETS_AVAILABLE = False
+    GoogleSheetsPipeline = None  # type: ignore
+
+
+@pytest.mark.skipif(
+    not GOOGLE_SHEETS_AVAILABLE, reason="google-api-python-client not installed"
+)
+def test_google_sheets_pipeline_initialization():
+    # Test that we can initialize the pipeline
+    pipeline = GoogleSheetsPipeline(  # type: ignore
+        spreadsheet_id="test_id",
+        credentials_file="test_creds.json",
+        sheet_name="TestSheet",
+        batch_size=50,
+    )
+    assert pipeline.spreadsheet_id == "test_id"
+    assert pipeline.credentials_file == "test_creds.json"
+    assert pipeline.sheet_name == "TestSheet"
+    assert pipeline.batch_size == 50
+
+
+@pytest.mark.skipif(
+    not GOOGLE_SHEETS_AVAILABLE, reason="google-api-python-client not installed"
+)
+@pytest.mark.anyio("asyncio")
+async def test_google_sheets_pipeline_not_opened_raises_error():
+    pipeline = GoogleSheetsPipeline(  # type: ignore
+        spreadsheet_id="test_id", credentials_file="test_creds.json"
+    )
+    spider = Spider()
+
+    with pytest.raises(RuntimeError, match="GoogleSheetsPipeline not opened"):
+        await pipeline.process_item({"test": "data"}, spider)
+
+
+# SnowflakePipeline tests - skip if snowflake-connector-python not installed
+try:
+    from silkworm.pipelines import SnowflakePipeline
+
+    SNOWFLAKE_AVAILABLE = True
+except ImportError:
+    SNOWFLAKE_AVAILABLE = False
+    SnowflakePipeline = None  # type: ignore
+
+
+@pytest.mark.skipif(
+    not SNOWFLAKE_AVAILABLE, reason="snowflake-connector-python not installed"
+)
+def test_snowflake_pipeline_initialization():
+    # Test that we can initialize the pipeline
+    pipeline = SnowflakePipeline(  # type: ignore
+        account="test_account",
+        user="test_user",
+        password="test_password",
+        database="test_db",
+        schema="test_schema",
+        warehouse="test_warehouse",
+        table="test_table",
+        role="test_role",
+    )
+    assert pipeline.account == "test_account"
+    assert pipeline.user == "test_user"
+    assert pipeline.database == "test_db"
+    assert pipeline.schema == "test_schema"
+    assert pipeline.warehouse == "test_warehouse"
+    assert pipeline.table == "test_table"
+    assert pipeline.role == "test_role"
+
+
+@pytest.mark.skipif(
+    not SNOWFLAKE_AVAILABLE, reason="snowflake-connector-python not installed"
+)
+def test_snowflake_pipeline_invalid_table_name():
+    # Test that invalid table names are rejected
+    with pytest.raises(ValueError, match="Invalid table name"):
+        SnowflakePipeline(  # type: ignore
+            account="test",
+            user="test",
+            password="test",
+            database="test",
+            schema="test",
+            warehouse="test",
+            table="invalid-table-name",
+        )
+
+    with pytest.raises(ValueError, match="Invalid table name"):
+        SnowflakePipeline(  # type: ignore
+            account="test",
+            user="test",
+            password="test",
+            database="test",
+            schema="test",
+            warehouse="test",
+            table="123invalid",
+        )
+
+
+@pytest.mark.skipif(
+    not SNOWFLAKE_AVAILABLE, reason="snowflake-connector-python not installed"
+)
+@pytest.mark.anyio("asyncio")
+async def test_snowflake_pipeline_not_opened_raises_error():
+    pipeline = SnowflakePipeline(  # type: ignore
+        account="test_account",
+        user="test_user",
+        password="test_password",
+        database="test_db",
+        schema="test_schema",
+        warehouse="test_warehouse",
+    )
+    spider = Spider()
+
+    with pytest.raises(RuntimeError, match="SnowflakePipeline not opened"):
+        await pipeline.process_item({"test": "data"}, spider)
