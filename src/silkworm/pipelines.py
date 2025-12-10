@@ -550,7 +550,7 @@ class TaskiqPipeline:
             # Find the registered task by name
             if self.task_name is None:
                 raise ValueError("task_name cannot be None when task is not provided")
-            self._task = self.broker.select_first_task(self.task_name)
+            self._task = self.broker.find_task(self.task_name)
             if self._task is None:
                 raise ValueError(
                     f"Task '{self.task_name}' not found in broker. "
@@ -1497,7 +1497,7 @@ class WebhookPipeline:
                 try:
                     result = closer()
                     if hasattr(result, "__await__"):
-                        await result
+                        await result # type: ignore
                 except Exception:
                     pass
             self._client = None
@@ -1555,7 +1555,7 @@ class WebhookPipeline:
                 try:
                     result = closer()
                     if hasattr(result, "__await__"):
-                        await result
+                        await result # type: ignore
                 except Exception:
                     pass
 
@@ -1682,7 +1682,7 @@ class GoogleSheetsPipeline:
                     if self._fieldnames is None:
                         self._fieldnames = list(flat_item.keys())
                     row = [flat_item.get(field) for field in self._fieldnames]  # type: ignore[misc]
-                    rows.append(row)
+                    rows.append(row) # type: ignore
                 else:
                     # Simple value
                     if self._fieldnames is None:

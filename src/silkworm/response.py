@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
-from scraper_rs.asyncio import (
+from scraper_rs.asyncio import (  # type: ignore[import-untyped]
     select as select_async,
     select_first as select_first_async,
     xpath as xpath_async,
