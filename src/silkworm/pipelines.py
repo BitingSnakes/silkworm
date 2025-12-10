@@ -99,6 +99,20 @@ class MsgPackPipeline:
         pipeline = MsgPackPipeline("data/items.msgpack")
         # Or append to existing file:
         pipeline = MsgPackPipeline("data/items.msgpack", mode="append")
+
+    Reading MsgPack files:
+        import msgpack
+
+        # Read all items at once
+        with open("data/items.msgpack", "rb") as f:
+            unpacker = msgpack.Unpacker(f)
+            items = list(unpacker)
+
+        # Or stream items one by one (memory efficient for large files)
+        with open("data/items.msgpack", "rb") as f:
+            unpacker = msgpack.Unpacker(f)
+            for item in unpacker:
+                process(item)
     """
 
     def __init__(
