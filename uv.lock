@@ -2606,6 +2606,7 @@ couchdb = [
     { name = "aiocouch" },
 ]
 dev = [
+    { name = "anyio" },
     { name = "build" },
     { name = "mypy" },
     { name = "pydantic" },
@@ -2672,6 +2673,7 @@ yaml = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "anyio" },
     { name = "build" },
     { name = "memray" },
     { name = "mypy" },
@@ -2688,6 +2690,7 @@ requires-dist = [
     { name = "aiocouch", marker = "extra == 'couchdb'", specifier = "==4.0.1" },
     { name = "aioftp", marker = "extra == 'ftp'", specifier = "==0.27.2" },
     { name = "aiomysql", marker = "extra == 'mysql'", specifier = "==0.3.2" },
+    { name = "anyio", marker = "extra == 'dev'", specifier = ">=4.12.0" },
     { name = "asyncpg", marker = "extra == 'postgresql'", specifier = "==0.31.0" },
     { name = "asyncssh", marker = "extra == 'sftp'", specifier = "==2.21.1" },
     { name = "build", marker = "extra == 'dev'", specifier = "==1.3.0" },
@@ -2722,6 +2725,7 @@ provides-extras = ["dev", "taskiq", "uvloop", "trio", "msgpack", "polars", "exce
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "anyio", specifier = ">=4.12.0" },
     { name = "build", specifier = "==1.3.0" },
     { name = "memray", specifier = "==1.19.1" },
     { name = "mypy", specifier = "==1.19.0" },
