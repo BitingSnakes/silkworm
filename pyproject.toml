@@ -41,7 +41,6 @@ dependencies = [
   "scraper-rust==0.2.14",
   "logly==0.1.6",
   "rxml==2.3.6",
-  "asyncio==4.0.0",
 ]
 
 [project.optional-dependencies]
@@ -50,7 +49,6 @@ dev = [
   "mypy==1.19.0",
   "pydantic==2.12.5",
   "pytest==9.0.2",
-  "pytest-anyio==0.0.0",
   "ruff==0.14.8",
   "twine==6.2.0",
 ]
