@@ -138,7 +138,6 @@ dev = [
     "py-spy==0.4.1",
     "pydantic==2.12.5",
     "pytest==9.0.2",
-    "pytest-anyio==0.0.0",
     "ruff==0.14.8",
     "twine==6.2.0",
 ]
