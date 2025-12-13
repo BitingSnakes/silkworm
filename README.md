@@ -29,7 +29,7 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 uv pip install -e .
 ```
 
-Targets Python 3.11+; dependencies are pinned in `pyproject.toml`.
+Targets Python 3.13+; dependencies are pinned in `pyproject.toml`.
 
 ## Quick start
 Define a spider by subclassing `Spider`, implementing `parse`, and yielding items or follow-up `Request` objects. This example writes quotes to `data/quotes.jl` and enables basic user agent, retry, and non-HTML filtering middlewares.

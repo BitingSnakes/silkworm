@@ -6,7 +6,7 @@ help:
 	just -l
 
 init: clean
-	uv venv --python python3.14
+	uv venv --python python3.13
 	uv sync --group dev --upgrade
 
 fmt:
