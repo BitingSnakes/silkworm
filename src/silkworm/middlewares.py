@@ -65,7 +65,9 @@ class ProxyMiddleware:
             with proxy_path.open("r", encoding="utf-8") as f:
                 self.proxies = [line.strip() for line in f if line.strip()]
         else:
-            self.proxies = list(proxies)  # type: ignore[arg-type]
+            # At this point, proxies is guaranteed to be not None due to the check above
+            assert proxies is not None
+            self.proxies = list(proxies)
 
         if not self.proxies:
             raise ValueError("ProxyMiddleware requires at least one proxy.")
