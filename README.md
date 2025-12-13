@@ -131,7 +131,12 @@ run_spider(
     request_middlewares=[
         UserAgentMiddleware(),  # rotate/custom user agent
         DelayMiddleware(min_delay=0.3, max_delay=1.2),  # polite throttling
-        # ProxyMiddleware(["http://user:pass@proxy1:8080", "http://proxy2:8080"]),
+        # ProxyMiddleware with round-robin selection (default)
+        # ProxyMiddleware(proxies=["http://user:pass@proxy1:8080", "http://proxy2:8080"]),
+        # ProxyMiddleware with random selection
+        # ProxyMiddleware(proxies=["http://proxy1:8080", "http://proxy2:8080"], random_selection=True),
+        # ProxyMiddleware from file with random selection
+        # ProxyMiddleware(proxy_file="proxies.txt", random_selection=True),
     ],
     response_middlewares=[
         RetryMiddleware(max_times=3, sleep_http_codes=[403, 429]),  # backoff + retry
@@ -148,6 +153,10 @@ run_spider(
 ```
 
 - `DelayMiddleware` strategies: `delay=1.0` (fixed), `min_delay/max_delay` (random), or `delay_func` (custom).
+- `ProxyMiddleware` supports three modes:
+  - **Round-robin (default)**: `ProxyMiddleware(proxies=["http://proxy1:8080", "http://proxy2:8080"])` cycles through proxies in order.
+  - **Random selection**: `ProxyMiddleware(proxies=["http://proxy1:8080", "http://proxy2:8080"], random_selection=True)` randomly selects a proxy for each request.
+  - **From file**: `ProxyMiddleware(proxy_file="proxies.txt")` loads proxies from a file (one proxy per line, blank lines ignored). Combine with `random_selection=True` for random selection from the file.
 - `RetryMiddleware` backs off with `asyncio.sleep`; any status in `sleep_http_codes` is retried even if not in `retry_http_codes`.
 - `SkipNonHTMLMiddleware` checks `Content-Type` and optionally sniffs the body (`sniff_bytes`) to avoid running HTML callbacks on binary/API responses.
 - `JsonLinesPipeline` writes items to a local JSON Lines file and, when `opendal` is installed, appends asynchronously via the filesystem backend (`use_opendal=False` to stick to a regular file handle).

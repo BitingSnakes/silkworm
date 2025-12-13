@@ -532,3 +532,117 @@ async def test_delay_middleware_zero_delay(monkeypatch: pytest.MonkeyPatch):
     assert result is request
     # Zero delay should not call sleep
     assert sleep_calls == []
+
+
+# ProxyMiddleware tests
+async def test_proxy_middleware_round_robin_selection():
+    from silkworm.middlewares import ProxyMiddleware
+
+    proxies = ["http://proxy1:8080", "http://proxy2:8080", "http://proxy3:8080"]
+    middleware = ProxyMiddleware(proxies=proxies)
+
+    requests = [Request(url=f"http://example.com/{i}") for i in range(5)]
+    results = [await middleware.process_request(req, Spider()) for req in requests]
+
+    # Should cycle through proxies in order
+    assert results[0].meta["proxy"] == "http://proxy1:8080"
+    assert results[1].meta["proxy"] == "http://proxy2:8080"
+    assert results[2].meta["proxy"] == "http://proxy3:8080"
+    assert results[3].meta["proxy"] == "http://proxy1:8080"  # cycle back
+    assert results[4].meta["proxy"] == "http://proxy2:8080"
+
+
+async def test_proxy_middleware_random_selection():
+    from silkworm.middlewares import ProxyMiddleware
+
+    proxies = ["http://proxy1:8080", "http://proxy2:8080", "http://proxy3:8080"]
+    middleware = ProxyMiddleware(proxies=proxies, random_selection=True)
+
+    # Generate multiple requests to test random selection
+    requests = [Request(url=f"http://example.com/{i}") for i in range(30)]
+    results = [await middleware.process_request(req, Spider()) for req in requests]
+
+    # All assigned proxies should be from our list
+    assigned_proxies = [r.meta["proxy"] for r in results]
+    assert all(p in proxies for p in assigned_proxies)
+
+    # With random selection, we should see some variation
+    # (statistically unlikely to get all the same proxy with 30 requests and 3 proxies)
+    unique_proxies = set(assigned_proxies)
+    assert len(unique_proxies) > 1
+
+
+async def test_proxy_middleware_from_file(tmp_path):
+    from silkworm.middlewares import ProxyMiddleware
+
+    # Create a temporary proxy file
+    proxy_file = tmp_path / "proxies.txt"
+    proxy_file.write_text(
+        "http://proxy1:8080\nhttp://proxy2:8080\n\nhttp://proxy3:8080\n"
+    )
+
+    middleware = ProxyMiddleware(proxy_file=proxy_file)
+
+    assert len(middleware.proxies) == 3
+    assert "http://proxy1:8080" in middleware.proxies
+    assert "http://proxy2:8080" in middleware.proxies
+    assert "http://proxy3:8080" in middleware.proxies
+
+    # Test that it works
+    request = Request(url="http://example.com")
+    result = await middleware.process_request(request, Spider())
+    assert result.meta["proxy"] in middleware.proxies
+
+
+async def test_proxy_middleware_from_file_with_random_selection(tmp_path):
+    from silkworm.middlewares import ProxyMiddleware
+
+    # Create a temporary proxy file
+    proxy_file = tmp_path / "proxies.txt"
+    proxy_file.write_text(
+        "http://proxy1:8080\nhttp://proxy2:8080\nhttp://proxy3:8080\n"
+    )
+
+    middleware = ProxyMiddleware(proxy_file=proxy_file, random_selection=True)
+
+    # Generate multiple requests to test random selection
+    requests = [Request(url=f"http://example.com/{i}") for i in range(30)]
+    results = [await middleware.process_request(req, Spider()) for req in requests]
+
+    # All assigned proxies should be from our list
+    assigned_proxies = [r.meta["proxy"] for r in results]
+    assert all(p in middleware.proxies for p in assigned_proxies)
+
+    # With random selection, we should see some variation
+    unique_proxies = set(assigned_proxies)
+    assert len(unique_proxies) > 1
+
+
+def test_proxy_middleware_validation_errors(tmp_path):
+    from silkworm.middlewares import ProxyMiddleware
+
+    # Must provide either proxies or proxy_file
+    with pytest.raises(ValueError, match="Must provide either"):
+        ProxyMiddleware()
+
+    # Cannot provide both proxies and proxy_file
+    proxy_file = tmp_path / "proxies.txt"
+    proxy_file.write_text("http://proxy1:8080\n")
+
+    with pytest.raises(ValueError, match="Cannot specify both"):
+        ProxyMiddleware(proxies=["http://proxy1:8080"], proxy_file=proxy_file)
+
+    # File must exist
+    with pytest.raises(FileNotFoundError):
+        ProxyMiddleware(proxy_file="nonexistent.txt")
+
+    # File must contain at least one proxy
+    empty_file = tmp_path / "empty.txt"
+    empty_file.write_text("")
+
+    with pytest.raises(ValueError, match="requires at least one proxy"):
+        ProxyMiddleware(proxy_file=empty_file)
+
+    # Empty proxies list should raise error
+    with pytest.raises(ValueError, match="requires at least one proxy"):
+        ProxyMiddleware(proxies=[])
