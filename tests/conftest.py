@@ -3,6 +3,7 @@ import types
 from pathlib import Path
 from typing import Any
 
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
@@ -140,3 +141,22 @@ sys.modules["logly"] = logly_module
 sys.modules["rnet"] = rnet_module
 sys.modules["scraper_rs"] = scraper_module
 sys.modules["scraper_rs.asyncio"] = scraper_asyncio_module
+
+# Define the base configuration
+backends = [
+    pytest.param(("asyncio", {"use_uvloop": False}), id="asyncio"),
+]
+
+# Only add uvloop if it is actually installed
+try:
+    import uvloop
+
+    backends.append(
+        pytest.param(("asyncio", {"use_uvloop": True}), id="asyncio+uvloop")
+    )
+except ImportError:
+    print("uvloop not installed; skipping uvloop backend tests")
+
+@pytest.fixture(params=backends)
+def anyio_backend(request):
+    return request.param

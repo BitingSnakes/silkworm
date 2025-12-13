@@ -51,4 +51,4 @@ jobs:
           uv pip install msgpack
 
       - name: Run tests
-        run: uv run --group dev pytest
+        run: uv run --group dev pytest -o "anyio_mode=auto"

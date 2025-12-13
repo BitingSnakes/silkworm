@@ -19,7 +19,7 @@ typecheck:
 	uv run --group dev mypy src
 
 test:
-	uv run --group dev pytest
+	uv run --group dev pytest -o "anyio_mode=auto"
 
 mypy:
 	uv run --group dev mypy src tests examples

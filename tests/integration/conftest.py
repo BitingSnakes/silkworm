@@ -8,7 +8,6 @@ to allow integration tests to use the real implementations.
 import sys
 from pathlib import Path
 
-
 # Add src to path
 ROOT = Path(__file__).resolve().parents[2]
 SRC = ROOT / "src"
