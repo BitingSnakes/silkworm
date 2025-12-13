@@ -318,3 +318,20 @@ async def main():
 
 asyncio.run(main())
 ```
+
+## Contributing
+Pull requests and issues are welcome. To set up a dev environment, install [uv](https://docs.astral.sh/uv/getting-started/), create a Python 3.13 virtualenv, and sync dev dependencies:
+
+```bash
+uv venv --python python3.13
+uv sync --group dev
+```
+
+Run the checks before opening a PR:
+
+```bash
+just fmt && just lint && just typecheck && just test
+```
+
+## License
+MIT License. See `LICENSE` for details.
