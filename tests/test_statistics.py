@@ -128,4 +128,4 @@ async def test_final_log_includes_event_loop() -> None:
         ctx for msg, ctx in spy_logger.info_calls if msg == "Final crawl statistics"
     ]
     assert final_logs, "Expected final crawl statistics log entry"
-    assert final_logs[-1].get("event_loop") in ["asyncio", "uvloop", "trio"]
+    assert final_logs[-1].get("event_loop") in ["asyncio", "uvloop"]
