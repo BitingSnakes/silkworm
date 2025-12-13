@@ -1,9 +1,9 @@
 from __future__ import annotations
 import asyncio
 import inspect
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit
-from typing import Any, Callable, cast
+from typing import Any, cast
 
 from rnet import Client, Emulation, Method  # type: ignore[import]
 
