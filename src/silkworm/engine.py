@@ -3,8 +3,8 @@ import asyncio
 import inspect
 import sys
 import time
-from collections.abc import AsyncIterable, AsyncIterator, Iterable
-from typing import Callable, cast
+from collections.abc import AsyncIterable, AsyncIterator, Callable, Iterable
+from typing import cast
 
 try:  # resource is POSIX-only
     import resource
