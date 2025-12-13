@@ -3,6 +3,7 @@ import asyncio
 import random
 from enum import Enum, auto
 from collections.abc import Callable, Iterable, Sequence
+from pathlib import Path
 from typing import Protocol
 
 from .request import Request
@@ -42,16 +43,45 @@ class UserAgentMiddleware:
 
 
 class ProxyMiddleware:
-    def __init__(self, proxies: Iterable[str]) -> None:
-        self.proxies = list(proxies)
+    def __init__(
+        self,
+        proxies: Iterable[str] | None = None,
+        proxy_file: str | Path | None = None,
+        random_selection: bool = False,
+    ) -> None:
+        if proxies is not None and proxy_file is not None:
+            raise ValueError(
+                "Cannot specify both 'proxies' and 'proxy_file'. Use one or the other."
+            )
+        if proxies is None and proxy_file is None:
+            raise ValueError(
+                "Must provide either 'proxies' (iterable) or 'proxy_file' (path)."
+            )
+
+        if proxy_file is not None:
+            proxy_path = Path(proxy_file)
+            if not proxy_path.exists():
+                raise FileNotFoundError(f"Proxy file not found: {proxy_file}")
+            with proxy_path.open("r", encoding="utf-8") as f:
+                self.proxies = [line.strip() for line in f if line.strip()]
+        else:
+            # At this point, proxies is guaranteed to be not None due to the check above
+            assert proxies is not None
+            self.proxies = list(proxies)
+
         if not self.proxies:
             raise ValueError("ProxyMiddleware requires at least one proxy.")
+
+        self.random_selection = random_selection
         self._idx = 0
         self.logger = get_logger(component="ProxyMiddleware")
 
     async def process_request(self, request: Request, spider: "Spider") -> Request:
-        proxy = self.proxies[self._idx]
-        self._idx = (self._idx + 1) % len(self.proxies)
+        if self.random_selection:
+            proxy = random.choice(self.proxies)
+        else:
+            proxy = self.proxies[self._idx]
+            self._idx = (self._idx + 1) % len(self.proxies)
         request.meta.setdefault("proxy", proxy)
         self.logger.debug("Assigned proxy", proxy=proxy, url=request.url)
         return request

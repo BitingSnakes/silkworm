@@ -87,7 +87,12 @@ class QuotesSpider(Spider):
 if __name__ == "__main__":
     request_mw: list[RequestMiddleware] = [
         UserAgentMiddleware(),
-        # ProxyMiddleware(["http://user:pass@proxy1:8080", "http://proxy2:8080"]),
+        # ProxyMiddleware with round-robin selection (default)
+        # ProxyMiddleware(proxies=["http://user:pass@proxy1:8080", "http://proxy2:8080"]),
+        # ProxyMiddleware with random selection
+        # ProxyMiddleware(proxies=["http://proxy1:8080", "http://proxy2:8080"], random_selection=True),
+        # ProxyMiddleware from file with random selection
+        # ProxyMiddleware(proxy_file="proxies.txt", random_selection=True),
         # Add delay between requests to be polite to the server
         # DelayMiddleware(delay=0.5),  # Fixed 0.5s delay
         # DelayMiddleware(min_delay=0.3, max_delay=1.0),  # Random delay
