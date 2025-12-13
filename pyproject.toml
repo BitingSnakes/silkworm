@@ -45,11 +45,11 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-  "anyio>=4.12.0",
   "build==1.3.0",
   "mypy==1.19.0",
   "pydantic==2.12.5",
   "pytest==9.0.2",
+  "pytest-asyncio==1.3.0",
   "ruff==0.14.8",
   "twine==6.2.0",
 ]
@@ -133,13 +133,13 @@ force-include = {"src/silkworm/py.typed" = "silkworm/py.typed"}
 
 [dependency-groups]
 dev = [
-    "anyio>=4.12.0",
     "build==1.3.0",
     "memray==1.19.1",
     "mypy==1.19.0",
     "py-spy==0.4.1",
     "pydantic==2.12.5",
     "pytest==9.0.2",
+    "pytest-asyncio==1.3.0",
     "ruff==0.14.8",
     "twine==6.2.0",
 ]

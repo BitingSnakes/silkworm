@@ -21,7 +21,7 @@ def test_engine_defaults_to_bounded_queue():
     assert engine._queue.maxsize == 30  # concurrency * 10
 
 
-@pytest.mark.anyio("asyncio")
+@pytest.mark.asyncio
 async def test_engine_runs_with_limited_queue(monkeypatch: pytest.MonkeyPatch):
     spider = SmallSpider()
     engine = Engine(spider, concurrency=2, max_pending_requests=2)
@@ -43,7 +43,7 @@ async def test_engine_runs_with_limited_queue(monkeypatch: pytest.MonkeyPatch):
     assert engine._queue.empty()
 
 
-@pytest.mark.anyio("asyncio")
+@pytest.mark.asyncio
 async def test_engine_does_not_track_dont_filter_requests(
     monkeypatch: pytest.MonkeyPatch,
 ):

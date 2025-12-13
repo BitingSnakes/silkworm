@@ -14,7 +14,7 @@ class MockSpider(Spider):
         return {"data": "test"}
 
 
-@pytest.mark.anyio("asyncio")
+@pytest.mark.asyncio
 async def test_engine_tracks_statistics() -> None:
     """Test that the engine tracks basic statistics."""
     spider = MockSpider()
@@ -27,7 +27,7 @@ async def test_engine_tracks_statistics() -> None:
     assert engine._stats["errors"] == 0
 
 
-@pytest.mark.anyio("asyncio")
+@pytest.mark.asyncio
 async def test_engine_increments_item_count() -> None:
     """Test that items are counted correctly."""
     spider = MockSpider()
@@ -41,7 +41,7 @@ async def test_engine_increments_item_count() -> None:
     assert engine._stats["items_scraped"] == 2
 
 
-@pytest.mark.anyio("asyncio")
+@pytest.mark.asyncio
 async def test_engine_initializes_with_log_stats_interval() -> None:
     """Test that the engine accepts log_stats_interval parameter."""
     spider = MockSpider()
@@ -50,7 +50,7 @@ async def test_engine_initializes_with_log_stats_interval() -> None:
     assert engine.log_stats_interval == 5.0
 
 
-@pytest.mark.anyio("asyncio")
+@pytest.mark.asyncio
 async def test_engine_accepts_none_log_stats_interval() -> None:
     """Test that the engine accepts None for log_stats_interval."""
     spider = MockSpider()
@@ -59,7 +59,7 @@ async def test_engine_accepts_none_log_stats_interval() -> None:
     assert engine.log_stats_interval is None
 
 
-@pytest.mark.anyio("asyncio")
+@pytest.mark.asyncio
 async def test_engine_stats_payload_includes_seen_and_memory(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -111,7 +111,7 @@ class _SpyLogger:
         return None
 
 
-@pytest.mark.anyio("asyncio")
+@pytest.mark.asyncio
 async def test_final_log_includes_event_loop() -> None:
     """Final crawl statistics log should include the event loop in use."""
 
