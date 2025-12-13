@@ -1,7 +1,7 @@
 import pytest
 
 from silkworm.engine import Engine
-from silkworm.request import CallbackOutput, Request
+from silkworm.request import CallbackOutput
 from silkworm.response import Response
 from silkworm.spiders import Spider
 

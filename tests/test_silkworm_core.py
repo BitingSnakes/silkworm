@@ -1,5 +1,5 @@
 from urllib.parse import parse_qsl, urlsplit
-from typing import Any, cast
+from typing import Any
 
 import pytest
 
@@ -8,7 +8,6 @@ from silkworm.engine import Engine
 from silkworm.middlewares import DelayMiddleware, RetryMiddleware
 from silkworm.request import Request
 from silkworm.response import HTMLResponse, Response
-from silkworm import response as response_module
 from silkworm.spiders import Spider
 
 
