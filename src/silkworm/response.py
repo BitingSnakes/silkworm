@@ -1,6 +1,8 @@
 from __future__ import annotations
+import asyncio
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar
 from urllib.parse import urljoin
 
 from scraper_rs.asyncio import (  # type: ignore[import-untyped]
@@ -9,6 +11,11 @@ from scraper_rs.asyncio import (  # type: ignore[import-untyped]
     xpath as xpath_async,
     xpath_first as xpath_first_async,
 )
+
+from .exceptions import SelectorError
+
+
+T = TypeVar("T")
 
 
 if TYPE_CHECKING:
@@ -57,25 +64,36 @@ class Response:
 class HTMLResponse(Response):
     doc_max_size_bytes: int = 5_000_000
 
+    async def _run_selector(
+        self,
+        func: Callable[..., Awaitable[T]],
+        query: str,
+        *,
+        kind: str,
+    ) -> T:
+        try:
+            return await func(self.text, query, max_size_bytes=self.doc_max_size_bytes)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            label = query if len(query) <= 120 else f"{query[:120]}...(truncated)"
+            detail = str(exc)
+            suffix = f": {detail}" if detail else ""
+            raise SelectorError(
+                f"{kind} selector '{label}' failed for {self.url}{suffix}"
+            ) from exc
+
     async def select(self, selector: str) -> list[Element]:
-        return await select_async(
-            self.text, selector, max_size_bytes=self.doc_max_size_bytes
-        )
+        return await self._run_selector(select_async, selector, kind="CSS")
 
     async def select_first(self, selector: str) -> Element | None:
-        return await select_first_async(
-            self.text, selector, max_size_bytes=self.doc_max_size_bytes
-        )
+        return await self._run_selector(select_first_async, selector, kind="CSS")
 
     async def xpath(self, xpath: str) -> list[Element]:
-        return await xpath_async(
-            self.text, xpath, max_size_bytes=self.doc_max_size_bytes
-        )
+        return await self._run_selector(xpath_async, xpath, kind="XPath")
 
     async def xpath_first(self, xpath: str) -> Element | None:
-        return await xpath_first_async(
-            self.text, xpath, max_size_bytes=self.doc_max_size_bytes
-        )
+        return await self._run_selector(xpath_first_async, xpath, kind="XPath")
 
     def follow(
         self, href: str, callback: "Callback | None" = None, **kwargs: object

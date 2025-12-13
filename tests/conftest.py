@@ -102,6 +102,32 @@ class _DummyDocument:
         self.closed = True
 
 
+class _DummyRxmlNode:
+    def __init__(
+        self,
+        tag: str,
+        *,
+        children: list["_DummyRxmlNode"] | None = None,
+        text: str = "",
+    ) -> None:
+        self.tag = tag
+        self.children = children or []
+        self.text = text
+
+
+def _dummy_write_string(
+    node: "_DummyRxmlNode",
+    *,
+    indent: int = 0,  # noqa: ARG001
+    default_xml_def: bool = True,  # noqa: ARG001
+) -> str:
+    content = "".join(
+        _dummy_write_string(child, indent=indent, default_xml_def=default_xml_def)
+        for child in node.children
+    )
+    return f"<{node.tag}>{node.text}{content}</{node.tag}>"
+
+
 # Minimal stub modules so tests don't need real dependencies.
 logly_module: Any = types.ModuleType("logly")
 logly_module.logger = _DummyLogger()
@@ -110,6 +136,10 @@ rnet_module: Any = types.ModuleType("rnet")
 rnet_module.Client = _DummyClient
 rnet_module.Emulation = _DummyEmulation
 rnet_module.Method = _DummyMethod
+
+rxml_module: Any = types.ModuleType("rxml")
+rxml_module.Node = _DummyRxmlNode
+rxml_module.write_string = _dummy_write_string
 
 
 async def _dummy_select(doc: Any, selector: str) -> Any:
@@ -139,6 +169,7 @@ scraper_asyncio_module.xpath_first = _dummy_xpath_first
 
 sys.modules["logly"] = logly_module
 sys.modules["rnet"] = rnet_module
+sys.modules["rxml"] = rxml_module
 sys.modules["scraper_rs"] = scraper_module
 sys.modules["scraper_rs.asyncio"] = scraper_asyncio_module
 

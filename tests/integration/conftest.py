@@ -16,7 +16,7 @@ if str(SRC) not in sys.path:
 
 # Remove the dummy modules installed by parent conftest
 # and replace them with real modules (including submodules)
-modules_to_reload = ["scraper_rs", "scraper_rs.asyncio", "logly", "rnet"]
+modules_to_reload = ["scraper_rs", "scraper_rs.asyncio", "logly", "rnet", "rxml"]
 for module_name in modules_to_reload:
     if module_name in sys.modules:
         del sys.modules[module_name]

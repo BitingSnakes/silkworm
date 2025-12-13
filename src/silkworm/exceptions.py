@@ -11,3 +11,7 @@ class HttpError(SilkwormError):
 
 class SpiderError(SilkwormError):
     """Raised when a spider callback errors."""
+
+
+class SelectorError(SilkwormError):
+    """Raised when CSS/XPath selector evaluation fails."""
