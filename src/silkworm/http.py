@@ -1,9 +1,10 @@
 from __future__ import annotations
 import asyncio
 import inspect
+from contextlib import asynccontextmanager
 from collections.abc import Callable, Mapping, Sequence
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit
-from typing import Any, cast
+from typing import Any, AsyncIterator, cast
 
 from rnet import Client, Emulation, Method  # type: ignore[import]
 
@@ -76,6 +77,7 @@ class HttpClient:
             method = self._normalize_method(current_req.method)
             url = self._build_url(current_req)
             visited_urls.add(url)
+            timeout: float | None = None
 
             try:
                 async with self._sem:
@@ -98,41 +100,47 @@ class HttpClient:
                     if self._keep_alive and self._supports_keep_alive_kwarg:
                         request_kwargs["keep_alive"] = True
 
-                    # Adjust keyword arguments to actual rnet.Client.request signature
-                    resp = await self._send_request(method, url, request_kwargs)
+                    async with self._request_timeout(timeout):
+                        # Adjust keyword arguments to actual rnet.Client.request signature
+                        resp = await self._send_request(method, url, request_kwargs)
 
-                    status = self._normalize_status(resp.status)
-                    headers = self._normalize_headers(resp.headers)
+                        status = self._normalize_status(resp.status)
+                        headers = self._normalize_headers(resp.headers)
 
-                    if self._should_follow_redirect(status, headers):
-                        if redirects_followed >= self._max_redirects:
-                            raise HttpError(
-                                f"Exceeded maximum redirects ({self._max_redirects})"
+                        if self._should_follow_redirect(status, headers):
+                            if redirects_followed >= self._max_redirects:
+                                raise HttpError(
+                                    f"Exceeded maximum redirects ({self._max_redirects})"
+                                )
+
+                            redirect_url = self._resolve_redirect_url(
+                                url, headers.get("location", "")
                             )
+                            if redirect_url in visited_urls:
+                                raise HttpError("Redirect loop detected")
 
-                        redirect_url = self._resolve_redirect_url(
-                            url, headers.get("location", "")
-                        )
-                        if redirect_url in visited_urls:
-                            raise HttpError("Redirect loop detected")
+                            redirects_followed += 1
+                            self.logger.debug(
+                                "Following redirect",
+                                from_url=url,
+                                to_url=redirect_url,
+                                status=status,
+                            )
+                            current_req = self._redirect_request(
+                                current_req, redirect_url, status, method
+                            )
+                            await self._close_response(resp)
+                            resp = None
+                            continue
 
-                        redirects_followed += 1
-                        self.logger.debug(
-                            "Following redirect",
-                            from_url=url,
-                            to_url=redirect_url,
-                            status=status,
-                        )
-                        current_req = self._redirect_request(
-                            current_req, redirect_url, status, method
-                        )
-                        await self._close_response(resp)
-                        resp = None
-                        continue
-
-                    body = await self._read_body(resp)
-                    elapsed = (asyncio.get_running_loop().time() - total_start) * 1000
+                        body = await self._read_body(resp)
+                        elapsed = (
+                            asyncio.get_running_loop().time() - total_start
+                        ) * 1000
                 break
+            except TimeoutError as exc:
+                suffix = f" after {timeout} seconds" if timeout is not None else ""
+                raise HttpError(f"Request to {req.url} timed out{suffix}") from exc
             except HttpError:
                 raise
             except Exception as exc:
@@ -180,6 +188,14 @@ class HttpClient:
 
     async def _maybe_await(self, value: object) -> object:
         return await value if inspect.isawaitable(value) else value
+
+    @asynccontextmanager
+    async def _request_timeout(self, timeout: float | None) -> AsyncIterator[None]:
+        if timeout is None:
+            yield
+            return
+        async with asyncio.timeout(timeout):
+            yield
 
     async def _read_body(self, resp: object) -> bytes:
         """

@@ -55,8 +55,7 @@ class Engine:
         )
         self._queue: asyncio.Queue[Request] = asyncio.Queue(maxsize=queue_size)
         self._seen: set[str] = set()
-        self._stopping = False
-        self._tasks: list[asyncio.Task] = []
+        self._stop_event = asyncio.Event()
         self.logger = get_logger(component="engine", spider=self.spider.name)
 
         self.request_middlewares = list(request_middlewares or [])
@@ -65,7 +64,6 @@ class Engine:
 
         # Statistics tracking
         self.log_stats_interval = log_stats_interval
-        self._stats_task: asyncio.Task | None = None
         self._start_time: float = 0.0
         self._event_loop_type: str | None = None
         self._stats: dict[str, int] = {
@@ -105,15 +103,16 @@ class Engine:
         await self._queue.put(req)
 
     async def _worker(self) -> None:
-        while True:
-            if self._stopping:
-                break
+        while not self._stop_event.is_set():
             try:
-                req = await asyncio.wait_for(self._queue.get(), timeout=1.0)
-            except asyncio.TimeoutError:
-                if self._stopping:
+                async with asyncio.timeout(1.0):
+                    req = await self._queue.get()
+            except TimeoutError:
+                if self._stop_event.is_set():
                     break
                 continue
+            except asyncio.CancelledError:
+                break
 
             try:
                 req = await self._apply_request_mw(req)
@@ -316,49 +315,42 @@ class Engine:
         if self.log_stats_interval is None:
             return
 
-        while not self._stopping:
-            await asyncio.sleep(self.log_stats_interval)
-            if self._stopping:
-                break
+        interval = self.log_stats_interval
+        if interval <= 0:
+            return
 
-            self.logger.info(
-                "Crawl statistics",
-                spider=self.spider.name,
-                **self._stats_payload(time.time() - self._start_time),
-            )
+        while not self._stop_event.is_set():
+            try:
+                async with asyncio.timeout(interval):
+                    await self._stop_event.wait()
+                    break
+            except TimeoutError:
+                self.logger.info(
+                    "Crawl statistics",
+                    spider=self.spider.name,
+                    **self._stats_payload(time.time() - self._start_time),
+                )
 
     async def run(self) -> None:
         self.logger.info("Starting engine", spider=self.spider.name)
         self._start_time = time.time()
         self._event_loop_type = self._detect_event_loop()
 
-        # number of workers = client concurrency
-        for _ in range(self.http.concurrency):
-            task = asyncio.create_task(self._worker())
-            self._tasks.append(task)
-
-        # Open spider and seed initial requests while workers are already waiting.
         try:
-            await self.open_spider()
+            async with asyncio.TaskGroup() as tg:
+                for _ in range(self.http.concurrency):
+                    tg.create_task(self._worker())
 
-            # Start statistics logging if interval is configured
-            if self.log_stats_interval is not None and self.log_stats_interval > 0:
-                self._stats_task = asyncio.create_task(self._log_statistics())
+                if self.log_stats_interval is not None and self.log_stats_interval > 0:
+                    tg.create_task(self._log_statistics())
 
-            await self._queue.join()
+                # Open spider and seed initial requests while workers are already waiting.
+                await self.open_spider()
+                await self._queue.join()
+                self._stop_event.set()
         finally:
-            self._stopping = True
-            await asyncio.gather(*self._tasks, return_exceptions=True)
+            self._stop_event.set()
 
-            # Stop statistics logging task if it was started
-            if self._stats_task is not None:
-                self._stats_task.cancel()
-                try:
-                    await self._stats_task
-                except asyncio.CancelledError:
-                    pass
-
-            # Log final statistics
             self.logger.info(
                 "Final crawl statistics",
                 spider=self.spider.name,

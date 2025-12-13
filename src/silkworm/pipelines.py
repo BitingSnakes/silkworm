@@ -8,7 +8,7 @@ import sqlite3
 import rxml
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Protocol, TYPE_CHECKING, runtime_checkable
 
 try:
     from taskiq import AsyncBroker  # type: ignore[import-not-found]
@@ -161,8 +161,8 @@ try:
 except ImportError:
     AIOBOTO3_AVAILABLE = False
 
-if True:
-    from .spiders import Spider  # type: ignore
+if TYPE_CHECKING:
+    from .spiders import Spider
 from .logging import get_logger
 from ._types import JSONValue
 
