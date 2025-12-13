@@ -128,7 +128,6 @@ def test_httpclient_normalize_headers_handles_multiple_shapes():
     assert normalized["x-ratelimit"] == "10"
 
 
-@pytest.mark.asyncio
 async def test_httpclient_follows_redirects():
     class RedirectClient(_RecordingClient):
         async def request(self, method: Any, url: str, **kwargs: Any) -> _StubResponse:  # type: ignore[override]
@@ -157,7 +156,6 @@ async def test_httpclient_follows_redirects():
     assert client._client.calls[1][1] == "http://example.com/next"
 
 
-@pytest.mark.asyncio
 async def test_httpclient_detects_redirect_loops():
     from silkworm.exceptions import HttpError
 
@@ -175,7 +173,6 @@ async def test_httpclient_detects_redirect_loops():
         await client.fetch(Request(url="http://example.com/loop"))
 
 
-@pytest.mark.asyncio
 async def test_httpclient_handles_unhashable_status_codes():
     class UnhashableStatus:
         __hash__ = None
@@ -209,7 +206,6 @@ async def test_httpclient_handles_unhashable_status_codes():
     assert redirect_client.calls[1][1] == "http://example.com/next"
 
 
-@pytest.mark.asyncio
 async def test_httpclient_sets_keep_alive():
     client = HttpClient(keep_alive=True)
     recording = _RecordingClient()
@@ -223,7 +219,6 @@ async def test_httpclient_sets_keep_alive():
     assert kwargs["headers"].get("Connection") == "keep-alive"
 
 
-@pytest.mark.asyncio
 async def test_httpclient_keep_alive_when_kwarg_not_supported():
     class StrictClient:
         def __init__(self) -> None:
@@ -265,7 +260,6 @@ async def test_httpclient_keep_alive_when_kwarg_not_supported():
     assert first_call["headers"].get("Connection") == "keep-alive"
 
 
-@pytest.mark.asyncio
 async def test_retry_middleware_returns_retry_request(monkeypatch: pytest.MonkeyPatch):
     sleep_calls: list[float] = []
 
@@ -289,7 +283,6 @@ async def test_retry_middleware_returns_retry_request(monkeypatch: pytest.Monkey
     assert sleep_calls == [0.1]
 
 
-@pytest.mark.asyncio
 async def test_retry_middleware_sleep_codes_extend_retry(
     monkeypatch: pytest.MonkeyPatch,
 ):
@@ -313,7 +306,6 @@ async def test_retry_middleware_sleep_codes_extend_retry(
     assert sleep_calls == [0.2]
 
 
-@pytest.mark.asyncio
 async def test_retry_middleware_retry_without_sleep(monkeypatch: pytest.MonkeyPatch):
     sleep_calls: list[float] = []
 
@@ -337,7 +329,6 @@ async def test_retry_middleware_retry_without_sleep(monkeypatch: pytest.MonkeyPa
     assert sleep_calls == []
 
 
-@pytest.mark.asyncio
 async def test_engine_closes_responses(monkeypatch: pytest.MonkeyPatch):
     class DummySpider(Spider):
         name = "closer"
@@ -376,7 +367,6 @@ async def test_engine_closes_responses(monkeypatch: pytest.MonkeyPatch):
     assert seen and all(r.closed for r in seen)
 
 
-@pytest.mark.asyncio
 async def test_retry_middleware_stops_after_max_times(monkeypatch: pytest.MonkeyPatch):
     async def fake_sleep(_: float) -> None:
         return None
@@ -393,7 +383,6 @@ async def test_retry_middleware_stops_after_max_times(monkeypatch: pytest.Monkey
     assert result is response
 
 
-@pytest.mark.asyncio
 async def test_engine_retries_requests_even_if_url_seen(
     monkeypatch: pytest.MonkeyPatch,
 ):
@@ -434,7 +423,6 @@ async def test_engine_retries_requests_even_if_url_seen(
     assert seen_requests == [(429, 0), (200, 1)]
 
 
-@pytest.mark.asyncio
 async def test_delay_middleware_fixed_delay(monkeypatch: pytest.MonkeyPatch):
     sleep_calls: list[float] = []
 
@@ -452,7 +440,6 @@ async def test_delay_middleware_fixed_delay(monkeypatch: pytest.MonkeyPatch):
     assert sleep_calls == [1.5]
 
 
-@pytest.mark.asyncio
 async def test_delay_middleware_random_delay(monkeypatch: pytest.MonkeyPatch):
     sleep_calls: list[float] = []
 
@@ -471,7 +458,6 @@ async def test_delay_middleware_random_delay(monkeypatch: pytest.MonkeyPatch):
     assert 0.5 <= sleep_calls[0] <= 2.0
 
 
-@pytest.mark.asyncio
 async def test_delay_middleware_custom_function(monkeypatch: pytest.MonkeyPatch):
     sleep_calls: list[float] = []
 
@@ -530,7 +516,6 @@ def test_delay_middleware_validation_errors():
         DelayMiddleware(min_delay=2.0, max_delay=0.5)
 
 
-@pytest.mark.asyncio
 async def test_delay_middleware_zero_delay(monkeypatch: pytest.MonkeyPatch):
     sleep_calls: list[float] = []
 

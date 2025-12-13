@@ -9,7 +9,6 @@ from silkworm.pipelines import CSVPipeline, SQLitePipeline, XMLPipeline
 from silkworm.spiders import Spider
 
 
-@pytest.mark.asyncio
 async def test_xml_pipeline_creates_valid_xml():
     with tempfile.TemporaryDirectory() as tmpdir:
         xml_path = Path(tmpdir) / "test.xml"
@@ -40,7 +39,6 @@ async def test_xml_pipeline_creates_valid_xml():
         assert items[1].find("author").text == "Jane"
 
 
-@pytest.mark.asyncio
 async def test_xml_pipeline_custom_elements():
     with tempfile.TemporaryDirectory() as tmpdir:
         xml_path = Path(tmpdir) / "test.xml"
@@ -58,7 +56,6 @@ async def test_xml_pipeline_custom_elements():
         assert root[0].tag == "quote"
 
 
-@pytest.mark.asyncio
 async def test_xml_pipeline_handles_nested_dict():
     with tempfile.TemporaryDirectory() as tmpdir:
         xml_path = Path(tmpdir) / "test.xml"
@@ -80,7 +77,6 @@ async def test_xml_pipeline_handles_nested_dict():
         assert item.find("active").text == "True"
 
 
-@pytest.mark.asyncio
 async def test_xml_pipeline_handles_list():
     with tempfile.TemporaryDirectory() as tmpdir:
         xml_path = Path(tmpdir) / "test.xml"
@@ -103,7 +99,6 @@ async def test_xml_pipeline_handles_list():
         assert tag_items[2].text == "scraping"
 
 
-@pytest.mark.asyncio
 async def test_xml_pipeline_not_opened_raises_error():
     pipeline = XMLPipeline("test.xml")
     spider = Spider()
@@ -112,7 +107,6 @@ async def test_xml_pipeline_not_opened_raises_error():
         await pipeline.process_item({"test": "data"}, spider)
 
 
-@pytest.mark.asyncio
 async def test_csv_pipeline_creates_valid_csv():
     with tempfile.TemporaryDirectory() as tmpdir:
         csv_path = Path(tmpdir) / "test.csv"
@@ -138,7 +132,6 @@ async def test_csv_pipeline_creates_valid_csv():
         assert "Jane" in content
 
 
-@pytest.mark.asyncio
 async def test_csv_pipeline_with_custom_fieldnames():
     with tempfile.TemporaryDirectory() as tmpdir:
         csv_path = Path(tmpdir) / "test.csv"
@@ -157,7 +150,6 @@ async def test_csv_pipeline_with_custom_fieldnames():
         assert "John,Hello" in content
 
 
-@pytest.mark.asyncio
 async def test_csv_pipeline_flattens_nested_dict():
     with tempfile.TemporaryDirectory() as tmpdir:
         csv_path = Path(tmpdir) / "test.csv"
@@ -178,7 +170,6 @@ async def test_csv_pipeline_flattens_nested_dict():
         assert "10001" in content
 
 
-@pytest.mark.asyncio
 async def test_csv_pipeline_converts_list_to_string():
     with tempfile.TemporaryDirectory() as tmpdir:
         csv_path = Path(tmpdir) / "test.csv"
@@ -196,7 +187,6 @@ async def test_csv_pipeline_converts_list_to_string():
         assert "python, web, scraping" in content
 
 
-@pytest.mark.asyncio
 async def test_csv_pipeline_not_opened_raises_error():
     pipeline = CSVPipeline("test.csv")
     spider = Spider()
@@ -205,7 +195,6 @@ async def test_csv_pipeline_not_opened_raises_error():
         await pipeline.process_item({"test": "data"}, spider)
 
 
-@pytest.mark.asyncio
 async def test_csv_pipeline_handles_extra_fields():
     with tempfile.TemporaryDirectory() as tmpdir:
         csv_path = Path(tmpdir) / "test.csv"
@@ -250,7 +239,6 @@ except ImportError:
 
 
 @pytest.mark.skipif(not TASKIQ_AVAILABLE, reason="taskiq not installed")
-@pytest.mark.asyncio
 async def test_taskiq_pipeline_sends_items_to_queue():
     broker = InMemoryBroker()
     processed_items = []
@@ -280,7 +268,6 @@ async def test_taskiq_pipeline_sends_items_to_queue():
 
 
 @pytest.mark.skipif(not TASKIQ_AVAILABLE, reason="taskiq not installed")
-@pytest.mark.asyncio
 async def test_taskiq_pipeline_not_opened_raises_error():
     broker = InMemoryBroker()
 
@@ -296,7 +283,6 @@ async def test_taskiq_pipeline_not_opened_raises_error():
 
 
 @pytest.mark.skipif(not TASKIQ_AVAILABLE, reason="taskiq not installed")
-@pytest.mark.asyncio
 async def test_taskiq_pipeline_invalid_task_name_raises_error():
     broker = InMemoryBroker()
 
@@ -348,7 +334,6 @@ except ImportError:
 
 
 @pytest.mark.skipif(not ORMSGPACK_AVAILABLE, reason="ormsgpack not installed")
-@pytest.mark.asyncio
 async def test_msgpack_pipeline_writes_items():
     with tempfile.TemporaryDirectory() as tmpdir:
         msgpack_path = Path(tmpdir) / "test.msgpack"
@@ -375,7 +360,6 @@ async def test_msgpack_pipeline_writes_items():
 
 
 @pytest.mark.skipif(not ORMSGPACK_AVAILABLE, reason="ormsgpack not installed")
-@pytest.mark.asyncio
 async def test_msgpack_pipeline_append_mode():
     with tempfile.TemporaryDirectory() as tmpdir:
         msgpack_path = Path(tmpdir) / "test.msgpack"
@@ -407,7 +391,6 @@ async def test_msgpack_pipeline_append_mode():
 
 
 @pytest.mark.skipif(not ORMSGPACK_AVAILABLE, reason="ormsgpack not installed")
-@pytest.mark.asyncio
 async def test_msgpack_pipeline_handles_nested_data():
     with tempfile.TemporaryDirectory() as tmpdir:
         msgpack_path = Path(tmpdir) / "test.msgpack"
@@ -436,7 +419,6 @@ async def test_msgpack_pipeline_handles_nested_data():
 
 
 @pytest.mark.skipif(not ORMSGPACK_AVAILABLE, reason="ormsgpack not installed")
-@pytest.mark.asyncio
 async def test_msgpack_pipeline_not_opened_raises_error():
     pipeline = MsgPackPipeline("test.msgpack")
     spider = Spider()
@@ -462,7 +444,6 @@ except ImportError:
 
 
 @pytest.mark.skipif(not POLARS_AVAILABLE, reason="polars not installed")
-@pytest.mark.asyncio
 async def test_polars_pipeline_writes_parquet():
     with tempfile.TemporaryDirectory() as tmpdir:
         parquet_path = Path(tmpdir) / "test.parquet"
@@ -482,7 +463,6 @@ async def test_polars_pipeline_writes_parquet():
 
 
 @pytest.mark.skipif(not POLARS_AVAILABLE, reason="polars not installed")
-@pytest.mark.asyncio
 async def test_polars_pipeline_append_mode():
     with tempfile.TemporaryDirectory() as tmpdir:
         parquet_path = Path(tmpdir) / "test.parquet"
@@ -523,7 +503,6 @@ except ImportError:
 
 
 @pytest.mark.skipif(not OPENPYXL_AVAILABLE, reason="openpyxl not installed")
-@pytest.mark.asyncio
 async def test_excel_pipeline_writes_xlsx():
     with tempfile.TemporaryDirectory() as tmpdir:
         excel_path = Path(tmpdir) / "test.xlsx"
@@ -559,7 +538,6 @@ async def test_excel_pipeline_writes_xlsx():
 
 
 @pytest.mark.skipif(not OPENPYXL_AVAILABLE, reason="openpyxl not installed")
-@pytest.mark.asyncio
 async def test_excel_pipeline_flattens_nested_dict():
     with tempfile.TemporaryDirectory() as tmpdir:
         excel_path = Path(tmpdir) / "test.xlsx"
@@ -592,7 +570,6 @@ except ImportError:
 
 
 @pytest.mark.skipif(not YAML_AVAILABLE, reason="pyyaml not installed")
-@pytest.mark.asyncio
 async def test_yaml_pipeline_writes_yaml():
     with tempfile.TemporaryDirectory() as tmpdir:
         yaml_path = Path(tmpdir) / "test.yaml"
@@ -614,7 +591,6 @@ async def test_yaml_pipeline_writes_yaml():
 
 
 @pytest.mark.skipif(not YAML_AVAILABLE, reason="pyyaml not installed")
-@pytest.mark.asyncio
 async def test_yaml_pipeline_handles_nested_data():
     with tempfile.TemporaryDirectory() as tmpdir:
         yaml_path = Path(tmpdir) / "test.yaml"
@@ -649,7 +625,6 @@ except ImportError:
 
 
 @pytest.mark.skipif(not FASTAVRO_AVAILABLE, reason="fastavro not installed")
-@pytest.mark.asyncio
 async def test_avro_pipeline_writes_with_schema():
     with tempfile.TemporaryDirectory() as tmpdir:
         avro_path = Path(tmpdir) / "test.avro"
@@ -680,7 +655,6 @@ async def test_avro_pipeline_writes_with_schema():
 
 
 @pytest.mark.skipif(not FASTAVRO_AVAILABLE, reason="fastavro not installed")
-@pytest.mark.asyncio
 async def test_avro_pipeline_infers_schema():
     with tempfile.TemporaryDirectory() as tmpdir:
         avro_path = Path(tmpdir) / "test.avro"
@@ -785,7 +759,6 @@ except ImportError:
 
 
 @pytest.mark.skipif(not VORTEX_AVAILABLE, reason="vortex not installed")
-@pytest.mark.asyncio
 async def test_vortex_pipeline_writes_vortex_file():
     with tempfile.TemporaryDirectory() as tmpdir:
         vortex_path = Path(tmpdir) / "test.vortex"
@@ -810,7 +783,6 @@ async def test_vortex_pipeline_writes_vortex_file():
 
 
 @pytest.mark.skipif(not VORTEX_AVAILABLE, reason="vortex not installed")
-@pytest.mark.asyncio
 async def test_vortex_pipeline_handles_nested_data():
     with tempfile.TemporaryDirectory() as tmpdir:
         vortex_path = Path(tmpdir) / "test.vortex"
@@ -833,7 +805,6 @@ async def test_vortex_pipeline_handles_nested_data():
 
 
 @pytest.mark.skipif(not VORTEX_AVAILABLE, reason="vortex not installed")
-@pytest.mark.asyncio
 async def test_vortex_pipeline_handles_empty():
     with tempfile.TemporaryDirectory() as tmpdir:
         vortex_path = Path(tmpdir) / "test.vortex"
@@ -855,7 +826,6 @@ def test_vortex_pipeline_initialization():
 
 
 @pytest.mark.skipif(not VORTEX_AVAILABLE, reason="vortex not installed")
-@pytest.mark.asyncio
 async def test_vortex_pipeline_handles_various_types():
     with tempfile.TemporaryDirectory() as tmpdir:
         vortex_path = Path(tmpdir) / "test.vortex"
@@ -999,7 +969,6 @@ def test_webhook_pipeline_initialization():
 
 
 @pytest.mark.skipif(not WEBHOOK_AVAILABLE, reason="rnet not available")
-@pytest.mark.asyncio
 async def test_webhook_pipeline_not_opened_raises_error():
     pipeline = WebhookPipeline("https://webhook.site/test")  # type: ignore
     spider = Spider()
@@ -1032,7 +1001,6 @@ def test_google_sheets_pipeline_initialization():
 @pytest.mark.skipif(
     not GOOGLE_SHEETS_AVAILABLE, reason="google-api-python-client not installed"
 )
-@pytest.mark.asyncio
 async def test_google_sheets_pipeline_not_opened_raises_error():
     pipeline = GoogleSheetsPipeline(  # type: ignore
         spreadsheet_id="test_id", credentials_file="test_creds.json"
@@ -1102,7 +1070,6 @@ def test_snowflake_pipeline_invalid_table_name():
 @pytest.mark.skipif(
     not SNOWFLAKE_AVAILABLE, reason="snowflake-connector-python not installed"
 )
-@pytest.mark.asyncio
 async def test_snowflake_pipeline_not_opened_raises_error():
     pipeline = SnowflakePipeline(  # type: ignore
         account="test_account",
@@ -1246,7 +1213,6 @@ def test_cassandra_pipeline_invalid_table_name():
 
 
 @pytest.mark.skipif(not CASSANDRA_AVAILABLE, reason="cassandra-driver not installed")
-@pytest.mark.asyncio
 async def test_cassandra_pipeline_not_opened_raises_error():
     pipeline = CassandraPipeline(  # type: ignore
         hosts=["127.0.0.1"],
@@ -1286,7 +1252,6 @@ def test_couchdb_pipeline_initialization():
 
 
 @pytest.mark.skipif(not AIOCOUCH_AVAILABLE, reason="aiocouch not installed")
-@pytest.mark.asyncio
 async def test_couchdb_pipeline_not_opened_raises_error():
     pipeline = CouchDBPipeline(  # type: ignore
         url="http://localhost:5984",
@@ -1327,7 +1292,6 @@ def test_dynamodb_pipeline_initialization():
 
 
 @pytest.mark.skipif(not AIOBOTO3_AVAILABLE, reason="aioboto3 not installed")
-@pytest.mark.asyncio
 async def test_dynamodb_pipeline_not_opened_raises_error():
     pipeline = DynamoDBPipeline(  # type: ignore
         table_name="test_table",

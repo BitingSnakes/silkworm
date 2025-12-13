@@ -8,7 +8,6 @@ from silkworm.request import Request
 from silkworm.response import HTMLResponse
 
 
-@pytest.mark.asyncio
 async def test_xpath_selects_multiple_elements():
     """Test that xpath() returns multiple matching elements."""
     html = """
@@ -42,7 +41,6 @@ async def test_xpath_selects_multiple_elements():
     assert hasattr(quotes[0], "text")
 
 
-@pytest.mark.asyncio
 async def test_xpath_extracts_text_content():
     """Test that xpath can extract text from elements."""
     html = """
@@ -77,7 +75,6 @@ async def test_xpath_extracts_text_content():
     assert h1.text.strip() == "Title"
 
 
-@pytest.mark.asyncio
 async def test_xpath_first_returns_single_element():
     """Test that xpath_first() returns only the first matching element."""
     html = """
@@ -104,7 +101,6 @@ async def test_xpath_first_returns_single_element():
     assert first_link.text == "Link 1"
 
 
-@pytest.mark.asyncio
 async def test_xpath_first_returns_none_when_not_found():
     """Test that xpath_first() returns None when no match is found."""
     html = """
@@ -128,7 +124,6 @@ async def test_xpath_first_returns_none_when_not_found():
     assert link is None
 
 
-@pytest.mark.asyncio
 async def test_xpath_handles_attributes():
     """Test that xpath can query and extract attributes."""
     html = """
@@ -159,7 +154,6 @@ async def test_xpath_handles_attributes():
     assert len(divs) == 1
 
 
-@pytest.mark.asyncio
 async def test_xpath_with_complex_expressions():
     """Test that xpath can handle complex expressions."""
     html = """
@@ -193,7 +187,6 @@ async def test_xpath_with_complex_expressions():
     assert "Item 3" in special.text
 
 
-@pytest.mark.asyncio
 async def test_xpath_empty_result():
     """Test that xpath returns empty list when no matches found."""
     html = """
@@ -218,7 +211,6 @@ async def test_xpath_empty_result():
     assert len(tables) == 0
 
 
-@pytest.mark.asyncio
 async def test_xpath_respects_max_size_bytes():
     """Test that xpath methods respect doc_max_size_bytes setting."""
     html = "<html><body><p>Test</p></body></html>"
@@ -238,7 +230,6 @@ async def test_xpath_respects_max_size_bytes():
     assert paragraphs[0].text == "Test"
 
 
-@pytest.mark.asyncio
 async def test_xpath_works_alongside_css():
     """Test that xpath and css methods can be used together."""
     html = """
