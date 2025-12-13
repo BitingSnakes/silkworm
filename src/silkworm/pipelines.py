@@ -1,5 +1,6 @@
 from __future__ import annotations
 import csv
+import inspect
 import io
 import json
 import re
@@ -237,8 +238,6 @@ class CallbackPipeline:
 
     async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
         """Process an item using the callback function."""
-        import inspect
-
         # Call the callback - handle both sync and async functions
         if inspect.iscoroutinefunction(self.callback):
             result = await self.callback(item, spider)
