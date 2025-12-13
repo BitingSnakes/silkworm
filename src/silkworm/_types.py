@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 
-# PEP 695: Type Parameter Syntax (Python 3.12+)
+# PEP 695: Type Parameter Syntax (Python 3.13+)
 type JSONScalar = str | int | float | bool | None
 type JSONValue = JSONScalar | dict[str, JSONValue] | list[JSONValue]
 
