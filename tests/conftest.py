@@ -157,6 +157,7 @@ try:
 except ImportError:
     print("uvloop not installed; skipping uvloop backend tests")
 
+
 @pytest.fixture(params=backends)
 def anyio_backend(request):
     return request.param

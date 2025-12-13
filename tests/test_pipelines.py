@@ -5,7 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from silkworm.pipelines import CallbackPipeline, CSVPipeline, SQLitePipeline, XMLPipeline
+from silkworm.pipelines import (
+    CallbackPipeline,
+    CSVPipeline,
+    SQLitePipeline,
+    XMLPipeline,
+)
 from silkworm.spiders import Spider
 
 
@@ -215,7 +220,9 @@ def test_callback_pipeline_requires_callable():
 
 
 async def test_callback_pipeline_with_lambda():
-    pipeline = CallbackPipeline(callback=lambda item, spider: {**item, "processed": True})
+    pipeline = CallbackPipeline(
+        callback=lambda item, spider: {**item, "processed": True}
+    )
     spider = Spider()
 
     await pipeline.open(spider)
@@ -227,6 +234,7 @@ async def test_callback_pipeline_with_lambda():
 
 async def test_callback_pipeline_callback_can_filter_item():
     """Test that callback can return a different item or filter it."""
+
     def filter_short_text(item, spider):
         if len(item.get("text", "")) < 5:
             return None  # Filter out short items
@@ -236,15 +244,15 @@ async def test_callback_pipeline_callback_can_filter_item():
     spider = Spider()
 
     await pipeline.open(spider)
-    
+
     # Short text should still return original item when callback returns None
     result1 = await pipeline.process_item({"text": "Hi"}, spider)
     assert result1 == {"text": "Hi"}
-    
+
     # Long text should pass through
     result2 = await pipeline.process_item({"text": "Hello World"}, spider)
     assert result2 == {"text": "Hello World"}
-    
+
     await pipeline.close(spider)
 
 
