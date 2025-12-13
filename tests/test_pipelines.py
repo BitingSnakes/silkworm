@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from silkworm.pipelines import CSVPipeline, SQLitePipeline, XMLPipeline
+from silkworm.pipelines import CallbackPipeline, CSVPipeline, SQLitePipeline, XMLPipeline
 from silkworm.spiders import Spider
 
 
@@ -105,6 +105,147 @@ async def test_xml_pipeline_not_opened_raises_error():
 
     with pytest.raises(RuntimeError, match="XMLPipeline not opened"):
         await pipeline.process_item({"test": "data"}, spider)
+
+
+# CallbackPipeline tests
+async def test_callback_pipeline_with_sync_callback():
+    processed_items = []
+
+    def process_item(item, spider):
+        processed_items.append(item)
+        return item
+
+    pipeline = CallbackPipeline(callback=process_item)
+    spider = Spider()
+
+    await pipeline.open(spider)
+    result = await pipeline.process_item({"text": "Hello", "author": "Alice"}, spider)
+    await pipeline.close(spider)
+
+    assert len(processed_items) == 1
+    assert processed_items[0] == {"text": "Hello", "author": "Alice"}
+    assert result == {"text": "Hello", "author": "Alice"}
+
+
+async def test_callback_pipeline_with_async_callback():
+    processed_items = []
+
+    async def process_item(item, spider):
+        await asyncio.sleep(0.01)  # Simulate async operation
+        processed_items.append(item)
+        return item
+
+    pipeline = CallbackPipeline(callback=process_item)
+    spider = Spider()
+
+    await pipeline.open(spider)
+    result = await pipeline.process_item({"text": "World", "author": "Bob"}, spider)
+    await pipeline.close(spider)
+
+    assert len(processed_items) == 1
+    assert processed_items[0] == {"text": "World", "author": "Bob"}
+    assert result == {"text": "World", "author": "Bob"}
+
+
+async def test_callback_pipeline_callback_can_modify_item():
+    def add_timestamp(item, spider):
+        item["processed"] = True
+        item["spider_name"] = spider.name
+        return item
+
+    pipeline = CallbackPipeline(callback=add_timestamp)
+    spider = Spider()
+    spider.name = "test_spider"
+
+    await pipeline.open(spider)
+    result = await pipeline.process_item({"text": "Test"}, spider)
+    await pipeline.close(spider)
+
+    assert result == {"text": "Test", "processed": True, "spider_name": "test_spider"}
+
+
+async def test_callback_pipeline_callback_returning_none():
+    def process_item(item, spider):
+        # Callback that doesn't return anything
+        print(item)
+        return None
+
+    pipeline = CallbackPipeline(callback=process_item)
+    spider = Spider()
+
+    await pipeline.open(spider)
+    result = await pipeline.process_item({"text": "Test"}, spider)
+    await pipeline.close(spider)
+
+    # When callback returns None, original item should be returned
+    assert result == {"text": "Test"}
+
+
+async def test_callback_pipeline_multiple_items():
+    processed_items = []
+
+    def process_item(item, spider):
+        processed_items.append(item)
+        return item
+
+    pipeline = CallbackPipeline(callback=process_item)
+    spider = Spider()
+
+    await pipeline.open(spider)
+    await pipeline.process_item({"id": 1}, spider)
+    await pipeline.process_item({"id": 2}, spider)
+    await pipeline.process_item({"id": 3}, spider)
+    await pipeline.close(spider)
+
+    assert len(processed_items) == 3
+    assert processed_items[0] == {"id": 1}
+    assert processed_items[1] == {"id": 2}
+    assert processed_items[2] == {"id": 3}
+
+
+def test_callback_pipeline_requires_callable():
+    with pytest.raises(TypeError, match="callback must be callable"):
+        CallbackPipeline(callback="not_callable")
+
+    with pytest.raises(TypeError, match="callback must be callable"):
+        CallbackPipeline(callback=123)
+
+    with pytest.raises(TypeError, match="callback must be callable"):
+        CallbackPipeline(callback=None)
+
+
+async def test_callback_pipeline_with_lambda():
+    pipeline = CallbackPipeline(callback=lambda item, spider: {**item, "processed": True})
+    spider = Spider()
+
+    await pipeline.open(spider)
+    result = await pipeline.process_item({"text": "Test"}, spider)
+    await pipeline.close(spider)
+
+    assert result == {"text": "Test", "processed": True}
+
+
+async def test_callback_pipeline_callback_can_filter_item():
+    """Test that callback can return a different item or filter it."""
+    def filter_short_text(item, spider):
+        if len(item.get("text", "")) < 5:
+            return None  # Filter out short items
+        return item
+
+    pipeline = CallbackPipeline(callback=filter_short_text)
+    spider = Spider()
+
+    await pipeline.open(spider)
+    
+    # Short text should still return original item when callback returns None
+    result1 = await pipeline.process_item({"text": "Hi"}, spider)
+    assert result1 == {"text": "Hi"}
+    
+    # Long text should pass through
+    result2 = await pipeline.process_item({"text": "Hello World"}, spider)
+    assert result2 == {"text": "Hello World"}
+    
+    await pipeline.close(spider)
 
 
 async def test_csv_pipeline_creates_valid_csv():

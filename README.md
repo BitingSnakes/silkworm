@@ -100,6 +100,7 @@ from silkworm.middlewares import (
     UserAgentMiddleware,
 )
 from silkworm.pipelines import (
+    CallbackPipeline,  # invoke a custom callback function on each item
     CSVPipeline,
     JsonLinesPipeline,
     MsgPackPipeline,  # requires: pip install silkworm-rs[msgpack]
@@ -181,6 +182,43 @@ run_spider(
 - `CassandraPipeline` sends items to Apache Cassandra database tables (requires `pip install silkworm-rs[cassandra]`).
 - `CouchDBPipeline` sends items to CouchDB databases as documents (requires `pip install silkworm-rs[couchdb]`).
 - `DynamoDBPipeline` sends items to AWS DynamoDB tables with automatic table creation (requires `pip install silkworm-rs[dynamodb]`).
+- `CallbackPipeline` invokes a custom callback function (sync or async) on each item, enabling inline processing logic without creating a full pipeline class. See example below.
+
+## Using CallbackPipeline for custom processing
+Process items with custom callback functions without creating a full pipeline class:
+
+```python
+from silkworm.pipelines import CallbackPipeline
+
+# Sync callback
+def print_item(item, spider):
+    print(f"[{spider.name}] {item}")
+    return item
+
+# Async callback
+async def validate_item(item, spider):
+    # Could do async operations like database checks
+    if len(item.get("text", "")) < 10:
+        print(f"Warning: Short text in item")
+    return item
+
+# Modifying callback
+def enrich_item(item, spider):
+    item["spider_name"] = spider.name
+    item["processed"] = True
+    return item
+
+run_spider(
+    QuotesSpider,
+    item_pipelines=[
+        CallbackPipeline(callback=print_item),
+        CallbackPipeline(callback=validate_item),
+        CallbackPipeline(callback=enrich_item),
+    ],
+)
+```
+
+Callbacks receive `(item, spider)` and should return the processed item (or `None` to return the original item unchanged).
 
 ## Streaming items to a queue with TaskiqPipeline
 Stream scraped items to a [Taskiq](https://taskiq-python.github.io/) queue for distributed processing:
