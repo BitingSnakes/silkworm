@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from collections.abc import AsyncIterable, AsyncIterator, Awaitable, Callable, Iterable
-from typing import TYPE_CHECKING, TypeAlias
+from typing import TYPE_CHECKING
 
 from ._types import BodyData, Headers, JSONValue, MetaData, QueryParams
 
@@ -30,7 +30,8 @@ class Request:
         return replace(self, **kwargs)  # type: ignore[arg-type]
 
 
-CallbackOutput: TypeAlias = (
+# PEP 695: Type Parameter Syntax (Python 3.12+)
+type CallbackOutput = (
     Request
     | JSONValue
     | Iterable[Request | JSONValue]
@@ -38,7 +39,7 @@ CallbackOutput: TypeAlias = (
     | AsyncIterator[Request | JSONValue]
     | None
 )
-CallbackResult: TypeAlias = CallbackOutput | Awaitable[CallbackOutput]
-Callback: TypeAlias = Callable[["Response"], CallbackResult]
+type CallbackResult = CallbackOutput | Awaitable[CallbackOutput]
+type Callback = Callable[["Response"], CallbackResult]
 
 __all__ = ["Callback", "CallbackOutput", "CallbackResult", "Request"]
