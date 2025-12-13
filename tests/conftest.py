@@ -141,11 +141,3 @@ sys.modules["logly"] = logly_module
 sys.modules["rnet"] = rnet_module
 sys.modules["scraper_rs"] = scraper_module
 sys.modules["scraper_rs.asyncio"] = scraper_asyncio_module
-
-
-# Force AnyIO-powered tests to use asyncio backend to avoid optional trio dep.
-
-
-@pytest.fixture
-def anyio_backend() -> str:
-    return "asyncio"

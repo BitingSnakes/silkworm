@@ -30,8 +30,3 @@ try:
     import rnet  # type: ignore[import-untyped]  # noqa: F401
 except ImportError:
     pass  # It's okay if some aren't installed
-
-
-@pytest.fixture
-def anyio_backend() -> str:
-    return "asyncio"
