@@ -1,3 +1,6 @@
+from __future__ import annotations
+
+
 class SilkwormError(Exception):
     """Base exception for the framework."""
 

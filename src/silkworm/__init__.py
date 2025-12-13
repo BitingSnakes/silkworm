@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from .request import Request
 from .response import Response, HTMLResponse
 from .spiders import Spider
