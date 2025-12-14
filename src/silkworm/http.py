@@ -1,18 +1,20 @@
 from __future__ import annotations
 import asyncio
 import inspect
-from contextlib import asynccontextmanager
 from collections.abc import Callable, Mapping, Sequence
+from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING, Any, AsyncIterator, cast
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit
-from typing import Any, AsyncIterator, cast
 
 from rnet import Client, Emulation, Method  # type: ignore[import]
 
 from .exceptions import HttpError
-from ._types import Headers, QueryValue
-from .request import Request
-from .response import Response, HTMLResponse
 from .logging import get_logger
+from .response import HTMLResponse, Response
+
+if TYPE_CHECKING:
+    from ._types import Headers, QueryValue
+    from .request import Request
 
 
 class HttpClient:
@@ -43,7 +45,8 @@ class HttpClient:
         self._html_max_size_bytes = html_max_size_bytes
         self._follow_redirects = follow_redirects
         if max_redirects < 0:
-            raise ValueError("max_redirects must be non-negative")
+            msg = "max_redirects must be non-negative"
+            raise ValueError(msg)
         self._max_redirects = max_redirects
         self._keep_alive = keep_alive
         self._supports_keep_alive_kwarg = self._supports_kwarg(
@@ -217,7 +220,8 @@ class HttpClient:
             except (TypeError, ValueError):
                 continue
 
-        raise TypeError("Unable to read response body")
+        msg = "Unable to read response body"
+        raise TypeError(msg)
 
     async def _close_response(self, resp: object | None) -> None:
         """Release the underlying HTTP response if it exposes a close hook."""

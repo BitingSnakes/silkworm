@@ -4,22 +4,24 @@ import inspect
 import sys
 import time
 from collections.abc import AsyncIterable, AsyncIterator, Callable, Iterable
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 try:  # resource is POSIX-only
     import resource
 except ImportError:  # pragma: no cover - platform dependent
     resource = None  # type: ignore[assignment]
 
-from .exceptions import SpiderError
 from ._types import JSONValue
+from .exceptions import SpiderError
 from .http import HttpClient
+from .logging import complete_logs, get_logger
 from .request import CallbackOutput, CallbackResult, Request
 from .response import HTMLResponse, Response
-from .spiders import Spider
-from .middlewares import RequestMiddleware, ResponseMiddleware
-from .pipelines import ItemPipeline
-from .logging import complete_logs, get_logger
+
+if TYPE_CHECKING:
+    from .middlewares import RequestMiddleware, ResponseMiddleware
+    from .pipelines import ItemPipeline
+    from .spiders import Spider
 
 
 class Engine:

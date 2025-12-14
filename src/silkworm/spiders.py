@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 from .logging import get_logger
 
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 class Spider:
     name: str = "spider"
     start_urls: tuple[str, ...] = ()
-    custom_settings: ClassVar[MetaData] = {}
+    custom_settings: MetaData = {}  # noqa: RUF012  # instances override this
 
     def __init__(
         self,

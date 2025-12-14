@@ -141,7 +141,8 @@ except ImportError:
 try:
     # Skip on Windows - cassandra-driver requires libev C extension which is not available
     if sys.platform == "win32":
-        raise ImportError("cassandra-driver not supported on Windows")
+        msg = "cassandra-driver not supported on Windows"
+        raise ImportError(msg)
     from cassandra.cluster import Cluster  # type: ignore[import-not-found, import-untyped]
     from cassandra.auth import PlainTextAuthProvider  # type: ignore[import-not-found, import-untyped]
 
@@ -166,9 +167,10 @@ except ImportError:
     AIOBOTO3_AVAILABLE = False
 
 if TYPE_CHECKING:
+    from ._types import JSONValue
     from .spiders import Spider
+
 from .logging import get_logger
-from ._types import JSONValue
 
 
 def _validate_table_name(table: str) -> str:
@@ -225,7 +227,8 @@ class CallbackPipeline:
                      Can be either synchronous or asynchronous.
         """
         if not callable(callback):
-            raise TypeError("callback must be callable")
+            msg = "callback must be callable"
+            raise TypeError(msg)
 
         self.callback = callback
         self.logger = get_logger(component="CallbackPipeline")
