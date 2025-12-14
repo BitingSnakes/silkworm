@@ -2113,6 +2113,9 @@ gsheets = [
     { name = "google-api-python-client" },
     { name = "google-auth" },
 ]
+memray = [
+    { name = "memray" },
+]
 mongodb = [
     { name = "motor" },
 ]
@@ -2161,14 +2164,12 @@ yaml = [
 dev = [
     { name = "anyio" },
     { name = "build" },
-    { name = "memray" },
     { name = "mypy" },
     { name = "py-spy" },
     { name = "pydantic" },
     { name = "pytest" },
     { name = "ruff" },
     { name = "twine" },
-    { name = "uvloop" },
 ]
 
 [package.metadata]
@@ -2185,6 +2186,7 @@ requires-dist = [
     { name = "google-api-python-client", marker = "extra == 'gsheets'", specifier = "==2.187.0" },
     { name = "google-auth", marker = "extra == 'gsheets'", specifier = "==2.43.0" },
     { name = "logly", specifier = "==0.1.6" },
+    { name = "memray", marker = "extra == 'memray'", specifier = "==1.19.1" },
     { name = "motor", marker = "extra == 'mongodb'", specifier = "==3.7.1" },
     { name = "opendal", marker = "extra == 's3'", specifier = "==0.46.0" },
     { name = "openpyxl", marker = "extra == 'excel'", specifier = "==3.1.5" },
@@ -2202,20 +2204,18 @@ requires-dist = [
     { name = "vortex-data", marker = "extra == 'vortex'", specifier = "==0.56.0" },
     { name = "winloop", marker = "extra == 'winloop'", specifier = "==0.4.0" },
 ]
-provides-extras = ["taskiq", "uvloop", "winloop", "trio", "msgpack", "polars", "excel", "yaml", "avro", "elasticsearch", "mongodb", "s3", "vortex", "mysql", "postgresql", "gsheets", "snowflake", "ftp", "sftp", "cassandra", "couchdb", "dynamodb"]
+provides-extras = ["taskiq", "uvloop", "winloop", "trio", "msgpack", "polars", "excel", "yaml", "avro", "elasticsearch", "mongodb", "s3", "vortex", "mysql", "postgresql", "gsheets", "snowflake", "ftp", "sftp", "cassandra", "couchdb", "dynamodb", "memray"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "anyio", specifier = "==4.12.0" },
     { name = "build", specifier = "==1.3.0" },
-    { name = "memray", specifier = "==1.19.1" },
     { name = "mypy", specifier = "==1.19.0" },
     { name = "py-spy", specifier = "==0.4.1" },
     { name = "pydantic", specifier = "==2.12.5" },
     { name = "pytest", specifier = "==9.0.2" },
     { name = "ruff", specifier = "==0.14.8" },
     { name = "twine", specifier = "==6.2.0" },
-    { name = "uvloop", specifier = "==0.22.1" },
 ]
 
 [[package]]
