@@ -316,6 +316,13 @@ This runs your spider using trio as the async backend via trio-asyncio compatibi
 - Structured logs via `logly`; set `SILKWORM_LOG_LEVEL=DEBUG` for verbose request/response/middleware output.
 - Periodic statistics with `log_stats_interval`; final stats always include elapsed time, queue size, requests/sec, seen URLs, items scraped, errors, and memory MB.
 
+## Limitations
+- HTTP fetches are rnet-based only; there is no browser or JavaScript execution, so pages that require client-side rendering need external tooling.
+- Request deduplication keys only on `Request.url`; query params, HTTP method, and body are ignored, so same-URL requests with different params/data are dropped unless you set `dont_filter=True` or make the URL unique yourself.
+- HTML parsing assumes UTF-8 (`Response.text` decodes with `errors="replace"`) and enforces a `html_max_size_bytes`/`doc_max_size_bytes` cap (default 5 MB) in `scraper-rs` selectors, so large or differently encoded pages can error or be mangled unless you raise the limit or preprocess.
+- Several pipelines buffer all items in memory until close (PolarsPipeline, ExcelPipeline, YAMLPipeline, AvroPipeline, VortexPipeline, S3JsonLinesPipeline, FTPPipeline, SFTPPipeline), which can bloat RAM on long crawls; prefer streaming pipelines like JsonLines/CSV/SQLite for high-volume runs.
+- Many destination pipelines rely on optional extras; CassandraPipeline is disabled on Windows because `cassandra-driver` depends on libev there.
+
 ## Examples
 - `python examples/quotes_spider.py` → `data/quotes.jl`
 - `python examples/quotes_spider_trio.py` → `data/quotes_trio.jl` (demonstrates trio backend)
