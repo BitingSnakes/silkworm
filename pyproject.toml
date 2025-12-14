@@ -48,6 +48,9 @@ taskiq = [
 uvloop = [
   "uvloop==0.22.1",
 ]
+winloop = [
+  "winloop==0.4.0",
+]
 trio = [
   "trio==0.32.0",
   "trio-asyncio==0.15.0",
