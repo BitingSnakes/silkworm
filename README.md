@@ -355,5 +355,15 @@ Run the checks before opening a PR:
 just fmt && just lint && just typecheck && just test
 ```
 
+## Acknowledgements
+Silkworm is built on top of excellent open-source projects:
+
+- [rnet](https://github.com/0x676e67/rnet) - HTTP client with browser impersonation capabilities
+- [scraper-rs](https://github.com/RustedBytes/scraper-rs) - Fast HTML parsing library
+- [logly](https://github.com/egorsmkv/logly) - Structured logging
+- [rxml](https://github.com/RazrFalcon/rxml) - XML parsing and writing
+
+We are grateful to the maintainers and contributors of these projects for their work.
+
 ## License
 MIT License. See `LICENSE` for details.
