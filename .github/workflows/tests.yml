@@ -5,10 +5,11 @@ on:
 
 jobs:
   tests:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest, windows-latest]
         python-version: ["3.13", "3.14"]
 
     steps:
@@ -23,7 +24,8 @@ jobs:
       - name: Init venv
         run: uv venv --python ${{ matrix.python-version }}
 
-      - name: Install system dependencies
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libev-dev
 
       - name: Install dependencies
@@ -47,7 +49,8 @@ jobs:
             --extra sftp \
             --extra cassandra \
             --extra couchdb \
-            --extra dynamodb
+            --extra dynamodb \
+            --extra winloop
           uv pip install msgpack
 
       - name: Run tests
