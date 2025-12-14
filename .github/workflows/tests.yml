@@ -68,7 +68,6 @@ jobs:
             --extra elasticsearch \
             --extra mongodb \
             --extra s3 \
-            --extra vortex \
             --extra mysql \
             --extra postgresql \
             --extra gsheets \

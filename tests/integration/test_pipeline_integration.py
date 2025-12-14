@@ -14,6 +14,7 @@ This ensures all pipelines work end-to-end in a realistic scenario.
 import csv
 import json
 import sqlite3
+import sys
 import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -465,6 +466,7 @@ except ImportError:
 
 
 @pytest.mark.skipif(not VORTEX_AVAILABLE, reason="vortex not installed")
+@pytest.mark.skipif(sys.platform == "win32", reason="vortex tests disabled on Windows")
 async def test_vortex_pipeline_integration():
     """Test VortexPipeline produces correct Vortex file."""
     with tempfile.TemporaryDirectory() as tmpdir:
