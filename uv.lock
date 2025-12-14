@@ -2078,9 +2078,10 @@ wheels = [
 
 [[package]]
 name = "silkworm-rs"
-version = "0.2.18"
+version = "0.2.19"
 source = { editable = "." }
 dependencies = [
+    { name = "charset-normalizer" },
     { name = "logly" },
     { name = "rnet" },
     { name = "rxml" },
@@ -2181,6 +2182,7 @@ requires-dist = [
     { name = "asyncpg", marker = "extra == 'postgresql'", specifier = "==0.31.0" },
     { name = "asyncssh", marker = "extra == 'sftp'", specifier = "==2.21.1" },
     { name = "cassandra-driver", marker = "extra == 'cassandra'", specifier = "==3.29.3" },
+    { name = "charset-normalizer", specifier = "==3.4.4" },
     { name = "elasticsearch", marker = "extra == 'elasticsearch'", specifier = "==9.2.0" },
     { name = "fastavro", marker = "extra == 'avro'", specifier = "==1.12.1" },
     { name = "google-api-python-client", marker = "extra == 'gsheets'", specifier = "==2.187.0" },
