@@ -1324,15 +1324,19 @@ def test_sftp_pipeline_requires_password_or_key():
         )
 
 
-# CassandraPipeline tests - skip if cassandra-driver not installed
-try:
-    from cassandra.cluster import Cluster  # type: ignore[import-not-found]  # noqa: F401
-    from silkworm.pipelines import CassandraPipeline
-
-    CASSANDRA_AVAILABLE = True
-except ImportError:
+# CassandraPipeline tests - skip if cassandra-driver not installed or on Windows
+if sys.platform == "win32":
     CASSANDRA_AVAILABLE = False
     CassandraPipeline = None  # type: ignore
+else:
+    try:
+        from cassandra.cluster import Cluster  # type: ignore[import-not-found]  # noqa: F401
+        from silkworm.pipelines import CassandraPipeline
+
+        CASSANDRA_AVAILABLE = True
+    except ImportError:
+        CASSANDRA_AVAILABLE = False
+        CassandraPipeline = None  # type: ignore
 
 
 @pytest.mark.skipif(not CASSANDRA_AVAILABLE, reason="cassandra-driver not installed")
