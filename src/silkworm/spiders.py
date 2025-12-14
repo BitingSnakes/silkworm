@@ -2,13 +2,14 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .logging import get_logger
+from .request import Request
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Iterable
 
     from ._types import MetaData
     from .logging import _Logger
-    from .request import CallbackOutput, Request
+    from .request import CallbackOutput
     from .response import Response
 
 

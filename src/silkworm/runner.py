@@ -19,7 +19,9 @@ def _install_uvloop() -> None:
 
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
     except ImportError as err:
-        msg = "uvloop is not installed. Install it with: pip install silkworm-rs[uvloop]"
+        msg = (
+            "uvloop is not installed. Install it with: pip install silkworm-rs[uvloop]"
+        )
         raise ImportError(msg) from err
 
 

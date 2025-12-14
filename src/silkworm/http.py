@@ -50,7 +50,8 @@ class HttpClient:
         self._max_redirects = max_redirects
         self._keep_alive = keep_alive
         self._supports_keep_alive_kwarg = self._supports_kwarg(
-            getattr(self._client, "request", None), "keep_alive",
+            getattr(self._client, "request", None),
+            "keep_alive",
         )
         self.logger = get_logger(component="http")
 
@@ -117,7 +118,8 @@ class HttpClient:
                                 )
 
                             redirect_url = self._resolve_redirect_url(
-                                url, headers.get("location", ""),
+                                url,
+                                headers.get("location", ""),
                             )
                             if redirect_url in visited_urls:
                                 raise HttpError("Redirect loop detected")
@@ -130,7 +132,10 @@ class HttpClient:
                                 status=status,
                             )
                             current_req = self._redirect_request(
-                                current_req, redirect_url, status, method,
+                                current_req,
+                                redirect_url,
+                                status,
+                                method,
                             )
                             await self._close_response(resp)
                             resp = None
@@ -270,7 +275,10 @@ class HttpClient:
         return False
 
     async def _send_request(
-        self, method: Method | str, url: str, kwargs: dict[str, object],
+        self,
+        method: Method | str,
+        url: str,
+        kwargs: dict[str, object],
     ) -> object:
         try:
             return await self._client.request(method, url, **kwargs)
@@ -307,7 +315,8 @@ class HttpClient:
 
         headers: Headers = {}
         if isinstance(raw_headers, Sequence) and not isinstance(
-            raw_headers, (str, bytes, bytearray),
+            raw_headers,
+            (str, bytes, bytearray),
         ):
             for entry in raw_headers:
                 if isinstance(entry, Sequence) and len(entry) == 2:
@@ -403,7 +412,11 @@ class HttpClient:
         return urljoin(current_url, location.strip())
 
     def _redirect_request(
-        self, req: Request, redirect_url: str, status: int, method: Method | str,
+        self,
+        req: Request,
+        redirect_url: str,
+        status: int,
+        method: Method | str,
     ) -> Request:
         method_name = self._method_name(method).upper()
         new_method = method_name
@@ -430,7 +443,9 @@ class HttpClient:
 
     async def close(self) -> None:
         closer = getattr(self._client, "aclose", None) or getattr(
-            self._client, "close", None,
+            self._client,
+            "close",
+            None,
         )
         if closer is None or not callable(closer):
             return

@@ -30,7 +30,8 @@ _META_CONTENT_TYPE_RE = re.compile(
     re.I,
 )
 _XML_DECLARATION_RE = re.compile(
-    rb"<\?xml[^>]+encoding\s*=\s*['\"]([a-zA-Z0-9._:-]+)['\"]", re.I,
+    rb"<\?xml[^>]+encoding\s*=\s*['\"]([a-zA-Z0-9._:-]+)['\"]",
+    re.I,
 )
 _BOM_SEQUENCE = (
     (codecs.BOM_UTF32_LE, "utf-32"),
@@ -104,10 +105,16 @@ class Response:
     request: Request
     _closed: bool = field(default=False, init=False, repr=False, compare=False)
     _decoded_text: str | None = field(
-        default=None, init=False, repr=False, compare=False,
+        default=None,
+        init=False,
+        repr=False,
+        compare=False,
     )
     _detected_encoding: str | None = field(
-        default=None, init=False, repr=False, compare=False,
+        default=None,
+        init=False,
+        repr=False,
+        compare=False,
     )
 
     @property
@@ -259,7 +266,10 @@ class Response:
         return best
 
     def follow(
-        self, href: str, callback: Callback | None = None, **kwargs: object,
+        self,
+        href: str,
+        callback: Callback | None = None,
+        **kwargs: object,
     ) -> Request:
         from .request import Request  # local import to avoid cycle
 
@@ -321,7 +331,10 @@ class HTMLResponse(Response):
 
     @override
     def follow(
-        self, href: str, callback: Callback | None = None, **kwargs: object,
+        self,
+        href: str,
+        callback: Callback | None = None,
+        **kwargs: object,
     ) -> Request:
         # Explicit base call avoids zero-arg super issues with slotted dataclasses.
         return Response.follow(self, href, callback=callback, **kwargs)

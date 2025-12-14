@@ -319,7 +319,9 @@ class JsonLinesPipeline:
             self._operator = None
             self._object_path = None
             self.logger.info(
-                "Closed JSONL pipeline", path=str(self.path), backend="opendal",
+                "Closed JSONL pipeline",
+                path=str(self.path),
+                backend="opendal",
             )
         if self._fp:
             self._fp.close()
@@ -354,7 +356,9 @@ class JsonLinesPipeline:
         self._fp.write(line + "\n")
         self._fp.flush()
         self.logger.debug(
-            "Wrote item to JSONL", path=str(self.path), spider=spider.name,
+            "Wrote item to JSONL",
+            path=str(self.path),
+            spider=spider.name,
         )
         return item
 
@@ -443,7 +447,9 @@ class MsgPackPipeline:
         self._fp.write(packed)
         self._fp.flush()
         self.logger.debug(
-            "Wrote item to MsgPack", path=str(self.path), spider=spider.name,
+            "Wrote item to MsgPack",
+            path=str(self.path),
+            spider=spider.name,
         )
         return item
 
@@ -470,7 +476,9 @@ class SQLitePipeline:
         )
         self._conn.commit()
         self.logger.info(
-            "Opened SQLite pipeline", path=str(self.path), table=self.table,
+            "Opened SQLite pipeline",
+            path=str(self.path),
+            table=self.table,
         )
 
     async def close(self, spider: Spider) -> None:
@@ -558,7 +566,10 @@ class XMLPipeline:
 
 class CSVPipeline:
     def __init__(
-        self, path: str | Path = "items.csv", *, fieldnames: list[str] | None = None,
+        self,
+        path: str | Path = "items.csv",
+        *,
+        fieldnames: list[str] | None = None,
     ) -> None:
         self.path = Path(path)
         self.fieldnames = fieldnames
@@ -595,7 +606,9 @@ class CSVPipeline:
             if self.fieldnames is None:
                 self.fieldnames = list(flat_item.keys())
             self._writer = csv.DictWriter(
-                self._fp, fieldnames=self.fieldnames, extrasaction="ignore",
+                self._fp,
+                fieldnames=self.fieldnames,
+                extrasaction="ignore",
             )
 
         # Write header if first item
@@ -609,7 +622,10 @@ class CSVPipeline:
         return item
 
     def _flatten_dict(
-        self, data: Mapping[str, JSONValue], parent_key: str = "", sep: str = "_",
+        self,
+        data: Mapping[str, JSONValue],
+        parent_key: str = "",
+        sep: str = "_",
     ) -> dict[str, JSONValue | str]:
         """Flatten a nested dictionary structure."""
         items: list[tuple[str, JSONValue | str]] = []
@@ -802,7 +818,9 @@ class PolarsPipeline:
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         self._items.append(item)
         self.logger.debug(
-            "Buffered item for Parquet", path=str(self.path), spider=spider.name,
+            "Buffered item for Parquet",
+            path=str(self.path),
+            spider=spider.name,
         )
         return item
 
@@ -879,12 +897,17 @@ class ExcelPipeline:
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         self._items.append(item)
         self.logger.debug(
-            "Buffered item for Excel", path=str(self.path), spider=spider.name,
+            "Buffered item for Excel",
+            path=str(self.path),
+            spider=spider.name,
         )
         return item
 
     def _flatten_dict(
-        self, data: Mapping[str, JSONValue], parent_key: str = "", sep: str = "_",
+        self,
+        data: Mapping[str, JSONValue],
+        parent_key: str = "",
+        sep: str = "_",
     ) -> dict[str, JSONValue | str]:
         """Flatten a nested dictionary structure."""
         items: list[tuple[str, JSONValue | str]] = []
@@ -943,7 +966,9 @@ class YAMLPipeline:
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         self._items.append(item)
         self.logger.debug(
-            "Buffered item for YAML", path=str(self.path), spider=spider.name,
+            "Buffered item for YAML",
+            path=str(self.path),
+            spider=spider.name,
         )
         return item
 
@@ -1011,7 +1036,9 @@ class AvroPipeline:
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         self._items.append(item)
         self.logger.debug(
-            "Buffered item for Avro", path=str(self.path), spider=spider.name,
+            "Buffered item for Avro",
+            path=str(self.path),
+            spider=spider.name,
         )
         return item
 
@@ -1093,7 +1120,9 @@ class ElasticsearchPipeline:
     async def open(self, spider: Spider) -> None:
         self._client = AsyncElasticsearch(self.hosts, **self.es_kwargs)
         self.logger.info(
-            "Opened Elasticsearch pipeline", hosts=self.hosts, index=self.index,
+            "Opened Elasticsearch pipeline",
+            hosts=self.hosts,
+            index=self.index,
         )
 
     async def close(self, spider: Spider) -> None:
@@ -1108,7 +1137,9 @@ class ElasticsearchPipeline:
 
         await self._client.index(index=self.index, document=item)
         self.logger.debug(
-            "Indexed item in Elasticsearch", index=self.index, spider=spider.name,
+            "Indexed item in Elasticsearch",
+            index=self.index,
+            spider=spider.name,
         )
         return item
 
@@ -1179,7 +1210,9 @@ class MongoDBPipeline:
 
         await self._coll.insert_one(item)
         self.logger.debug(
-            "Inserted item in MongoDB", collection=self.collection, spider=spider.name,
+            "Inserted item in MongoDB",
+            collection=self.collection,
+            spider=spider.name,
         )
         return item
 
@@ -1343,7 +1376,9 @@ class VortexPipeline:
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         self._items.append(item)
         self.logger.debug(
-            "Buffered item for Vortex", path=str(self.path), spider=spider.name,
+            "Buffered item for Vortex",
+            path=str(self.path),
+            spider=spider.name,
         )
         return item
 
@@ -1451,7 +1486,9 @@ class MySQLPipeline:
                 await conn.commit()
 
         self.logger.debug(
-            "Inserted item in MySQL", table=self.table, spider=spider.name,
+            "Inserted item in MySQL",
+            table=self.table,
+            spider=spider.name,
         )
         return item
 
@@ -1555,7 +1592,9 @@ class PostgreSQLPipeline:
             )
 
         self.logger.debug(
-            "Inserted item in PostgreSQL", table=self.table, spider=spider.name,
+            "Inserted item in PostgreSQL",
+            table=self.table,
+            spider=spider.name,
         )
         return item
 
@@ -1628,7 +1667,9 @@ class WebhookPipeline:
 
         if self._client:
             closer = getattr(self._client, "aclose", None) or getattr(
-                self._client, "close", None,
+                self._client,
+                "close",
+                None,
             )
             if closer and callable(closer):
                 try:
@@ -1686,7 +1727,9 @@ class WebhookPipeline:
 
             # Close response if possible
             closer = getattr(response, "aclose", None) or getattr(
-                response, "close", None,
+                response,
+                "close",
+                None,
             )
             if closer and callable(closer):
                 try:
@@ -1869,7 +1912,10 @@ class GoogleSheetsPipeline:
         self._batch = []
 
     def _flatten_dict(
-        self, data: Mapping[str, JSONValue], parent_key: str = "", sep: str = "_",
+        self,
+        data: Mapping[str, JSONValue],
+        parent_key: str = "",
+        sep: str = "_",
     ) -> dict[str, JSONValue | str]:
         """Flatten a nested dictionary structure."""
         items: list[tuple[str, JSONValue | str]] = []
@@ -2007,7 +2053,9 @@ class SnowflakePipeline:
         self._conn.commit()
 
         self.logger.debug(
-            "Inserted item in Snowflake", table=self.table, spider=spider.name,
+            "Inserted item in Snowflake",
+            table=self.table,
+            spider=spider.name,
         )
         return item
 
@@ -2101,7 +2149,9 @@ class FTPPipeline:
         line = json.dumps(item, ensure_ascii=False)
         self._items.append(line)
         self.logger.debug(
-            "Buffered item for FTP", remote_path=self.remote_path, spider=spider.name,
+            "Buffered item for FTP",
+            remote_path=self.remote_path,
+            spider=spider.name,
         )
         return item
 
@@ -2221,7 +2271,9 @@ class SFTPPipeline:
         line = json.dumps(item, ensure_ascii=False)
         self._items.append(line)
         self.logger.debug(
-            "Buffered item for SFTP", remote_path=self.remote_path, spider=spider.name,
+            "Buffered item for SFTP",
+            remote_path=self.remote_path,
+            spider=spider.name,
         )
         return item
 
@@ -2284,12 +2336,15 @@ class CassandraPipeline:
         auth_provider = None
         if self.username and self.password:
             auth_provider = PlainTextAuthProvider(  # type: ignore[misc]
-                username=self.username, password=self.password,
+                username=self.username,
+                password=self.password,
             )
 
         # Connect to Cassandra cluster
         cluster = Cluster(  # type: ignore[misc]
-            self.hosts, port=self.port, auth_provider=auth_provider,
+            self.hosts,
+            port=self.port,
+            auth_provider=auth_provider,
         )
         session = cluster.connect()
         self._cluster = cluster
@@ -2354,7 +2409,9 @@ class CassandraPipeline:
         )
 
         self.logger.debug(
-            "Inserted item in Cassandra", table=self.table, spider=spider.name,
+            "Inserted item in Cassandra",
+            table=self.table,
+            spider=spider.name,
         )
         return item
 
@@ -2409,7 +2466,9 @@ class CouchDBPipeline:
         # Connect to CouchDB
         if self.username and self.password:
             self._client = await aiocouch.CouchDB(  # type: ignore[attr-defined]
-                self.url, user=self.username, password=self.password,
+                self.url,
+                user=self.username,
+                password=self.password,
             ).__aenter__()
         else:
             self._client = await aiocouch.CouchDB(self.url).__aenter__()  # type: ignore[attr-defined]
@@ -2425,7 +2484,9 @@ class CouchDBPipeline:
             self._db = await client.create(self.database)  # type: ignore[union-attr]
 
         self.logger.info(
-            "Opened CouchDB pipeline", url=self.url, database=self.database,
+            "Opened CouchDB pipeline",
+            url=self.url,
+            database=self.database,
         )
 
     async def close(self, spider: Spider) -> None:
@@ -2446,7 +2507,9 @@ class CouchDBPipeline:
         await self._db.create(doc_data)  # type: ignore[union-attr]
 
         self.logger.debug(
-            "Inserted item in CouchDB", database=self.database, spider=spider.name,
+            "Inserted item in CouchDB",
+            database=self.database,
+            spider=spider.name,
         )
         return item
 
@@ -2518,10 +2581,12 @@ class DynamoDBPipeline:
             resource_kwargs["endpoint_url"] = self.endpoint_url
 
         resource = await session.resource(  # type: ignore[attr-defined]
-            "dynamodb", **resource_kwargs,
+            "dynamodb",
+            **resource_kwargs,
         ).__aenter__()
         client = await session.client(  # type: ignore[attr-defined]
-            "dynamodb", **resource_kwargs,
+            "dynamodb",
+            **resource_kwargs,
         ).__aenter__()
         self._resource = resource
         self._client = client
@@ -2575,6 +2640,8 @@ class DynamoDBPipeline:
         await self._table.put_item(Item=dynamo_item)  # type: ignore[union-attr]
 
         self.logger.debug(
-            "Inserted item in DynamoDB", table_name=self.table_name, spider=spider.name,
+            "Inserted item in DynamoDB",
+            table_name=self.table_name,
+            spider=spider.name,
         )
         return item

@@ -21,13 +21,18 @@ class RequestMiddleware(Protocol):
 
 class ResponseMiddleware(Protocol):
     async def process_response(
-        self, response: Response, spider: Spider,
+        self,
+        response: Response,
+        spider: Spider,
     ) -> Response | Request: ...
 
 
 class UserAgentMiddleware:
     def __init__(
-        self, user_agents: Sequence[str] | None = None, *, default: str | None = None,
+        self,
+        user_agents: Sequence[str] | None = None,
+        *,
+        default: str | None = None,
     ) -> None:
         self.user_agents = list(user_agents or [])
         self.default = default or "silkworm/0.1"
@@ -52,7 +57,9 @@ class ProxyMiddleware:
         random_selection: bool = False,
     ) -> None:
         if proxies is not None and proxy_file is not None:
-            msg = "Cannot specify both 'proxies' and 'proxy_file'. Use one or the other."
+            msg = (
+                "Cannot specify both 'proxies' and 'proxy_file'. Use one or the other."
+            )
             raise ValueError(msg)
         if proxies is None and proxy_file is None:
             msg = "Must provide either 'proxies' (iterable) or 'proxy_file' (path)."
@@ -114,7 +121,9 @@ class RetryMiddleware:
         self.logger = get_logger(component="RetryMiddleware")
 
     async def process_response(
-        self, response: Response, spider: Spider,
+        self,
+        response: Response,
+        spider: Spider,
     ) -> Response | Request:
         request = response.request
         if response.status not in self.retry_http_codes:
@@ -296,7 +305,9 @@ class SkipNonHTMLMiddleware:
         return b"<html" in snippet
 
     async def process_response(
-        self, response: Response, spider: Spider,
+        self,
+        response: Response,
+        spider: Spider,
     ) -> Response | Request:
         # Allow opt-out for requests that intentionally fetch non-HTML content
         if response.request.meta.get("allow_non_html"):
