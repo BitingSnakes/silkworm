@@ -198,15 +198,17 @@ async def test_sqlite_pipeline_integration():
         # Verify each row matches expected data
         for row in rows:
             row_dict = dict(zip(columns, row))
+            # SQLitePipeline stores items as JSON in the 'data' column
+            item_data = json.loads(row_dict["data"])
             # Find matching quote in SAMPLE_QUOTES
             matching_quote = next(
-                (q for q in SAMPLE_QUOTES if q["text"] == row_dict["text"]), None
+                (q for q in SAMPLE_QUOTES if q["text"] == item_data["text"]), None
             )
             assert matching_quote is not None
-            assert row_dict["author"] == matching_quote["author"]
-            # SQLite stores tags as JSON string
-            stored_tags = json.loads(row_dict["tags"])
-            assert stored_tags == matching_quote["tags"]
+            assert item_data["author"] == matching_quote["author"]
+            assert item_data["tags"] == matching_quote["tags"]
+            # Verify spider column
+            assert row_dict["spider"] == "test"
         
         conn.close()
 
