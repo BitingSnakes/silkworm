@@ -49,7 +49,7 @@ uvloop = [
   "uvloop==0.22.1",
 ]
 winloop = [
-  "winloop==0.2.1",
+  "winloop==0.4.0",
 ]
 trio = [
   "trio==0.32.0",
