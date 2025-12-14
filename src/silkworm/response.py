@@ -2,7 +2,6 @@ from __future__ import annotations
 import asyncio
 import codecs
 import re
-from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, override
 from urllib.parse import urljoin
@@ -16,6 +15,13 @@ from scraper_rs.asyncio import (  # type: ignore[import-untyped]
 
 from .exceptions import SelectorError
 
+if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
+    from scraper_rs import Element  # type: ignore[import]
+
+    from .request import Callback, Request
+
 
 _CHARSET_RE = re.compile(r"charset=([^\s;\"'>]+)", re.I)
 _META_CHARSET_RE = re.compile(rb"<meta\s+charset\s*=\s*['\"]?([a-zA-Z0-9._:-]+)", re.I)
@@ -24,7 +30,7 @@ _META_CONTENT_TYPE_RE = re.compile(
     re.I,
 )
 _XML_DECLARATION_RE = re.compile(
-    rb"<\?xml[^>]+encoding\s*=\s*['\"]([a-zA-Z0-9._:-]+)['\"]", re.I
+    rb"<\?xml[^>]+encoding\s*=\s*['\"]([a-zA-Z0-9._:-]+)['\"]", re.I,
 )
 _BOM_SEQUENCE = (
     (codecs.BOM_UTF32_LE, "utf-32"),
@@ -89,24 +95,19 @@ _PREFERRED_WEB_ENCODINGS = {
 }
 
 
-if TYPE_CHECKING:
-    from scraper_rs import Element  # type: ignore[import]
-    from .request import Callback, Request
-
-
 @dataclass(slots=True)
 class Response:
     url: str
     status: int
     headers: dict[str, str]
     body: bytes
-    request: "Request"
+    request: Request
     _closed: bool = field(default=False, init=False, repr=False, compare=False)
     _decoded_text: str | None = field(
-        default=None, init=False, repr=False, compare=False
+        default=None, init=False, repr=False, compare=False,
     )
     _detected_encoding: str | None = field(
-        default=None, init=False, repr=False, compare=False
+        default=None, init=False, repr=False, compare=False,
     )
 
     @property
@@ -258,8 +259,8 @@ class Response:
         return best
 
     def follow(
-        self, href: str, callback: "Callback | None" = None, **kwargs: object
-    ) -> "Request":
+        self, href: str, callback: Callback | None = None, **kwargs: object,
+    ) -> Request:
         from .request import Request  # local import to avoid cycle
 
         url = urljoin(self.url, href)
@@ -303,7 +304,7 @@ class HTMLResponse(Response):
             detail = str(exc)
             suffix = f": {detail}" if detail else ""
             raise SelectorError(
-                f"{kind} selector '{label}' failed for {self.url}{suffix}"
+                f"{kind} selector '{label}' failed for {self.url}{suffix}",
             ) from exc
 
     async def select(self, selector: str) -> list[Element]:
@@ -320,8 +321,8 @@ class HTMLResponse(Response):
 
     @override
     def follow(
-        self, href: str, callback: "Callback | None" = None, **kwargs: object
-    ) -> "Request":
+        self, href: str, callback: Callback | None = None, **kwargs: object,
+    ) -> Request:
         # Explicit base call avoids zero-arg super issues with slotted dataclasses.
         return Response.follow(self, href, callback=callback, **kwargs)
 

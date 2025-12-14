@@ -1,11 +1,15 @@
 from __future__ import annotations
 import asyncio
-from collections.abc import Iterable
+from typing import TYPE_CHECKING
 
-from .spiders import Spider
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from .middlewares import RequestMiddleware, ResponseMiddleware
+    from .pipelines import ItemPipeline
+    from .spiders import Spider
+
 from .engine import Engine
-from .middlewares import RequestMiddleware, ResponseMiddleware
-from .pipelines import ItemPipeline
 
 
 def _install_uvloop() -> None:
@@ -14,10 +18,9 @@ def _install_uvloop() -> None:
         import uvloop  # type: ignore[import]
 
         asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-    except ImportError:
-        raise ImportError(
-            "uvloop is not installed. Install it with: pip install silkworm-rs[uvloop]"
-        )
+    except ImportError as err:
+        msg = "uvloop is not installed. Install it with: pip install silkworm-rs[uvloop]"
+        raise ImportError(msg) from err
 
 
 def _install_winloop() -> None:
@@ -26,10 +29,9 @@ def _install_winloop() -> None:
         import winloop  # type: ignore[import]
 
         asyncio.set_event_loop_policy(winloop.EventLoopPolicy())
-    except ImportError:
-        raise ImportError(
-            "winloop is not installed. Install it with: pip install silkworm-rs[winloop]"
-        )
+    except ImportError as err:
+        msg = "winloop is not installed. Install it with: pip install silkworm-rs[winloop]"
+        raise ImportError(msg) from err
 
 
 def run_spider_trio(
@@ -70,19 +72,17 @@ def run_spider_trio(
     """
     try:
         import trio  # type: ignore[import]
-    except ImportError:
-        raise ImportError(
-            "trio is not installed. Install it with: pip install silkworm-rs[trio]"
-        )
+    except ImportError as err:
+        msg = "trio is not installed. Install it with: pip install silkworm-rs[trio]"
+        raise ImportError(msg) from err
 
     # Trio uses its own async primitives, but the engine uses asyncio primitives
     # We use trio-asyncio to run asyncio code within trio
     try:
         import trio_asyncio  # type: ignore[import]
-    except ImportError:
-        raise ImportError(
-            "trio-asyncio is required for trio support. Install it with: pip install silkworm-rs[trio]"
-        )
+    except ImportError as err:
+        msg = "trio-asyncio is required for trio support. Install it with: pip install silkworm-rs[trio]"
+        raise ImportError(msg) from err
 
     async def run_with_trio_asyncio():
         async with trio_asyncio.open_loop():
@@ -162,7 +162,7 @@ def run_spider(
             html_max_size_bytes=html_max_size_bytes,
             keep_alive=keep_alive,
             **spider_kwargs,
-        )
+        ),
     )
 
 

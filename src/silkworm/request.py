@@ -19,7 +19,7 @@ class Request:
     json: JSONValue | None = None
     meta: MetaData = field(default_factory=dict)
     timeout: float | None = None
-    callback: "Callback | None" = None
+    callback: Callback | None = None
     dont_filter: bool = False
     priority: int = 0
 

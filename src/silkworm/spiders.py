@@ -1,19 +1,21 @@
 from __future__ import annotations
-from collections.abc import AsyncIterator, Iterable
-from typing import TYPE_CHECKING
-from ._types import MetaData
+from typing import TYPE_CHECKING, ClassVar
+
 from .logging import get_logger
-from .request import CallbackOutput, Request
-from .response import Response
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator, Iterable
+
+    from ._types import MetaData
     from .logging import _Logger
+    from .request import CallbackOutput, Request
+    from .response import Response
 
 
 class Spider:
     name: str = "spider"
     start_urls: tuple[str, ...] = ()
-    custom_settings: MetaData = {}
+    custom_settings: ClassVar[MetaData] = {}
 
     def __init__(
         self,
@@ -21,7 +23,7 @@ class Spider:
         name: str | None = None,
         start_urls: Iterable[str] | None = None,
         custom_settings: MetaData | None = None,
-        logger: "_Logger | dict[str, object] | None" = None,
+        logger: _Logger | dict[str, object] | None = None,
     ) -> None:
         self.name = name if name is not None else self.name
         self.start_urls = (
@@ -35,7 +37,7 @@ class Spider:
 
         # Configure logger if provided
         if logger is None:
-            self.logger: "_Logger | None" = None
+            self.logger: _Logger | None = None
         elif isinstance(logger, dict):
             # If logger is a dict, use it as context for get_logger
             self.logger = get_logger(**logger)
@@ -44,7 +46,7 @@ class Spider:
             self.logger = logger
 
     @property
-    def log(self) -> "_Logger":
+    def log(self) -> _Logger:
         """
         Convenience accessor that always returns a logger.
         Falls back to a default logger bound to the spider name when none set.

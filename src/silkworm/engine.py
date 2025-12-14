@@ -188,7 +188,7 @@ class Engine:
         except Exception as exc:
             name = getattr(callback, "__name__", "parse") if callback else "parse"
             raise SpiderError(
-                f"Spider callback '{name}' failed for {self.spider.name}"
+                f"Spider callback '{name}' failed for {self.spider.name}",
             ) from exc
 
         last_yielded: Request | JSONValue | None = None
@@ -222,7 +222,7 @@ class Engine:
                 exc_info=True,
             )
             raise SpiderError(
-                f"Spider callback '{name}' yielded invalid results"
+                f"Spider callback '{name}' yielded invalid results",
             ) from exc
         finally:
             resp.close()
@@ -230,7 +230,7 @@ class Engine:
                 original_resp.close()
 
     async def _iterate_callback_results(
-        self, produced: CallbackResult
+        self, produced: CallbackResult,
     ) -> AsyncIterator[Request | JSONValue]:
         """
         Normalize any supported callback return shape (single item, Request,
@@ -252,7 +252,7 @@ class Engine:
             return
 
         if isinstance(results, Iterable) and not isinstance(
-            results, (str, bytes, bytearray)
+            results, (str, bytes, bytearray),
         ):
             for x in results:
                 yield x
@@ -363,7 +363,7 @@ class Engine:
             complete_logs()
 
     def _expects_html(
-        self, callback: Callable[[Response], CallbackResult] | None
+        self, callback: Callable[[Response], CallbackResult] | None,
     ) -> bool:
         if callback is None:
             return True
