@@ -1336,6 +1336,7 @@ except ImportError:
 
 
 @pytest.mark.skipif(not CASSANDRA_AVAILABLE, reason="cassandra-driver not installed")
+@pytest.mark.skipif(sys.platform == "win32", reason="cassandra tests disabled on Windows")
 def test_cassandra_pipeline_initialization():
     # Test that we can initialize the pipeline
     pipeline = CassandraPipeline(  # type: ignore
@@ -1355,6 +1356,7 @@ def test_cassandra_pipeline_initialization():
 
 
 @pytest.mark.skipif(not CASSANDRA_AVAILABLE, reason="cassandra-driver not installed")
+@pytest.mark.skipif(sys.platform == "win32", reason="cassandra tests disabled on Windows")
 def test_cassandra_pipeline_invalid_table_name():
     # Test that invalid table names are rejected
     with pytest.raises(ValueError, match="Invalid table name"):
@@ -1368,6 +1370,7 @@ def test_cassandra_pipeline_invalid_table_name():
 
 
 @pytest.mark.skipif(not CASSANDRA_AVAILABLE, reason="cassandra-driver not installed")
+@pytest.mark.skipif(sys.platform == "win32", reason="cassandra tests disabled on Windows")
 async def test_cassandra_pipeline_not_opened_raises_error():
     pipeline = CassandraPipeline(  # type: ignore
         hosts=["127.0.0.1"],
