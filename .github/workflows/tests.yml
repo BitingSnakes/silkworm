@@ -51,6 +51,7 @@ jobs:
             --extra couchdb \
             --extra dynamodb \
             --extra winloop
+          # Install msgpack for reading in tests (ormsgpack from --extra msgpack is for writing)
           uv pip install msgpack
 
       - name: Run tests
