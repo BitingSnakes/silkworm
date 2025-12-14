@@ -28,7 +28,35 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libev-dev
 
-      - name: Install dependencies
+      - name: Install dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          uv sync --group dev \
+            --extra taskiq \
+            --extra msgpack \
+            --extra polars \
+            --extra excel \
+            --extra yaml \
+            --extra avro \
+            --extra elasticsearch \
+            --extra mongodb \
+            --extra s3 \
+            --extra vortex \
+            --extra mysql \
+            --extra postgresql \
+            --extra gsheets \
+            --extra snowflake \
+            --extra ftp \
+            --extra sftp \
+            --extra cassandra \
+            --extra couchdb \
+            --extra dynamodb
+          # Install msgpack for reading in tests (ormsgpack from --extra msgpack is for writing)
+          uv pip install msgpack
+
+      - name: Install dependencies (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
         run: |
           uv sync --group dev \
             --extra taskiq \
