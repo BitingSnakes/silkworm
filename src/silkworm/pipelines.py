@@ -5,6 +5,7 @@ import io
 import json
 import re
 import sqlite3
+import sys
 import rxml
 from collections.abc import Mapping
 from pathlib import Path
@@ -138,6 +139,9 @@ except ImportError:
     ASYNCSSH_AVAILABLE = False
 
 try:
+    # Skip on Windows - cassandra-driver requires libev C extension which is not available
+    if sys.platform == "win32":
+        raise ImportError("cassandra-driver not supported on Windows")
     from cassandra.cluster import Cluster  # type: ignore[import-not-found, import-untyped]
     from cassandra.auth import PlainTextAuthProvider  # type: ignore[import-not-found, import-untyped]
 
