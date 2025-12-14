@@ -2,10 +2,15 @@
 Integration tests that run spiders with all available pipelines.
 
 These tests verify that pipelines produce correct output files when used
-with actual spider runs.
+with actual spider runs. Each test:
+1. Creates a temporary directory for output files
+2. Runs a test spider that yields sample data
+3. Verifies the pipeline produces correctly formatted output files
+4. Validates the content matches the expected data
+
+This ensures all pipelines work end-to-end in a realistic scenario.
 """
 
-import asyncio
 import csv
 import json
 import sqlite3
@@ -16,7 +21,6 @@ from pathlib import Path
 import pytest
 
 from silkworm import HTMLResponse, Request, Response, Spider
-from silkworm.engine import Engine
 from silkworm.pipelines import (
     CSVPipeline,
     JsonLinesPipeline,
