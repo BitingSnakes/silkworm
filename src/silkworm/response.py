@@ -4,7 +4,7 @@ import codecs
 import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING, override
 from urllib.parse import urljoin
 
 from scraper_rs.asyncio import (  # type: ignore[import-untyped]
@@ -15,9 +15,6 @@ from scraper_rs.asyncio import (  # type: ignore[import-untyped]
 )
 
 from .exceptions import SelectorError
-
-
-T = TypeVar("T")
 
 
 _CHARSET_RE = re.compile(r"charset=([^\s;\"'>]+)", re.I)
@@ -290,7 +287,7 @@ class Response:
 class HTMLResponse(Response):
     doc_max_size_bytes: int = 5_000_000
 
-    async def _run_selector(
+    async def _run_selector[T](
         self,
         func: Callable[..., Awaitable[T]],
         query: str,
@@ -321,12 +318,14 @@ class HTMLResponse(Response):
     async def xpath_first(self, xpath: str) -> Element | None:
         return await self._run_selector(xpath_first_async, xpath, kind="XPath")
 
+    @override
     def follow(
         self, href: str, callback: "Callback | None" = None, **kwargs: object
     ) -> "Request":
         # Explicit base call avoids zero-arg super issues with slotted dataclasses.
         return Response.follow(self, href, callback=callback, **kwargs)
 
+    @override
     def close(self) -> None:
         """
         Release the underlying Document when it is no longer needed.

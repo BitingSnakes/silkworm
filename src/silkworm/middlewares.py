@@ -4,7 +4,7 @@ import random
 from enum import Enum, auto
 from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, assert_never
 
 from .request import Request
 from .response import HTMLResponse, Response
@@ -187,6 +187,11 @@ class DelayMiddleware:
         delay_func: Callable[[Request, "Spider"], float] | None = None,
     ) -> None:
         # Validate configuration and determine strategy
+        self._delay_func: Callable[[Request, "Spider"], float] | None = None
+        self._min_delay: float | None = None
+        self._max_delay: float | None = None
+        self._fixed_delay: float | None = None
+
         if delay_func is not None:
             if delay is not None or min_delay is not None or max_delay is not None:
                 raise ValueError(
@@ -220,12 +225,18 @@ class DelayMiddleware:
 
     async def process_request(self, request: Request, spider: "Spider") -> Request:
         """Calculate and apply delay before processing the request."""
-        if self._strategy == _DelayStrategy.CUSTOM:
-            delay = self._delay_func(request, spider)
-        elif self._strategy == _DelayStrategy.RANDOM:
-            delay = random.uniform(self._min_delay, self._max_delay)
-        else:  # FIXED
-            delay = self._fixed_delay
+        match self._strategy:
+            case _DelayStrategy.CUSTOM:
+                assert self._delay_func is not None
+                delay = self._delay_func(request, spider)
+            case _DelayStrategy.RANDOM:
+                assert self._min_delay is not None and self._max_delay is not None
+                delay = random.uniform(self._min_delay, self._max_delay)
+            case _DelayStrategy.FIXED:
+                assert self._fixed_delay is not None
+                delay = self._fixed_delay
+            case other:
+                assert_never(other)
 
         if delay > 0:
             self.logger.debug(

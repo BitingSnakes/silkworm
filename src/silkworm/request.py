@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from collections.abc import AsyncIterable, AsyncIterator, Awaitable, Callable, Iterable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Self
 
 from ._types import BodyData, Headers, JSONValue, MetaData, QueryParams
 
@@ -23,7 +23,7 @@ class Request:
     dont_filter: bool = False
     priority: int = 0
 
-    def replace(self, **kwargs: object) -> "Request":
+    def replace(self, **kwargs: object) -> Self:
         """
         Return a new Request with the provided fields replaced.
         """
