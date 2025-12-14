@@ -52,20 +52,23 @@ class TestSpider(Spider):
             yield quote
 
 
-async def run_spider_with_pipeline(spider_cls, pipeline, **spider_kwargs):
-    """Helper to run a spider with a pipeline and return the spider instance."""
-    spider = spider_cls(**spider_kwargs)
-    
-    # Create a mock HTMLResponse since we're not making real HTTP requests
+def create_mock_response():
+    """Create a mock HTMLResponse for testing."""
     mock_html = "<html><body>Test</body></html>"
     mock_request = Request(url="http://example.com")
-    mock_response = HTMLResponse(
+    return HTMLResponse(
         url=mock_request.url,
         status=200,
         headers={},
         body=mock_html.encode("utf-8"),
         request=mock_request,
     )
+
+
+async def run_spider_with_pipeline(spider_cls, pipeline, **spider_kwargs):
+    """Helper to run a spider with a pipeline and return the spider instance."""
+    spider = spider_cls(**spider_kwargs)
+    mock_response = create_mock_response()
     
     # Open the pipeline
     await pipeline.open(spider)
@@ -282,6 +285,9 @@ async def test_sqlite_pipeline_custom_table():
 
 try:
     from silkworm.pipelines import MsgPackPipeline
+    # Note: We use msgpack for reading because ormsgpack (used by MsgPackPipeline
+    # for writing) doesn't have an Unpacker class to read multiple objects from a stream.
+    # The two libraries are compatible for reading/writing MessagePack data.
     import msgpack  # For reading back the data
 
     MSGPACK_AVAILABLE = True
@@ -340,11 +346,13 @@ async def test_polars_pipeline_integration():
         df = pl.read_parquet(output_path)
         assert len(df) == len(SAMPLE_QUOTES)
         
-        # Verify data
+        # Verify data using idiomatic Polars access
+        text_values = df["text"].to_list()
+        author_values = df["author"].to_list()
+        
         for i in range(len(SAMPLE_QUOTES)):
-            row = df[i]
-            assert row["text"][0] == SAMPLE_QUOTES[i]["text"]
-            assert row["author"][0] == SAMPLE_QUOTES[i]["author"]
+            assert text_values[i] == SAMPLE_QUOTES[i]["text"]
+            assert author_values[i] == SAMPLE_QUOTES[i]["author"]
 
 
 try:
@@ -491,16 +499,7 @@ async def test_multiple_pipelines_simultaneously():
         xml_pipeline = XMLPipeline(xml_path)
         
         spider = TestSpider()
-        
-        mock_html = "<html><body>Test</body></html>"
-        mock_request = Request(url="http://example.com")
-        mock_response = HTMLResponse(
-            url=mock_request.url,
-            status=200,
-            headers={},
-            body=mock_html.encode("utf-8"),
-            request=mock_request,
-        )
+        mock_response = create_mock_response()
         
         # Open all pipelines
         await jl_pipeline.open(spider)
