@@ -30,7 +30,6 @@ class Request:
         return replace(self, **kwargs)  # type: ignore[arg-type]
 
 
-# PEP 695: Type Parameter Syntax (Python 3.13+)
 type CallbackOutput = (
     Request
     | JSONValue
