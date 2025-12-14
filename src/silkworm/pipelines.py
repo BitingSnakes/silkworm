@@ -141,7 +141,8 @@ except ImportError:
 try:
     # Skip on Windows - cassandra-driver requires libev C extension which is not available
     if sys.platform == "win32":
-        raise ImportError("cassandra-driver not supported on Windows")
+        msg = "cassandra-driver not supported on Windows"
+        raise ImportError(msg)
     from cassandra.cluster import Cluster  # type: ignore[import-not-found, import-untyped]
     from cassandra.auth import PlainTextAuthProvider  # type: ignore[import-not-found, import-untyped]
 
@@ -166,9 +167,10 @@ except ImportError:
     AIOBOTO3_AVAILABLE = False
 
 if TYPE_CHECKING:
+    from ._types import JSONValue
     from .spiders import Spider
+
 from .logging import get_logger
-from ._types import JSONValue
 
 
 def _validate_table_name(table: str) -> str:
@@ -176,15 +178,15 @@ def _validate_table_name(table: str) -> str:
     if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", table):
         raise ValueError(
             f"Invalid table name '{table}'. Table names must start with a letter or underscore "
-            "and contain only alphanumeric characters and underscores."
+            "and contain only alphanumeric characters and underscores.",
         )
     return table
 
 
 class ItemPipeline(Protocol):
-    async def open(self, spider: "Spider") -> None: ...
-    async def close(self, spider: "Spider") -> None: ...
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue: ...
+    async def open(self, spider: Spider) -> None: ...
+    async def close(self, spider: Spider) -> None: ...
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue: ...
 
 
 class CallbackPipeline:
@@ -225,22 +227,23 @@ class CallbackPipeline:
                      Can be either synchronous or asynchronous.
         """
         if not callable(callback):
-            raise TypeError("callback must be callable")
+            msg = "callback must be callable"
+            raise TypeError(msg)
 
         self.callback = callback
         self.logger = get_logger(component="CallbackPipeline")
 
-    async def open(self, spider: "Spider") -> None:
+    async def open(self, spider: Spider) -> None:
         """Open the pipeline."""
         callback_name = getattr(self.callback, "__name__", str(self.callback))
         self.logger.info("Opened Callback pipeline", callback=callback_name)
 
-    async def close(self, spider: "Spider") -> None:
+    async def close(self, spider: Spider) -> None:
         """Close the pipeline."""
         callback_name = getattr(self.callback, "__name__", str(self.callback))
         self.logger.info("Closed Callback pipeline", callback=callback_name)
 
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         """Process an item using the callback function."""
         # Call the callback - handle both sync and async functions
         if inspect.iscoroutinefunction(self.callback):
@@ -293,11 +296,11 @@ class JsonLinesPipeline:
         if self._use_opendal and not OPENDAL_AVAILABLE:
             raise ImportError(
                 "opendal is required for async JsonLinesPipeline writes. "
-                "Install it with: pip install silkworm-rs[s3]"
+                "Install it with: pip install silkworm-rs[s3]",
             )
         self.logger = get_logger(component="JsonLinesPipeline")
 
-    async def open(self, spider: "Spider") -> None:
+    async def open(self, spider: Spider) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         if self._use_opendal:
             self._operator = opendal.AsyncOperator("fs", root=str(self.path.parent))
@@ -311,19 +314,19 @@ class JsonLinesPipeline:
             self._fp = self.path.open("a", encoding="utf-8")
             self.logger.info("Opened JSONL pipeline", path=str(self.path))
 
-    async def close(self, spider: "Spider") -> None:
+    async def close(self, spider: Spider) -> None:
         if self._operator:
             self._operator = None
             self._object_path = None
             self.logger.info(
-                "Closed JSONL pipeline", path=str(self.path), backend="opendal"
+                "Closed JSONL pipeline", path=str(self.path), backend="opendal",
             )
         if self._fp:
             self._fp.close()
             self._fp = None
             self.logger.info("Closed JSONL pipeline", path=str(self.path))
 
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         line = json.dumps(item, ensure_ascii=False)
         if self._operator:
             try:
@@ -351,7 +354,7 @@ class JsonLinesPipeline:
         self._fp.write(line + "\n")
         self._fp.flush()
         self.logger.debug(
-            "Wrote item to JSONL", path=str(self.path), spider=spider.name
+            "Wrote item to JSONL", path=str(self.path), spider=spider.name,
         )
         return item
 
@@ -411,7 +414,7 @@ class MsgPackPipeline:
         """
         if not ORMSGPACK_AVAILABLE:
             raise ImportError(
-                "ormsgpack is required for MsgPackPipeline. Install it with: pip install silkworm-rs[msgpack]"
+                "ormsgpack is required for MsgPackPipeline. Install it with: pip install silkworm-rs[msgpack]",
             )
         if mode not in ("write", "append"):
             raise ValueError(f"mode must be 'write' or 'append', got '{mode}'")
@@ -421,26 +424,26 @@ class MsgPackPipeline:
         self._fp: io.BufferedWriter | None = None
         self.logger = get_logger(component="MsgPackPipeline")
 
-    async def open(self, spider: "Spider") -> None:
+    async def open(self, spider: Spider) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         file_mode = "ab" if self.mode == "append" else "wb"
         self._fp = self.path.open(file_mode)  # type: ignore[assignment]
         self.logger.info("Opened MsgPack pipeline", path=str(self.path), mode=self.mode)
 
-    async def close(self, spider: "Spider") -> None:
+    async def close(self, spider: Spider) -> None:
         if self._fp:
             self._fp.close()
             self._fp = None
             self.logger.info("Closed MsgPack pipeline", path=str(self.path))
 
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         if not self._fp:
             raise RuntimeError("MsgPackPipeline not opened")
         packed = ormsgpack.packb(item)
         self._fp.write(packed)
         self._fp.flush()
         self.logger.debug(
-            "Wrote item to MsgPack", path=str(self.path), spider=spider.name
+            "Wrote item to MsgPack", path=str(self.path), spider=spider.name,
         )
         return item
 
@@ -452,7 +455,7 @@ class SQLitePipeline:
         self._conn: sqlite3.Connection | None = None
         self.logger = get_logger(component="SQLitePipeline")
 
-    async def open(self, spider: "Spider") -> None:
+    async def open(self, spider: Spider) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(self.path)
         cur = self._conn.cursor()
@@ -463,20 +466,20 @@ class SQLitePipeline:
                 spider TEXT NOT NULL,
                 data   TEXT NOT NULL
             )
-            """
+            """,
         )
         self._conn.commit()
         self.logger.info(
-            "Opened SQLite pipeline", path=str(self.path), table=self.table
+            "Opened SQLite pipeline", path=str(self.path), table=self.table,
         )
 
-    async def close(self, spider: "Spider") -> None:
+    async def close(self, spider: Spider) -> None:
         if self._conn:
             self._conn.close()
             self._conn = None
             self.logger.info("Closed SQLite pipeline", path=str(self.path))
 
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         if not self._conn:
             raise RuntimeError("SQLitePipeline not opened")
         cur = self._conn.cursor()
@@ -503,23 +506,23 @@ class XMLPipeline:
         self._fp: io.TextIOWrapper | None = None
         self.logger = get_logger(component="XMLPipeline")
 
-    async def open(self, spider: "Spider") -> None:
+    async def open(self, spider: Spider) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._fp = self.path.open("w", encoding="utf-8")
         self._fp.write(
-            f'<?xml version="1.0" encoding="UTF-8"?>\n<{self.root_element}>\n'
+            f'<?xml version="1.0" encoding="UTF-8"?>\n<{self.root_element}>\n',
         )
         self._fp.flush()
         self.logger.info("Opened XML pipeline", path=str(self.path))
 
-    async def close(self, spider: "Spider") -> None:
+    async def close(self, spider: Spider) -> None:
         if self._fp:
             self._fp.write(f"</{self.root_element}>\n")
             self._fp.close()
             self._fp = None
             self.logger.info("Closed XML pipeline", path=str(self.path))
 
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         if not self._fp:
             raise RuntimeError("XMLPipeline not opened")
 
@@ -555,7 +558,7 @@ class XMLPipeline:
 
 class CSVPipeline:
     def __init__(
-        self, path: str | Path = "items.csv", *, fieldnames: list[str] | None = None
+        self, path: str | Path = "items.csv", *, fieldnames: list[str] | None = None,
     ) -> None:
         self.path = Path(path)
         self.fieldnames = fieldnames
@@ -564,20 +567,20 @@ class CSVPipeline:
         self._header_written = False
         self.logger = get_logger(component="CSVPipeline")
 
-    async def open(self, spider: "Spider") -> None:
+    async def open(self, spider: Spider) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._fp = self.path.open("w", encoding="utf-8", newline="")
         self._header_written = False
         self.logger.info("Opened CSV pipeline", path=str(self.path))
 
-    async def close(self, spider: "Spider") -> None:
+    async def close(self, spider: Spider) -> None:
         if self._fp:
             self._fp.close()
             self._fp = None
             self._writer = None
             self.logger.info("Closed CSV pipeline", path=str(self.path))
 
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         if not self._fp:
             raise RuntimeError("CSVPipeline not opened")
 
@@ -592,7 +595,7 @@ class CSVPipeline:
             if self.fieldnames is None:
                 self.fieldnames = list(flat_item.keys())
             self._writer = csv.DictWriter(
-                self._fp, fieldnames=self.fieldnames, extrasaction="ignore"
+                self._fp, fieldnames=self.fieldnames, extrasaction="ignore",
             )
 
         # Write header if first item
@@ -606,7 +609,7 @@ class CSVPipeline:
         return item
 
     def _flatten_dict(
-        self, data: Mapping[str, JSONValue], parent_key: str = "", sep: str = "_"
+        self, data: Mapping[str, JSONValue], parent_key: str = "", sep: str = "_",
     ) -> dict[str, JSONValue | str]:
         """Flatten a nested dictionary structure."""
         items: list[tuple[str, JSONValue | str]] = []
@@ -646,7 +649,7 @@ class TaskiqPipeline:
 
     def __init__(
         self,
-        broker: "_TaskiqBroker",
+        broker: _TaskiqBroker,
         task: _TaskiqTask | None = None,
         task_name: str | None = None,
     ) -> None:
@@ -661,7 +664,7 @@ class TaskiqPipeline:
         """
         if not TASKIQ_AVAILABLE:
             raise ImportError(
-                "taskiq is required for TaskiqPipeline. Install it with: pip install taskiq"
+                "taskiq is required for TaskiqPipeline. Install it with: pip install taskiq",
             )
         if task is None and task_name is None:
             raise ValueError("Either 'task' or 'task_name' must be provided")
@@ -672,7 +675,7 @@ class TaskiqPipeline:
         self.task_name = task_name
         self.logger = get_logger(component="TaskiqPipeline")
 
-    async def open(self, spider: "Spider") -> None:
+    async def open(self, spider: Spider) -> None:
         """Open the pipeline and start the broker if needed."""
         await self.broker.startup()
 
@@ -688,7 +691,7 @@ class TaskiqPipeline:
             if self._task is None:
                 raise ValueError(
                     f"Task '{self.task_name}' not found in broker. "
-                    f"Make sure you've registered it with @broker.task and use the full task name (e.g., '.:task_name')"
+                    f"Make sure you've registered it with @broker.task and use the full task name (e.g., '.:task_name')",
                 )
             actual_task_name = self.task_name
 
@@ -698,7 +701,7 @@ class TaskiqPipeline:
             broker=self.broker.__class__.__name__,
         )
 
-    async def close(self, spider: "Spider") -> None:
+    async def close(self, spider: Spider) -> None:
         """Close the pipeline and shutdown the broker."""
         await self.broker.shutdown()
         task_name = (
@@ -710,7 +713,7 @@ class TaskiqPipeline:
         )
         self.logger.info("Closed Taskiq pipeline", task_name=task_name)
 
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         """Send the item to the Taskiq broker for processing."""
         if self._task is None:
             raise RuntimeError("TaskiqPipeline not opened")
@@ -771,7 +774,7 @@ class PolarsPipeline:
         """
         if not POLARS_AVAILABLE:
             raise ImportError(
-                "polars is required for PolarsPipeline. Install it with: pip install silkworm-rs[polars]"
+                "polars is required for PolarsPipeline. Install it with: pip install silkworm-rs[polars]",
             )
         if mode not in ("write", "append"):
             raise ValueError(f"mode must be 'write' or 'append', got '{mode}'")
@@ -781,12 +784,12 @@ class PolarsPipeline:
         self._items: list[JSONValue] = []
         self.logger = get_logger(component="PolarsPipeline")
 
-    async def open(self, spider: "Spider") -> None:
+    async def open(self, spider: Spider) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._items = []
         self.logger.info("Opened Polars pipeline", path=str(self.path), mode=self.mode)
 
-    async def close(self, spider: "Spider") -> None:
+    async def close(self, spider: Spider) -> None:
         if self._items:
             df = pl.DataFrame(self._items)
             if self.mode == "append" and self.path.exists():
@@ -796,10 +799,10 @@ class PolarsPipeline:
             df.write_parquet(self.path)
         self.logger.info("Closed Polars pipeline", path=str(self.path))
 
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         self._items.append(item)
         self.logger.debug(
-            "Buffered item for Parquet", path=str(self.path), spider=spider.name
+            "Buffered item for Parquet", path=str(self.path), spider=spider.name,
         )
         return item
 
@@ -829,7 +832,7 @@ class ExcelPipeline:
         """
         if not OPENPYXL_AVAILABLE:
             raise ImportError(
-                "openpyxl is required for ExcelPipeline. Install it with: pip install silkworm-rs[excel]"
+                "openpyxl is required for ExcelPipeline. Install it with: pip install silkworm-rs[excel]",
             )
 
         self.path = Path(path)
@@ -837,12 +840,12 @@ class ExcelPipeline:
         self._items: list[JSONValue] = []
         self.logger = get_logger(component="ExcelPipeline")
 
-    async def open(self, spider: "Spider") -> None:
+    async def open(self, spider: Spider) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._items = []
         self.logger.info("Opened Excel pipeline", path=str(self.path))
 
-    async def close(self, spider: "Spider") -> None:
+    async def close(self, spider: Spider) -> None:
         if self._items:
             wb = openpyxl.Workbook()
             ws = wb.active
@@ -873,15 +876,15 @@ class ExcelPipeline:
             wb.save(self.path)
         self.logger.info("Closed Excel pipeline", path=str(self.path))
 
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         self._items.append(item)
         self.logger.debug(
-            "Buffered item for Excel", path=str(self.path), spider=spider.name
+            "Buffered item for Excel", path=str(self.path), spider=spider.name,
         )
         return item
 
     def _flatten_dict(
-        self, data: Mapping[str, JSONValue], parent_key: str = "", sep: str = "_"
+        self, data: Mapping[str, JSONValue], parent_key: str = "", sep: str = "_",
     ) -> dict[str, JSONValue | str]:
         """Flatten a nested dictionary structure."""
         items: list[tuple[str, JSONValue | str]] = []
@@ -919,28 +922,28 @@ class YAMLPipeline:
         """
         if not YAML_AVAILABLE:
             raise ImportError(
-                "pyyaml is required for YAMLPipeline. Install it with: pip install silkworm-rs[yaml]"
+                "pyyaml is required for YAMLPipeline. Install it with: pip install silkworm-rs[yaml]",
             )
 
         self.path = Path(path)
         self._items: list[JSONValue] = []
         self.logger = get_logger(component="YAMLPipeline")
 
-    async def open(self, spider: "Spider") -> None:
+    async def open(self, spider: Spider) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._items = []
         self.logger.info("Opened YAML pipeline", path=str(self.path))
 
-    async def close(self, spider: "Spider") -> None:
+    async def close(self, spider: Spider) -> None:
         if self._items:
             with self.path.open("w", encoding="utf-8") as f:
                 yaml.dump(self._items, f, default_flow_style=False, allow_unicode=True)
         self.logger.info("Closed YAML pipeline", path=str(self.path))
 
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         self._items.append(item)
         self.logger.debug(
-            "Buffered item for YAML", path=str(self.path), spider=spider.name
+            "Buffered item for YAML", path=str(self.path), spider=spider.name,
         )
         return item
 
@@ -981,7 +984,7 @@ class AvroPipeline:
         """
         if not FASTAVRO_AVAILABLE:
             raise ImportError(
-                "fastavro is required for AvroPipeline. Install it with: pip install silkworm-rs[avro]"
+                "fastavro is required for AvroPipeline. Install it with: pip install silkworm-rs[avro]",
             )
 
         self.path = Path(path)
@@ -989,12 +992,12 @@ class AvroPipeline:
         self._items: list[JSONValue] = []
         self.logger = get_logger(component="AvroPipeline")
 
-    async def open(self, spider: "Spider") -> None:
+    async def open(self, spider: Spider) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._items = []
         self.logger.info("Opened Avro pipeline", path=str(self.path))
 
-    async def close(self, spider: "Spider") -> None:
+    async def close(self, spider: Spider) -> None:
         if self._items:
             schema = self.schema
             if schema is None:
@@ -1005,10 +1008,10 @@ class AvroPipeline:
                 fastavro.writer(f, schema, self._items)
         self.logger.info("Closed Avro pipeline", path=str(self.path))
 
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         self._items.append(item)
         self.logger.debug(
-            "Buffered item for Avro", path=str(self.path), spider=spider.name
+            "Buffered item for Avro", path=str(self.path), spider=spider.name,
         )
         return item
 
@@ -1078,34 +1081,34 @@ class ElasticsearchPipeline:
         """
         if not ELASTICSEARCH_AVAILABLE:
             raise ImportError(
-                "elasticsearch is required for ElasticsearchPipeline. Install it with: pip install silkworm-rs[elasticsearch]"
+                "elasticsearch is required for ElasticsearchPipeline. Install it with: pip install silkworm-rs[elasticsearch]",
             )
 
         self.hosts = [hosts] if isinstance(hosts, str) else hosts
         self.index = index
         self.es_kwargs = es_kwargs
-        self._client: "AsyncElasticsearch | None" = None
+        self._client: AsyncElasticsearch | None = None
         self.logger = get_logger(component="ElasticsearchPipeline")
 
-    async def open(self, spider: "Spider") -> None:
+    async def open(self, spider: Spider) -> None:
         self._client = AsyncElasticsearch(self.hosts, **self.es_kwargs)
         self.logger.info(
-            "Opened Elasticsearch pipeline", hosts=self.hosts, index=self.index
+            "Opened Elasticsearch pipeline", hosts=self.hosts, index=self.index,
         )
 
-    async def close(self, spider: "Spider") -> None:
+    async def close(self, spider: Spider) -> None:
         if self._client:
             await self._client.close()
             self._client = None
             self.logger.info("Closed Elasticsearch pipeline", index=self.index)
 
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         if not self._client:
             raise RuntimeError("ElasticsearchPipeline not opened")
 
         await self._client.index(index=self.index, document=item)
         self.logger.debug(
-            "Indexed item in Elasticsearch", index=self.index, spider=spider.name
+            "Indexed item in Elasticsearch", index=self.index, spider=spider.name,
         )
         return item
 
@@ -1141,7 +1144,7 @@ class MongoDBPipeline:
         """
         if not MOTOR_AVAILABLE:
             raise ImportError(
-                "motor is required for MongoDBPipeline. Install it with: pip install silkworm-rs[mongodb]"
+                "motor is required for MongoDBPipeline. Install it with: pip install silkworm-rs[mongodb]",
             )
 
         self.connection_string = connection_string
@@ -1152,7 +1155,7 @@ class MongoDBPipeline:
         self._coll = None
         self.logger = get_logger(component="MongoDBPipeline")
 
-    async def open(self, spider: "Spider") -> None:
+    async def open(self, spider: Spider) -> None:
         self._client = motor.motor_asyncio.AsyncIOMotorClient(self.connection_string)  # type: ignore[assignment]
         self._db = self._client[self.database]  # type: ignore[index]
         self._coll = self._db[self.collection]  # type: ignore[index]
@@ -1162,7 +1165,7 @@ class MongoDBPipeline:
             collection=self.collection,
         )
 
-    async def close(self, spider: "Spider") -> None:
+    async def close(self, spider: Spider) -> None:
         if self._client:
             self._client.close()
             self._client = None
@@ -1170,13 +1173,13 @@ class MongoDBPipeline:
             self._coll = None
             self.logger.info("Closed MongoDB pipeline", collection=self.collection)
 
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         if not self._coll:
             raise RuntimeError("MongoDBPipeline not opened")
 
         await self._coll.insert_one(item)
         self.logger.debug(
-            "Inserted item in MongoDB", collection=self.collection, spider=spider.name
+            "Inserted item in MongoDB", collection=self.collection, spider=spider.name,
         )
         return item
 
@@ -1218,7 +1221,7 @@ class S3JsonLinesPipeline:
         """
         if not OPENDAL_AVAILABLE:
             raise ImportError(
-                "opendal is required for S3JsonLinesPipeline. Install it with: pip install silkworm-rs[s3]"
+                "opendal is required for S3JsonLinesPipeline. Install it with: pip install silkworm-rs[s3]",
             )
 
         self.bucket = bucket
@@ -1231,7 +1234,7 @@ class S3JsonLinesPipeline:
         self._operator: opendal.AsyncOperator | None = None
         self.logger = get_logger(component="S3JsonLinesPipeline")
 
-    async def open(self, spider: "Spider") -> None:
+    async def open(self, spider: Spider) -> None:
         # Configure OpenDAL operator for S3
         config = {
             "bucket": self.bucket,
@@ -1253,7 +1256,7 @@ class S3JsonLinesPipeline:
             region=self.region,
         )
 
-    async def close(self, spider: "Spider") -> None:
+    async def close(self, spider: Spider) -> None:
         if self._items and self._operator:
             # Write all buffered items to S3
             content = "\n".join(self._items)
@@ -1261,7 +1264,7 @@ class S3JsonLinesPipeline:
         self._operator = None
         self.logger.info("Closed S3 JSON Lines pipeline", key=self.key)
 
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         line = json.dumps(item, ensure_ascii=False)
         self._items.append(line)
         self.logger.debug("Buffered item for S3", key=self.key, spider=spider.name)
@@ -1306,19 +1309,19 @@ class VortexPipeline:
         """
         if not VORTEX_AVAILABLE:
             raise ImportError(
-                "vortex is required for VortexPipeline. Install it with: pip install silkworm-rs[vortex]"
+                "vortex is required for VortexPipeline. Install it with: pip install silkworm-rs[vortex]",
             )
 
         self.path = Path(path)
         self._items: list[JSONValue] = []
         self.logger = get_logger(component="VortexPipeline")
 
-    async def open(self, spider: "Spider") -> None:
+    async def open(self, spider: Spider) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._items = []
         self.logger.info("Opened Vortex pipeline", path=str(self.path))
 
-    async def close(self, spider: "Spider") -> None:
+    async def close(self, spider: Spider) -> None:
         if self._items:
             # Convert items list to PyArrow Table
             # Vortex can directly accept PyArrow tables for efficient writing
@@ -1337,10 +1340,10 @@ class VortexPipeline:
         else:
             self.logger.info("Closed Vortex pipeline (no items)", path=str(self.path))
 
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         self._items.append(item)
         self.logger.debug(
-            "Buffered item for Vortex", path=str(self.path), spider=spider.name
+            "Buffered item for Vortex", path=str(self.path), spider=spider.name,
         )
         return item
 
@@ -1385,7 +1388,7 @@ class MySQLPipeline:
         """
         if not AIOMYSQL_AVAILABLE:
             raise ImportError(
-                "aiomysql is required for MySQLPipeline. Install it with: pip install silkworm-rs[mysql]"
+                "aiomysql is required for MySQLPipeline. Install it with: pip install silkworm-rs[mysql]",
             )
 
         self.host = host
@@ -1397,7 +1400,7 @@ class MySQLPipeline:
         self._pool = None  # type: ignore[var-annotated]
         self.logger = get_logger(component="MySQLPipeline")
 
-    async def open(self, spider: "Spider") -> None:
+    async def open(self, spider: Spider) -> None:
         self._pool = await aiomysql.create_pool(
             host=self.host,
             port=self.port,
@@ -1417,7 +1420,7 @@ class MySQLPipeline:
                         data JSON NOT NULL,
                         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )
-                    """
+                    """,
                 )
                 await conn.commit()
 
@@ -1428,14 +1431,14 @@ class MySQLPipeline:
             table=self.table,
         )
 
-    async def close(self, spider: "Spider") -> None:
+    async def close(self, spider: Spider) -> None:
         if self._pool:
             self._pool.close()
             await self._pool.wait_closed()
             self._pool = None
             self.logger.info("Closed MySQL pipeline", table=self.table)
 
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         if not self._pool:
             raise RuntimeError("MySQLPipeline not opened")
 
@@ -1448,7 +1451,7 @@ class MySQLPipeline:
                 await conn.commit()
 
         self.logger.debug(
-            "Inserted item in MySQL", table=self.table, spider=spider.name
+            "Inserted item in MySQL", table=self.table, spider=spider.name,
         )
         return item
 
@@ -1493,7 +1496,7 @@ class PostgreSQLPipeline:
         """
         if not ASYNCPG_AVAILABLE:
             raise ImportError(
-                "asyncpg is required for PostgreSQLPipeline. Install it with: pip install silkworm-rs[postgresql]"
+                "asyncpg is required for PostgreSQLPipeline. Install it with: pip install silkworm-rs[postgresql]",
             )
 
         self.host = host
@@ -1505,7 +1508,7 @@ class PostgreSQLPipeline:
         self._pool = None  # type: ignore[var-annotated]
         self.logger = get_logger(component="PostgreSQLPipeline")
 
-    async def open(self, spider: "Spider") -> None:
+    async def open(self, spider: Spider) -> None:
         self._pool = await asyncpg.create_pool(
             host=self.host,
             port=self.port,
@@ -1524,7 +1527,7 @@ class PostgreSQLPipeline:
                     data JSONB NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-                """
+                """,
             )
 
         self.logger.info(
@@ -1534,13 +1537,13 @@ class PostgreSQLPipeline:
             table=self.table,
         )
 
-    async def close(self, spider: "Spider") -> None:
+    async def close(self, spider: Spider) -> None:
         if self._pool:
             await self._pool.close()
             self._pool = None
             self.logger.info("Closed PostgreSQL pipeline", table=self.table)
 
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         if not self._pool:
             raise RuntimeError("PostgreSQLPipeline not opened")
 
@@ -1552,7 +1555,7 @@ class PostgreSQLPipeline:
             )
 
         self.logger.debug(
-            "Inserted item in PostgreSQL", table=self.table, spider=spider.name
+            "Inserted item in PostgreSQL", table=self.table, spider=spider.name,
         )
         return item
 
@@ -1596,7 +1599,7 @@ class WebhookPipeline:
         if not RNET_AVAILABLE:
             raise ImportError(
                 "rnet is required for WebhookPipeline but appears to be unavailable. "
-                "This should not happen as rnet is a core dependency."
+                "This should not happen as rnet is a core dependency.",
             )
 
         self.url = url
@@ -1604,11 +1607,11 @@ class WebhookPipeline:
         self.headers = headers or {}
         self.timeout = timeout
         self.batch_size = batch_size
-        self._client: "Client | None" = None  # type: ignore[name-defined]
+        self._client: Client | None = None  # type: ignore[name-defined]
         self._batch: list[JSONValue] = []
         self.logger = get_logger(component="WebhookPipeline")
 
-    async def open(self, spider: "Spider") -> None:
+    async def open(self, spider: Spider) -> None:
         self._client = Client()  # type: ignore[misc]
         self._batch = []
         self.logger.info(
@@ -1618,14 +1621,14 @@ class WebhookPipeline:
             batch_size=self.batch_size,
         )
 
-    async def close(self, spider: "Spider") -> None:
+    async def close(self, spider: Spider) -> None:
         # Send any remaining batched items
         if self._batch:
             await self._send_batch()
 
         if self._client:
             closer = getattr(self._client, "aclose", None) or getattr(
-                self._client, "close", None
+                self._client, "close", None,
             )
             if closer and callable(closer):
                 try:
@@ -1638,7 +1641,7 @@ class WebhookPipeline:
 
         self.logger.info("Closed Webhook pipeline", url=self.url)
 
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         if not self._client:
             raise RuntimeError("WebhookPipeline not opened")
 
@@ -1662,7 +1665,7 @@ class WebhookPipeline:
             method_upper = self.method.upper()
             if not hasattr(Method, method_upper):  # type: ignore[attr-defined]
                 raise ValueError(
-                    f"Invalid HTTP method '{self.method}'. Must be one of: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS"
+                    f"Invalid HTTP method '{self.method}'. Must be one of: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS",
                 )
             method_enum = getattr(Method, method_upper)  # type: ignore[attr-defined]
             kwargs = {
@@ -1683,7 +1686,7 @@ class WebhookPipeline:
 
             # Close response if possible
             closer = getattr(response, "aclose", None) or getattr(
-                response, "close", None
+                response, "close", None,
             )
             if closer and callable(closer):
                 try:
@@ -1748,7 +1751,7 @@ class GoogleSheetsPipeline:
         if not GOOGLE_SHEETS_AVAILABLE:
             raise ImportError(
                 "google-api-python-client and google-auth are required for GoogleSheetsPipeline. "
-                "Install them with: pip install silkworm-rs[gsheets]"
+                "Install them with: pip install silkworm-rs[gsheets]",
             )
 
         self.spreadsheet_id = spreadsheet_id
@@ -1761,7 +1764,7 @@ class GoogleSheetsPipeline:
         self._header_written = False
         self.logger = get_logger(component="GoogleSheetsPipeline")
 
-    async def open(self, spider: "Spider") -> None:
+    async def open(self, spider: Spider) -> None:
         # Initialize Google Sheets API client
         creds = Credentials.from_service_account_file(  # type: ignore[union-attr]
             self.credentials_file,
@@ -1777,7 +1780,7 @@ class GoogleSheetsPipeline:
             sheet_name=self.sheet_name,
         )
 
-    async def close(self, spider: "Spider") -> None:
+    async def close(self, spider: Spider) -> None:
         # Write any remaining batched items
         if self._batch:
             await self._write_batch()
@@ -1789,7 +1792,7 @@ class GoogleSheetsPipeline:
             sheet_name=self.sheet_name,
         )
 
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         if not self._service:
             raise RuntimeError("GoogleSheetsPipeline not opened")
 
@@ -1866,7 +1869,7 @@ class GoogleSheetsPipeline:
         self._batch = []
 
     def _flatten_dict(
-        self, data: Mapping[str, JSONValue], parent_key: str = "", sep: str = "_"
+        self, data: Mapping[str, JSONValue], parent_key: str = "", sep: str = "_",
     ) -> dict[str, JSONValue | str]:
         """Flatten a nested dictionary structure."""
         items: list[tuple[str, JSONValue | str]] = []
@@ -1928,7 +1931,7 @@ class SnowflakePipeline:
         if not SNOWFLAKE_AVAILABLE:
             raise ImportError(
                 "snowflake-connector-python is required for SnowflakePipeline. "
-                "Install it with: pip install silkworm-rs[snowflake]"
+                "Install it with: pip install silkworm-rs[snowflake]",
             )
 
         self.account = account
@@ -1943,7 +1946,7 @@ class SnowflakePipeline:
         self._cursor = None  # type: ignore[var-annotated]
         self.logger = get_logger(component="SnowflakePipeline")
 
-    async def open(self, spider: "Spider") -> None:
+    async def open(self, spider: Spider) -> None:
         # Connect to Snowflake
         conn_params = {
             "account": self.account,
@@ -1970,7 +1973,7 @@ class SnowflakePipeline:
                 data VARIANT NOT NULL,
                 created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
             )
-            """
+            """,
         )
 
         self.logger.info(
@@ -1981,7 +1984,7 @@ class SnowflakePipeline:
             table=self.table,
         )
 
-    async def close(self, spider: "Spider") -> None:
+    async def close(self, spider: Spider) -> None:
         if self._cursor:
             self._cursor.close()
             self._cursor = None
@@ -1992,7 +1995,7 @@ class SnowflakePipeline:
 
         self.logger.info("Closed Snowflake pipeline", table=self.table)
 
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         if not self._cursor or not self._conn:
             raise RuntimeError("SnowflakePipeline not opened")
 
@@ -2004,7 +2007,7 @@ class SnowflakePipeline:
         self._conn.commit()
 
         self.logger.debug(
-            "Inserted item in Snowflake", table=self.table, spider=spider.name
+            "Inserted item in Snowflake", table=self.table, spider=spider.name,
         )
         return item
 
@@ -2045,7 +2048,7 @@ class FTPPipeline:
         """
         if not AIOFTP_AVAILABLE:
             raise ImportError(
-                "aioftp is required for FTPPipeline. Install it with: pip install silkworm-rs[ftp]"
+                "aioftp is required for FTPPipeline. Install it with: pip install silkworm-rs[ftp]",
             )
 
         self.host = host
@@ -2054,10 +2057,10 @@ class FTPPipeline:
         self.remote_path = remote_path
         self.port = port
         self._items: list[str] = []
-        self._client: "aioftp.Client | None" = None  # type: ignore[name-defined]
+        self._client: aioftp.Client | None = None  # type: ignore[name-defined]
         self.logger = get_logger(component="FTPPipeline")
 
-    async def open(self, spider: "Spider") -> None:
+    async def open(self, spider: Spider) -> None:
         self._items = []
         self.logger.info(
             "Opened FTP pipeline",
@@ -2066,7 +2069,7 @@ class FTPPipeline:
             remote_path=self.remote_path,
         )
 
-    async def close(self, spider: "Spider") -> None:
+    async def close(self, spider: Spider) -> None:
         if self._items:
             # Connect to FTP server and upload all buffered items
             self._client = aioftp.Client()  # type: ignore[attr-defined]
@@ -2094,11 +2097,11 @@ class FTPPipeline:
 
         self.logger.info("Closed FTP pipeline", remote_path=self.remote_path)
 
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         line = json.dumps(item, ensure_ascii=False)
         self._items.append(line)
         self.logger.debug(
-            "Buffered item for FTP", remote_path=self.remote_path, spider=spider.name
+            "Buffered item for FTP", remote_path=self.remote_path, spider=spider.name,
         )
         return item
 
@@ -2141,7 +2144,7 @@ class SFTPPipeline:
         """
         if not ASYNCSSH_AVAILABLE:
             raise ImportError(
-                "asyncssh is required for SFTPPipeline. Install it with: pip install silkworm-rs[sftp]"
+                "asyncssh is required for SFTPPipeline. Install it with: pip install silkworm-rs[sftp]",
             )
 
         if password is None and private_key is None:
@@ -2158,7 +2161,7 @@ class SFTPPipeline:
         self._sftp = None  # type: ignore[var-annotated]
         self.logger = get_logger(component="SFTPPipeline")
 
-    async def open(self, spider: "Spider") -> None:
+    async def open(self, spider: Spider) -> None:
         self._items = []
         self.logger.info(
             "Opened SFTP pipeline",
@@ -2167,7 +2170,7 @@ class SFTPPipeline:
             remote_path=self.remote_path,
         )
 
-    async def close(self, spider: "Spider") -> None:
+    async def close(self, spider: Spider) -> None:
         if self._items:
             # Connect to SFTP server and upload all buffered items
             try:
@@ -2214,11 +2217,11 @@ class SFTPPipeline:
 
         self.logger.info("Closed SFTP pipeline", remote_path=self.remote_path)
 
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         line = json.dumps(item, ensure_ascii=False)
         self._items.append(line)
         self.logger.debug(
-            "Buffered item for SFTP", remote_path=self.remote_path, spider=spider.name
+            "Buffered item for SFTP", remote_path=self.remote_path, spider=spider.name,
         )
         return item
 
@@ -2263,7 +2266,7 @@ class CassandraPipeline:
         if not CASSANDRA_AVAILABLE:
             raise ImportError(
                 "cassandra-driver is required for CassandraPipeline. "
-                "Install it with: pip install silkworm-rs[cassandra]"
+                "Install it with: pip install silkworm-rs[cassandra]",
             )
 
         self.hosts = hosts or ["127.0.0.1"]
@@ -2276,17 +2279,17 @@ class CassandraPipeline:
         self._session = None  # type: ignore[var-annotated]
         self.logger = get_logger(component="CassandraPipeline")
 
-    async def open(self, spider: "Spider") -> None:
+    async def open(self, spider: Spider) -> None:
         # Setup authentication if credentials provided
         auth_provider = None
         if self.username and self.password:
             auth_provider = PlainTextAuthProvider(  # type: ignore[misc]
-                username=self.username, password=self.password
+                username=self.username, password=self.password,
             )
 
         # Connect to Cassandra cluster
         cluster = Cluster(  # type: ignore[misc]
-            self.hosts, port=self.port, auth_provider=auth_provider
+            self.hosts, port=self.port, auth_provider=auth_provider,
         )
         session = cluster.connect()
         self._cluster = cluster
@@ -2297,7 +2300,7 @@ class CassandraPipeline:
             f"""
             CREATE KEYSPACE IF NOT EXISTS {self.keyspace}
             WITH replication = {{'class': 'SimpleStrategy', 'replication_factor': 1}}
-            """
+            """,
         )
 
         # Use the keyspace
@@ -2312,7 +2315,7 @@ class CassandraPipeline:
                 data text,
                 created_at timestamp
             )
-            """
+            """,
         )
 
         self.logger.info(
@@ -2322,14 +2325,14 @@ class CassandraPipeline:
             table=self.table,
         )
 
-    async def close(self, spider: "Spider") -> None:
+    async def close(self, spider: Spider) -> None:
         if self._cluster:
             self._cluster.shutdown()
             self._cluster = None
             self._session = None
             self.logger.info("Closed Cassandra pipeline", table=self.table)
 
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         if not self._session:
             raise RuntimeError("CassandraPipeline not opened")
 
@@ -2351,7 +2354,7 @@ class CassandraPipeline:
         )
 
         self.logger.debug(
-            "Inserted item in Cassandra", table=self.table, spider=spider.name
+            "Inserted item in Cassandra", table=self.table, spider=spider.name,
         )
         return item
 
@@ -2391,7 +2394,7 @@ class CouchDBPipeline:
         if not AIOCOUCH_AVAILABLE:
             raise ImportError(
                 "aiocouch is required for CouchDBPipeline. "
-                "Install it with: pip install silkworm-rs[couchdb]"
+                "Install it with: pip install silkworm-rs[couchdb]",
             )
 
         self.url = url
@@ -2402,11 +2405,11 @@ class CouchDBPipeline:
         self._db = None  # type: ignore[var-annotated]
         self.logger = get_logger(component="CouchDBPipeline")
 
-    async def open(self, spider: "Spider") -> None:
+    async def open(self, spider: Spider) -> None:
         # Connect to CouchDB
         if self.username and self.password:
             self._client = await aiocouch.CouchDB(  # type: ignore[attr-defined]
-                self.url, user=self.username, password=self.password
+                self.url, user=self.username, password=self.password,
             ).__aenter__()
         else:
             self._client = await aiocouch.CouchDB(self.url).__aenter__()  # type: ignore[attr-defined]
@@ -2422,17 +2425,17 @@ class CouchDBPipeline:
             self._db = await client.create(self.database)  # type: ignore[union-attr]
 
         self.logger.info(
-            "Opened CouchDB pipeline", url=self.url, database=self.database
+            "Opened CouchDB pipeline", url=self.url, database=self.database,
         )
 
-    async def close(self, spider: "Spider") -> None:
+    async def close(self, spider: Spider) -> None:
         if self._client:
             await self._client.__aexit__(None, None, None)  # type: ignore[union-attr]
             self._client = None
             self._db = None
             self.logger.info("Closed CouchDB pipeline", database=self.database)
 
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         if not self._db:
             raise RuntimeError("CouchDBPipeline not opened")
 
@@ -2443,7 +2446,7 @@ class CouchDBPipeline:
         await self._db.create(doc_data)  # type: ignore[union-attr]
 
         self.logger.debug(
-            "Inserted item in CouchDB", database=self.database, spider=spider.name
+            "Inserted item in CouchDB", database=self.database, spider=spider.name,
         )
         return item
 
@@ -2485,7 +2488,7 @@ class DynamoDBPipeline:
         if not AIOBOTO3_AVAILABLE:
             raise ImportError(
                 "aioboto3 is required for DynamoDBPipeline. "
-                "Install it with: pip install silkworm-rs[dynamodb]"
+                "Install it with: pip install silkworm-rs[dynamodb]",
             )
 
         self.table_name = table_name
@@ -2499,7 +2502,7 @@ class DynamoDBPipeline:
         self._table = None  # type: ignore[var-annotated]
         self.logger = get_logger(component="DynamoDBPipeline")
 
-    async def open(self, spider: "Spider") -> None:
+    async def open(self, spider: Spider) -> None:
         # Create aioboto3 session
         session_kwargs = {"region_name": self.region_name}
         if self.aws_access_key_id and self.aws_secret_access_key:
@@ -2515,10 +2518,10 @@ class DynamoDBPipeline:
             resource_kwargs["endpoint_url"] = self.endpoint_url
 
         resource = await session.resource(  # type: ignore[attr-defined]
-            "dynamodb", **resource_kwargs
+            "dynamodb", **resource_kwargs,
         ).__aenter__()
         client = await session.client(  # type: ignore[attr-defined]
-            "dynamodb", **resource_kwargs
+            "dynamodb", **resource_kwargs,
         ).__aenter__()
         self._resource = resource
         self._client = client
@@ -2545,7 +2548,7 @@ class DynamoDBPipeline:
             region=self.region_name,
         )
 
-    async def close(self, spider: "Spider") -> None:
+    async def close(self, spider: Spider) -> None:
         if self._client:
             await self._client.__aexit__(None, None, None)  # type: ignore[union-attr]
             self._client = None
@@ -2555,7 +2558,7 @@ class DynamoDBPipeline:
             self._table = None
         self.logger.info("Closed DynamoDB pipeline", table_name=self.table_name)
 
-    async def process_item(self, item: JSONValue, spider: "Spider") -> JSONValue:
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         if not self._table:
             raise RuntimeError("DynamoDBPipeline not opened")
 
@@ -2572,6 +2575,6 @@ class DynamoDBPipeline:
         await self._table.put_item(Item=dynamo_item)  # type: ignore[union-attr]
 
         self.logger.debug(
-            "Inserted item in DynamoDB", table_name=self.table_name, spider=spider.name
+            "Inserted item in DynamoDB", table_name=self.table_name, spider=spider.name,
         )
         return item

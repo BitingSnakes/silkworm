@@ -1,18 +1,20 @@
 from __future__ import annotations
 import asyncio
 import inspect
-from contextlib import asynccontextmanager
 from collections.abc import Callable, Mapping, Sequence
+from contextlib import asynccontextmanager
+from typing import TYPE_CHECKING, Any, AsyncIterator, cast
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit
-from typing import Any, AsyncIterator, cast
 
 from rnet import Client, Emulation, Method  # type: ignore[import]
 
 from .exceptions import HttpError
-from ._types import Headers, QueryValue
-from .request import Request
-from .response import Response, HTMLResponse
 from .logging import get_logger
+from .response import HTMLResponse, Response
+
+if TYPE_CHECKING:
+    from ._types import Headers, QueryValue
+    from .request import Request
 
 
 class HttpClient:
@@ -43,11 +45,12 @@ class HttpClient:
         self._html_max_size_bytes = html_max_size_bytes
         self._follow_redirects = follow_redirects
         if max_redirects < 0:
-            raise ValueError("max_redirects must be non-negative")
+            msg = "max_redirects must be non-negative"
+            raise ValueError(msg)
         self._max_redirects = max_redirects
         self._keep_alive = keep_alive
         self._supports_keep_alive_kwarg = self._supports_kwarg(
-            getattr(self._client, "request", None), "keep_alive"
+            getattr(self._client, "request", None), "keep_alive",
         )
         self.logger = get_logger(component="http")
 
@@ -110,11 +113,11 @@ class HttpClient:
                         if self._should_follow_redirect(status, headers):
                             if redirects_followed >= self._max_redirects:
                                 raise HttpError(
-                                    f"Exceeded maximum redirects ({self._max_redirects})"
+                                    f"Exceeded maximum redirects ({self._max_redirects})",
                                 )
 
                             redirect_url = self._resolve_redirect_url(
-                                url, headers.get("location", "")
+                                url, headers.get("location", ""),
                             )
                             if redirect_url in visited_urls:
                                 raise HttpError("Redirect loop detected")
@@ -127,7 +130,7 @@ class HttpClient:
                                 status=status,
                             )
                             current_req = self._redirect_request(
-                                current_req, redirect_url, status, method
+                                current_req, redirect_url, status, method,
                             )
                             await self._close_response(resp)
                             resp = None
@@ -217,7 +220,8 @@ class HttpClient:
             except (TypeError, ValueError):
                 continue
 
-        raise TypeError("Unable to read response body")
+        msg = "Unable to read response body"
+        raise TypeError(msg)
 
     async def _close_response(self, resp: object | None) -> None:
         """Release the underlying HTTP response if it exposes a close hook."""
@@ -266,7 +270,7 @@ class HttpClient:
         return False
 
     async def _send_request(
-        self, method: Method | str, url: str, kwargs: dict[str, object]
+        self, method: Method | str, url: str, kwargs: dict[str, object],
     ) -> object:
         try:
             return await self._client.request(method, url, **kwargs)
@@ -303,7 +307,7 @@ class HttpClient:
 
         headers: Headers = {}
         if isinstance(raw_headers, Sequence) and not isinstance(
-            raw_headers, (str, bytes, bytearray)
+            raw_headers, (str, bytes, bytearray),
         ):
             for entry in raw_headers:
                 if isinstance(entry, Sequence) and len(entry) == 2:
@@ -355,7 +359,7 @@ class HttpClient:
             return int(raw_status)
         except Exception as exc:
             raise TypeError(
-                f"Invalid status code type: {type(raw_status).__name__}"
+                f"Invalid status code type: {type(raw_status).__name__}",
             ) from exc
 
     def _build_url(self, req: Request) -> str:
@@ -364,7 +368,7 @@ class HttpClient:
 
         parts = urlsplit(req.url)
         existing: dict[str, QueryValue] = dict(
-            parse_qsl(parts.query, keep_blank_values=True)
+            parse_qsl(parts.query, keep_blank_values=True),
         )
         existing.update(req.params)
         query = urlencode(cast(Mapping[str, object], existing), doseq=True)
@@ -399,7 +403,7 @@ class HttpClient:
         return urljoin(current_url, location.strip())
 
     def _redirect_request(
-        self, req: Request, redirect_url: str, status: int, method: Method | str
+        self, req: Request, redirect_url: str, status: int, method: Method | str,
     ) -> Request:
         method_name = self._method_name(method).upper()
         new_method = method_name
@@ -426,7 +430,7 @@ class HttpClient:
 
     async def close(self) -> None:
         closer = getattr(self._client, "aclose", None) or getattr(
-            self._client, "close", None
+            self._client, "close", None,
         )
         if closer is None or not callable(closer):
             return

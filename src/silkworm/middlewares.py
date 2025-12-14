@@ -2,36 +2,38 @@ from __future__ import annotations
 import asyncio
 import random
 from enum import Enum, auto
-from collections.abc import Callable, Iterable, Sequence
 from pathlib import Path
-from typing import Protocol, assert_never
+from typing import TYPE_CHECKING, Protocol, assert_never
 
-from .request import Request
-from .response import HTMLResponse, Response
 from .logging import get_logger
+from .response import HTMLResponse, Response
 
-from .spiders import Spider
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable, Sequence
+
+    from .request import Request
+    from .spiders import Spider
 
 
 class RequestMiddleware(Protocol):
-    async def process_request(self, request: Request, spider: "Spider") -> Request: ...
+    async def process_request(self, request: Request, spider: Spider) -> Request: ...
 
 
 class ResponseMiddleware(Protocol):
     async def process_response(
-        self, response: Response, spider: "Spider"
+        self, response: Response, spider: Spider,
     ) -> Response | Request: ...
 
 
 class UserAgentMiddleware:
     def __init__(
-        self, user_agents: Sequence[str] | None = None, *, default: str | None = None
+        self, user_agents: Sequence[str] | None = None, *, default: str | None = None,
     ) -> None:
         self.user_agents = list(user_agents or [])
         self.default = default or "silkworm/0.1"
         self.logger = get_logger(component="UserAgentMiddleware")
 
-    async def process_request(self, request: Request, spider: "Spider") -> Request:
+    async def process_request(self, request: Request, spider: Spider) -> Request:
         ua = None
         if self.user_agents:
             ua = random.choice(self.user_agents)
@@ -50,18 +52,17 @@ class ProxyMiddleware:
         random_selection: bool = False,
     ) -> None:
         if proxies is not None and proxy_file is not None:
-            raise ValueError(
-                "Cannot specify both 'proxies' and 'proxy_file'. Use one or the other."
-            )
+            msg = "Cannot specify both 'proxies' and 'proxy_file'. Use one or the other."
+            raise ValueError(msg)
         if proxies is None and proxy_file is None:
-            raise ValueError(
-                "Must provide either 'proxies' (iterable) or 'proxy_file' (path)."
-            )
+            msg = "Must provide either 'proxies' (iterable) or 'proxy_file' (path)."
+            raise ValueError(msg)
 
         if proxy_file is not None:
             proxy_path = Path(proxy_file)
             if not proxy_path.exists():
-                raise FileNotFoundError(f"Proxy file not found: {proxy_file}")
+                msg = f"Proxy file not found: {proxy_file}"
+                raise FileNotFoundError(msg)
             with proxy_path.open("r", encoding="utf-8") as f:
                 self.proxies = [line.strip() for line in f if line.strip()]
         else:
@@ -70,13 +71,14 @@ class ProxyMiddleware:
             self.proxies = list(proxies)
 
         if not self.proxies:
-            raise ValueError("ProxyMiddleware requires at least one proxy.")
+            msg = "ProxyMiddleware requires at least one proxy."
+            raise ValueError(msg)
 
         self.random_selection = random_selection
         self._idx = 0
         self.logger = get_logger(component="ProxyMiddleware")
 
-    async def process_request(self, request: Request, spider: "Spider") -> Request:
+    async def process_request(self, request: Request, spider: Spider) -> Request:
         if self.random_selection:
             proxy = random.choice(self.proxies)
         else:
@@ -97,7 +99,7 @@ class RetryMiddleware:
     ) -> None:
         self.max_times = max_times
         base_retry_codes = set(
-            retry_http_codes or {500, 502, 503, 504, 522, 524, 408, 429}
+            retry_http_codes or {500, 502, 503, 504, 522, 524, 408, 429},
         )
         sleep_codes = (
             set(sleep_http_codes)
@@ -112,7 +114,7 @@ class RetryMiddleware:
         self.logger = get_logger(component="RetryMiddleware")
 
     async def process_response(
-        self, response: Response, spider: "Spider"
+        self, response: Response, spider: Spider,
     ) -> Response | Request:
         request = response.request
         if response.status not in self.retry_http_codes:
@@ -184,46 +186,49 @@ class DelayMiddleware:
         delay: float | None = None,
         min_delay: float | None = None,
         max_delay: float | None = None,
-        delay_func: Callable[[Request, "Spider"], float] | None = None,
+        delay_func: Callable[[Request, Spider], float] | None = None,
     ) -> None:
         # Validate configuration and determine strategy
-        self._delay_func: Callable[[Request, "Spider"], float] | None = None
+        self._delay_func: Callable[[Request, Spider], float] | None = None
         self._min_delay: float | None = None
         self._max_delay: float | None = None
         self._fixed_delay: float | None = None
 
         if delay_func is not None:
             if delay is not None or min_delay is not None or max_delay is not None:
-                raise ValueError(
-                    "delay_func cannot be used with delay, min_delay, or max_delay"
-                )
+                msg = "delay_func cannot be used with delay, min_delay, or max_delay"
+                raise ValueError(msg)
             self._strategy = _DelayStrategy.CUSTOM
             self._delay_func = delay_func
         elif min_delay is not None or max_delay is not None:
             if delay is not None:
-                raise ValueError("Cannot use both delay and min_delay/max_delay")
+                msg = "Cannot use both delay and min_delay/max_delay"
+                raise ValueError(msg)
             if min_delay is None or max_delay is None:
-                raise ValueError("Both min_delay and max_delay must be provided")
+                msg = "Both min_delay and max_delay must be provided"
+                raise ValueError(msg)
             if min_delay < 0 or max_delay < 0:
-                raise ValueError("min_delay and max_delay must be non-negative")
+                msg = "min_delay and max_delay must be non-negative"
+                raise ValueError(msg)
             if min_delay > max_delay:
-                raise ValueError("min_delay must be less than or equal to max_delay")
+                msg = "min_delay must be less than or equal to max_delay"
+                raise ValueError(msg)
             self._strategy = _DelayStrategy.RANDOM
             self._min_delay = min_delay
             self._max_delay = max_delay
         elif delay is not None:
             if delay < 0:
-                raise ValueError("delay must be non-negative")
+                msg = "delay must be non-negative"
+                raise ValueError(msg)
             self._strategy = _DelayStrategy.FIXED
             self._fixed_delay = delay
         else:
-            raise ValueError(
-                "Must provide one of: delay, min_delay/max_delay, or delay_func"
-            )
+            msg = "Must provide one of: delay, min_delay/max_delay, or delay_func"
+            raise ValueError(msg)
 
         self.logger = get_logger(component="DelayMiddleware")
 
-    async def process_request(self, request: Request, spider: "Spider") -> Request:
+    async def process_request(self, request: Request, spider: Spider) -> Request:
         """Calculate and apply delay before processing the request."""
         match self._strategy:
             case _DelayStrategy.CUSTOM:
@@ -266,7 +271,8 @@ class SkipNonHTMLMiddleware:
         sniff_bytes: int = 2048,
     ) -> None:
         if sniff_bytes < 0:
-            raise ValueError("sniff_bytes must be non-negative")
+            msg = "sniff_bytes must be non-negative"
+            raise ValueError(msg)
 
         self.allowed_types = [t.lower() for t in (allowed_types or ["html"])]
         self.sniff_bytes = sniff_bytes
@@ -290,7 +296,7 @@ class SkipNonHTMLMiddleware:
         return b"<html" in snippet
 
     async def process_response(
-        self, response: Response, spider: "Spider"
+        self, response: Response, spider: Spider,
     ) -> Response | Request:
         # Allow opt-out for requests that intentionally fetch non-HTML content
         if response.request.meta.get("allow_non_html"):
