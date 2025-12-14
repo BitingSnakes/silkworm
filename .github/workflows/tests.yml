@@ -57,28 +57,7 @@ jobs:
       - name: Install dependencies (Windows)
         if: runner.os == 'Windows'
         run: |
-          uv sync --group dev `
-            --extra taskiq `
-            --extra msgpack `
-            --extra polars `
-            --extra excel `
-            --extra yaml `
-            --extra avro `
-            --extra elasticsearch `
-            --extra mongodb `
-            --extra s3 `
-            --extra vortex `
-            --extra mysql `
-            --extra postgresql `
-            --extra gsheets `
-            --extra snowflake `
-            --extra ftp `
-            --extra sftp `
-            --extra cassandra `
-            --extra couchdb `
-            --extra dynamodb `
-            --extra winloop
-          # Install msgpack for reading in tests (ormsgpack from --extra msgpack is for writing)
+          uv sync --group dev --extra taskiq --extra msgpack --extra polars --extra excel --extra yaml --extra avro --extra elasticsearch --extra mongodb --extra s3 --extra vortex --extra mysql --extra postgresql --extra gsheets --extra snowflake --extra ftp --extra sftp --extra cassandra --extra couchdb --extra dynamodb --extra winloop
           uv pip install msgpack
 
       - name: Run tests
