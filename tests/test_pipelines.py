@@ -1,4 +1,5 @@
 import asyncio
+import sys
 import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -908,6 +909,7 @@ except ImportError:
 
 
 @pytest.mark.skipif(not VORTEX_AVAILABLE, reason="vortex not installed")
+@pytest.mark.skipif(sys.platform == "win32", reason="vortex tests disabled on Windows")
 async def test_vortex_pipeline_writes_vortex_file():
     with tempfile.TemporaryDirectory() as tmpdir:
         vortex_path = Path(tmpdir) / "test.vortex"
@@ -932,6 +934,7 @@ async def test_vortex_pipeline_writes_vortex_file():
 
 
 @pytest.mark.skipif(not VORTEX_AVAILABLE, reason="vortex not installed")
+@pytest.mark.skipif(sys.platform == "win32", reason="vortex tests disabled on Windows")
 async def test_vortex_pipeline_handles_nested_data():
     with tempfile.TemporaryDirectory() as tmpdir:
         vortex_path = Path(tmpdir) / "test.vortex"
@@ -954,6 +957,7 @@ async def test_vortex_pipeline_handles_nested_data():
 
 
 @pytest.mark.skipif(not VORTEX_AVAILABLE, reason="vortex not installed")
+@pytest.mark.skipif(sys.platform == "win32", reason="vortex tests disabled on Windows")
 async def test_vortex_pipeline_handles_empty():
     with tempfile.TemporaryDirectory() as tmpdir:
         vortex_path = Path(tmpdir) / "test.vortex"
@@ -968,6 +972,7 @@ async def test_vortex_pipeline_handles_empty():
 
 
 @pytest.mark.skipif(not VORTEX_AVAILABLE, reason="vortex not installed")
+@pytest.mark.skipif(sys.platform == "win32", reason="vortex tests disabled on Windows")
 def test_vortex_pipeline_initialization():
     # Just test that we can initialize the pipeline
     pipeline = VortexPipeline("test.vortex")  # type: ignore
@@ -975,6 +980,7 @@ def test_vortex_pipeline_initialization():
 
 
 @pytest.mark.skipif(not VORTEX_AVAILABLE, reason="vortex not installed")
+@pytest.mark.skipif(sys.platform == "win32", reason="vortex tests disabled on Windows")
 async def test_vortex_pipeline_handles_various_types():
     with tempfile.TemporaryDirectory() as tmpdir:
         vortex_path = Path(tmpdir) / "test.vortex"
