@@ -88,6 +88,7 @@ if __name__ == "__main__":
 - `log_stats_interval`: seconds between periodic stats logs; final stats are always emitted.
 - `request_middlewares` / `response_middlewares` / `item_pipelines`: plug-ins run on every request/response/item.
 - use `run_spider_uvloop(...)` instead of `run_spider(...)` to run under uvloop (requires `pip install silkworm-rs[uvloop]`).
+- use `run_spider_winloop(...)` instead of `run_spider(...)` to run under winloop on Windows (requires `pip install silkworm-rs[winloop]`).
 
 ## Built-in middlewares and pipelines
 
@@ -270,6 +271,26 @@ run_spider_uvloop(
 
 uvloop can provide 2-4x performance improvement for I/O-bound workloads.
 
+## Performance optimization with winloop (Windows)
+For Windows users who want improved async performance, enable winloop (a Windows-compatible alternative to uvloop):
+
+```bash
+pip install silkworm-rs[winloop]
+```
+
+Then call `run_spider_winloop` (same signature as `run_spider`):
+
+```python
+from silkworm import run_spider_winloop
+
+run_spider_winloop(
+    QuotesSpider,
+    concurrency=32,
+)
+```
+
+winloop provides significant performance improvements on Windows, similar to what uvloop offers on Unix-like systems.
+
 ## Running spiders with trio
 If you prefer trio over asyncio, you can use `run_spider_trio` instead of `run_spider`:
 
@@ -298,6 +319,7 @@ This runs your spider using trio as the async backend via trio-asyncio compatibi
 ## Examples
 - `python examples/quotes_spider.py` → `data/quotes.jl`
 - `python examples/quotes_spider_trio.py` → `data/quotes_trio.jl` (demonstrates trio backend)
+- `python examples/quotes_spider_winloop.py` → `data/quotes_winloop.jl` (demonstrates winloop backend for Windows)
 - `python examples/hackernews_spider.py --pages 5` → `data/hackernews.jl`
 - `python examples/lobsters_spider.py --pages 2` → `data/lobsters.jl`
 - `python examples/url_titles_spider.py --urls-file data/url_titles.jl --output data/titles.jl` (includes `SkipNonHTMLMiddleware` and stricter HTML size limits)
