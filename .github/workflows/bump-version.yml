@@ -1,0 +1,60 @@
+name: Bump Version
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to bump to (e.g., 0.2.15, 1.0.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Validate version format
+        run: |
+          if ! echo "${{ github.event.inputs.version }}" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+)?$'; then
+            echo "Error: Version must be in format X.Y.Z or X.Y.Z-suffix (e.g., 0.2.15 or 1.0.0-alpha1)"
+            exit 1
+          fi
+
+      - name: Update version in pyproject.toml
+        env:
+          VERSION: ${{ github.event.inputs.version }}
+        run: |
+          sed -i "s/^version = \".*\"/version = \"${VERSION}\"/" pyproject.toml
+
+      - name: Update uv.lock
+        env:
+          VERSION: ${{ github.event.inputs.version }}
+        run: |
+          uv lock
+
+      - name: Commit version changes
+        env:
+          VERSION: ${{ github.event.inputs.version }}
+        run: |
+          git add pyproject.toml uv.lock
+          if git diff --staged --quiet; then
+            echo "No changes to commit, version is already ${VERSION}"
+          else
+            git commit -m "Bump version to ${VERSION}"
+          fi
+          git push origin HEAD
