@@ -2056,11 +2056,13 @@ wheels = [
 
 [[package]]
 name = "scraper-rust"
-version = "0.2.14"
+version = "0.2.16"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/10/d0/ec1dbf8ceb5ef2c70054843fe2835553d448eabe4aec8d5ac29962ccceea/scraper_rust-0.2.14.tar.gz", hash = "sha256:1300a87ba3d89b2a11160031b5467d4000dfd18dc7dc7ad0c1316b3a5cbab0a8", size = 31982, upload-time = "2025-12-10T15:18:59.378Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/65/17/0e3e18bf130fe4b610f43f748062bce608613dde3a041cfc665c0a0d274f/scraper_rust-0.2.16.tar.gz", hash = "sha256:4e3a26861ca05173a83ddd744f071cef46f861e46a0071abe19359978fda2a71", size = 33264, upload-time = "2025-12-15T10:10:29.206Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/4c/66/4106f2c65e8c89d65e146b7d49e2088e03bf74df866b1cfc6b556c4a9dea/scraper_rust-0.2.14-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:52034c1b842432096048ad40927cda16caa1ae224b275a0e7e2c67054442218f", size = 739788, upload-time = "2025-12-10T15:18:57.717Z" },
+    { url = "https://files.pythonhosted.org/packages/7e/49/e2982ac46bef14f6f1042b8337c5353be0ee4dc397413accf1f586f0d7aa/scraper_rust-0.2.16-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:753ca4f848b8e020a496595f6795cde1b23ad89d12fad493c716d72b546cae9d", size = 651680, upload-time = "2025-12-15T10:10:25.15Z" },
+    { url = "https://files.pythonhosted.org/packages/aa/2e/5f8229bdc30a7b4a4594fc26b59130ce7882894a7e5ad8c7c062e9b174c2/scraper_rust-0.2.16-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:55f42eaa1ce14b3bab96a02f97f83b083b2586703c7f5376d3aba94af5c99136", size = 733702, upload-time = "2025-12-15T10:10:26.747Z" },
+    { url = "https://files.pythonhosted.org/packages/cd/39/a1a1208e6b2e35c08ba055f7e69a2d681e88c0ef2b5336f7fef3568e7ef4/scraper_rust-0.2.16-cp310-abi3-win_amd64.whl", hash = "sha256:0391ed052bcd9c3b8a5422f21949d2b5c9994888c48f9622d969edae9952a551", size = 614315, upload-time = "2025-12-15T10:10:27.872Z" },
 ]
 
 [[package]]
@@ -2078,7 +2080,7 @@ wheels = [
 
 [[package]]
 name = "silkworm-rs"
-version = "0.2.20"
+version = "0.2.21"
 source = { editable = "." }
 dependencies = [
     { name = "charset-normalizer" },
@@ -2197,7 +2199,7 @@ requires-dist = [
     { name = "pyyaml", marker = "extra == 'yaml'", specifier = "==6.0.3" },
     { name = "rnet", specifier = "==3.0.0rc14" },
     { name = "rxml", specifier = "==2.3.6" },
-    { name = "scraper-rust", specifier = "==0.2.14" },
+    { name = "scraper-rust", specifier = "==0.2.16" },
     { name = "snowflake-connector-python", marker = "extra == 'snowflake'", specifier = "==4.1.1" },
     { name = "taskiq", marker = "extra == 'taskiq'", specifier = "==0.12.1" },
     { name = "trio", marker = "extra == 'trio'", specifier = "==0.32.0" },
