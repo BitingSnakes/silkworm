@@ -15,18 +15,28 @@ Async-first web scraping framework built on [rnet](https://github.com/0x676e67/r
 
 ## Installation
 
-From PyPI:
+From PyPI with pip:
 
 ```bash
 pip install silkworm-rs
 ```
+
+From PyPI with uv (recommended for faster installs):
+
+```bash
+uv pip install --prerelease=allow silkworm-rs
+# or if using uv's project management:
+uv add --prerelease=allow silkworm-rs
+```
+
+> **Note:** The `--prerelease=allow` flag is required because silkworm-rs depends on prerelease versions of some packages (e.g., rnet).
 
 From source:
 
 ```bash
 uv venv  # install uv from https://docs.astral.sh/uv/getting-started/ if needed
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
-uv pip install -e .
+uv pip install --prerelease=allow -e .
 ```
 
 Targets Python 3.13+; dependencies are pinned in `pyproject.toml`.
@@ -256,6 +266,8 @@ For improved async performance, enable uvloop (a fast, drop-in replacement for a
 
 ```bash
 pip install silkworm-rs[uvloop]
+# or with uv:
+uv pip install --prerelease=allow silkworm-rs[uvloop]
 ```
 
 Then call `run_spider_uvloop` (same signature as `run_spider`):
@@ -276,6 +288,8 @@ For Windows users who want improved async performance, enable winloop (a Windows
 
 ```bash
 pip install silkworm-rs[winloop]
+# or with uv:
+uv pip install --prerelease=allow silkworm-rs[winloop]
 ```
 
 Then call `run_spider_winloop` (same signature as `run_spider`):
@@ -296,6 +310,8 @@ If you prefer trio over asyncio, you can use `run_spider_trio` instead of `run_s
 
 ```bash
 pip install silkworm-rs[trio]
+# or with uv:
+uv pip install --prerelease=allow silkworm-rs[trio]
 ```
 
 Then use `run_spider_trio`:
