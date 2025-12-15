@@ -368,7 +368,7 @@ Silkworm is built on top of excellent open-source projects:
 - [rnet](https://github.com/0x676e67/rnet) - HTTP client with browser impersonation capabilities
 - [scraper-rs](https://github.com/RustedBytes/scraper-rs) - Fast HTML parsing library
 - [logly](https://github.com/egorsmkv/logly) - Structured logging
-- [rxml](https://github.com/RazrFalcon/rxml) - XML parsing and writing
+- [rxml](https://github.com/nephi-dev/rxml) - XML parsing and writing
 
 We are grateful to the maintainers and contributors of these projects for their work.
 
