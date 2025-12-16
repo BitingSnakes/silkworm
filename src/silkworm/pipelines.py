@@ -2698,11 +2698,17 @@ class DuckDBPipeline:
         self.database.parent.mkdir(parents=True, exist_ok=True)
         self._conn = duckdb.connect(str(self.database))  # type: ignore[attr-defined]
 
+        # Create sequence for auto-incrementing IDs
+        # Use IF NOT EXISTS to avoid errors on reopening
+        self._conn.execute(
+            f"CREATE SEQUENCE IF NOT EXISTS {self.table}_seq START 1",
+        )
+
         # Create table if it doesn't exist
         self._conn.execute(
             f"""
             CREATE TABLE IF NOT EXISTS {self.table} (
-                id INTEGER PRIMARY KEY,
+                id INTEGER PRIMARY KEY DEFAULT nextval('{self.table}_seq'),
                 spider VARCHAR NOT NULL,
                 data JSON NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
