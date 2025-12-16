@@ -34,24 +34,25 @@ def _mock_response(
     return resp
 
 
-class _DummyClient:
-    def __init__(self, emulation: Any = None, **_: Any) -> None:
-        self.emulation = emulation
-        self.calls: list[tuple[Any, str, dict[str, Any]]] = []
-        self.closed = False
+def _build_client(*, emulation: Any = None, **_: Any) -> Mock:
+    client = Mock(name="rnet_client")
+    client.emulation = emulation
+    client.calls: list[tuple[Any, str, dict[str, Any]]] = []
+    client.closed = False
 
-    async def request(self, method: Any, url: str, **kwargs: Any) -> Mock:
-        self.calls.append((method, url, kwargs))
+    async def _request(method: Any, url: str, **kwargs: Any) -> Mock:
+        client.calls.append((method, url, kwargs))
         return _mock_response()
 
-    async def get(self, url: str, **kwargs: Any) -> Mock:
-        return await self.request("GET", url, **kwargs)
+    client.request = AsyncMock(side_effect=_request)
+    client.get = AsyncMock(side_effect=lambda url, **kwargs: client.request("GET", url, **kwargs))
 
-    async def aclose(self) -> None:
-        self.closed = True
+    async def _close() -> None:
+        client.closed = True
 
-    async def close(self) -> None:
-        self.closed = True
+    client.aclose = AsyncMock(side_effect=_close)
+    client.close = AsyncMock(side_effect=_close)
+    return client
 
 
 class _DummyEmulation:
@@ -103,7 +104,7 @@ logly_module: Any = types.ModuleType("logly")
 logly_module.logger = _mock_logger()
 
 rnet_module: Any = types.ModuleType("rnet")
-rnet_module.Client = _DummyClient
+rnet_module.Client = _build_client
 rnet_module.Emulation = _DummyEmulation
 rnet_module.Method = _DummyMethod
 
