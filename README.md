@@ -136,6 +136,7 @@ from silkworm.pipelines import (
     CassandraPipeline,  # requires: pip install silkworm-rs[cassandra]
     CouchDBPipeline,  # requires: pip install silkworm-rs[couchdb]
     DynamoDBPipeline,  # requires: pip install silkworm-rs[dynamodb]
+    DuckDBPipeline,  # requires: pip install silkworm-rs[duckdb]
 )
 
 run_spider(
@@ -193,6 +194,7 @@ run_spider(
 - `CassandraPipeline` sends items to Apache Cassandra database tables (requires `pip install silkworm-rs[cassandra]`).
 - `CouchDBPipeline` sends items to CouchDB databases as documents (requires `pip install silkworm-rs[couchdb]`).
 - `DynamoDBPipeline` sends items to AWS DynamoDB tables with automatic table creation (requires `pip install silkworm-rs[dynamodb]`).
+- `DuckDBPipeline` sends items to a DuckDB database table as JSON (requires `pip install silkworm-rs[duckdb]`).
 - `CallbackPipeline` invokes a custom callback function (sync or async) on each item, enabling inline processing logic without creating a full pipeline class. See example below.
 
 ## Using CallbackPipeline for custom processing
