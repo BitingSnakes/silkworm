@@ -2736,7 +2736,7 @@ class DuckDBPipeline:
         # DuckDB's JSON type accepts JSON strings
         self._conn.execute(
             f"INSERT INTO {self.table} (spider, data) VALUES (?, ?)",
-            [spider.name, json.dumps(item, ensure_ascii=False)],
+            (spider.name, json.dumps(item, ensure_ascii=False)),
         )
 
         self.logger.debug(
