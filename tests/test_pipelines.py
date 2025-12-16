@@ -1469,3 +1469,134 @@ async def test_dynamodb_pipeline_not_opened_raises_error():
 
     with pytest.raises(RuntimeError, match="DynamoDBPipeline not opened"):
         await pipeline.process_item({"test": "data"}, spider)
+
+
+# DuckDBPipeline tests - skip if duckdb not installed
+try:
+    import duckdb  # type: ignore[import-not-found]  # noqa: F401
+    from silkworm.pipelines import DuckDBPipeline
+
+    DUCKDB_AVAILABLE = True
+except ImportError:
+    DUCKDB_AVAILABLE = False
+    DuckDBPipeline = None  # type: ignore
+
+
+@pytest.mark.skipif(not DUCKDB_AVAILABLE, reason="duckdb not installed")
+async def test_duckdb_pipeline_writes_items():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = Path(tmpdir) / "test.db"
+        pipeline = DuckDBPipeline(db_path, table="items")  # type: ignore
+        spider = Spider()
+
+        await pipeline.open(spider)
+        await pipeline.process_item({"text": "Hello", "author": "John"}, spider)
+        await pipeline.process_item({"text": "World", "author": "Jane"}, spider)
+        await pipeline.close(spider)
+
+        # Read and verify data
+        conn = duckdb.connect(str(db_path))
+        result = conn.execute("SELECT spider, data FROM items ORDER BY id").fetchall()
+        conn.close()
+
+        assert len(result) == 2
+        assert result[0][0] == "Spider"  # Default spider name
+        assert json.loads(result[0][1]) == {"text": "Hello", "author": "John"}
+        assert result[1][0] == "Spider"
+        assert json.loads(result[1][1]) == {"text": "World", "author": "Jane"}
+
+
+@pytest.mark.skipif(not DUCKDB_AVAILABLE, reason="duckdb not installed")
+async def test_duckdb_pipeline_handles_nested_data():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = Path(tmpdir) / "test.db"
+        pipeline = DuckDBPipeline(db_path)  # type: ignore
+        spider = Spider()
+
+        await pipeline.open(spider)
+        await pipeline.process_item(
+            {"user": {"name": "Alice", "age": 30}, "tags": ["python", "web"]}, spider
+        )
+        await pipeline.close(spider)
+
+        # Read and verify
+        conn = duckdb.connect(str(db_path))
+        result = conn.execute("SELECT data FROM items").fetchone()
+        conn.close()
+
+        data = json.loads(result[0])
+        assert data == {"user": {"name": "Alice", "age": 30}, "tags": ["python", "web"]}
+
+
+@pytest.mark.skipif(not DUCKDB_AVAILABLE, reason="duckdb not installed")
+async def test_duckdb_pipeline_not_opened_raises_error():
+    pipeline = DuckDBPipeline("test.db")  # type: ignore
+    spider = Spider()
+
+    with pytest.raises(RuntimeError, match="DuckDBPipeline not opened"):
+        await pipeline.process_item({"test": "data"}, spider)
+
+
+@pytest.mark.skipif(not DUCKDB_AVAILABLE, reason="duckdb not installed")
+def test_duckdb_pipeline_invalid_table_name():
+    # Test that invalid table names are rejected
+    with pytest.raises(ValueError, match="Invalid table name"):
+        DuckDBPipeline(table="invalid-table-name")  # type: ignore
+
+    with pytest.raises(ValueError, match="Invalid table name"):
+        DuckDBPipeline(table="123invalid")  # type: ignore
+
+    with pytest.raises(ValueError, match="Invalid table name"):
+        DuckDBPipeline(table="table; DROP TABLE users;")  # type: ignore
+
+
+@pytest.mark.skipif(not DUCKDB_AVAILABLE, reason="duckdb not installed")
+def test_duckdb_pipeline_initialization():
+    # Test that we can initialize the pipeline
+    pipeline = DuckDBPipeline(  # type: ignore
+        database="data/test.db",
+        table="test_table",
+    )
+    assert pipeline.database == Path("data/test.db")
+    assert pipeline.table == "test_table"
+
+
+@pytest.mark.skipif(not DUCKDB_AVAILABLE, reason="duckdb not installed")
+async def test_duckdb_pipeline_creates_parent_directories():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = Path(tmpdir) / "subdir" / "test.db"
+        pipeline = DuckDBPipeline(db_path)  # type: ignore
+        spider = Spider()
+
+        await pipeline.open(spider)
+        await pipeline.process_item({"text": "Test"}, spider)
+        await pipeline.close(spider)
+
+        # Verify database file was created
+        assert db_path.exists()
+
+
+@pytest.mark.skipif(not DUCKDB_AVAILABLE, reason="duckdb not installed")
+async def test_duckdb_pipeline_persistent_across_sessions():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        db_path = Path(tmpdir) / "test.db"
+        spider = Spider()
+
+        # First session: write items
+        pipeline1 = DuckDBPipeline(db_path)  # type: ignore
+        await pipeline1.open(spider)
+        await pipeline1.process_item({"text": "First"}, spider)
+        await pipeline1.close(spider)
+
+        # Second session: write more items
+        pipeline2 = DuckDBPipeline(db_path)  # type: ignore
+        await pipeline2.open(spider)
+        await pipeline2.process_item({"text": "Second"}, spider)
+        await pipeline2.close(spider)
+
+        # Verify both items are present
+        conn = duckdb.connect(str(db_path))
+        result = conn.execute("SELECT COUNT(*) FROM items").fetchone()
+        conn.close()
+
+        assert result[0] == 2
