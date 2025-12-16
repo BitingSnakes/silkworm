@@ -40,6 +40,7 @@ SAMPLE_QUOTES = [
 class TestSpider(Spider):
     """A simple spider that yields test data."""
 
+    __test__ = False  # prevent pytest from treating this helper as a test class
     name = "test"
     start_urls = ("http://example.com",)
 
