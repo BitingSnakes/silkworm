@@ -38,7 +38,7 @@ jobs:
         run: twine check dist/*
 
       - name: Upload wheel artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: wheel-${{ matrix.os }}
           path: dist/*.whl
@@ -67,7 +67,7 @@ jobs:
         run: twine check dist/*
 
       - name: Upload sdist artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: sdist
           path: dist/*.tar.gz
