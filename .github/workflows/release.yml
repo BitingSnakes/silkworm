@@ -9,9 +9,41 @@ permissions:
   contents: write
 
 jobs:
+  lint-and-test:
+    name: Lint and Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          python-version: '3.13'
+
+      - name: Init venv
+        run: uv venv --python 3.13
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libev-dev
+
+      - name: Install dependencies
+        run: uv sync --group dev
+
+      - name: Run ruff linting
+        run: uv run --group dev ruff check src examples
+
+      - name: Run mypy type checking
+        run: uv run --group dev mypy src
+
+      - name: Run tests
+        run: uv run --group dev pytest -o "anyio_mode=auto"
+
   build-wheels:
     name: Build wheels on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
+    needs: lint-and-test
     strategy:
       fail-fast: false
       matrix:
@@ -46,6 +78,7 @@ jobs:
   build-sdist:
     name: Build source distribution
     runs-on: ubuntu-latest
+    needs: lint-and-test
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
