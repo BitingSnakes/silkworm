@@ -2691,12 +2691,13 @@ class DuckDBPipeline:
 
         self.database = Path(database)
         self.table = _validate_table_name(table)
-        self._conn = None  # type: ignore[var-annotated]
+        self._conn: duckdb.DuckDBPyConnection | None = None
         self.logger = get_logger(component="DuckDBPipeline")
 
     async def open(self, spider: Spider) -> None:
         self.database.parent.mkdir(parents=True, exist_ok=True)
         self._conn = duckdb.connect(str(self.database))  # type: ignore[attr-defined]
+        assert self._conn is not None
 
         # Create sequence for auto-incrementing IDs
         # Use IF NOT EXISTS to avoid errors on reopening
