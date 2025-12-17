@@ -36,7 +36,7 @@ classifiers = [
 
 dependencies = [
   "charset-normalizer==3.4.4",
-  "rnet==3.0.0rc14",
+  "rnet==3.0.0rc15",
   "scraper-rust==0.2.16",
   "logly==0.1.6",
   "rxml==2.3.6",
