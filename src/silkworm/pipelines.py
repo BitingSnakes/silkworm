@@ -1212,7 +1212,7 @@ class MongoDBPipeline:
             self.logger.info("Closed MongoDB pipeline", collection=self.collection)
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
-        if not self._coll:
+        if self._coll is None:
             raise RuntimeError("MongoDBPipeline not opened")
 
         await self._coll.insert_one(item)
