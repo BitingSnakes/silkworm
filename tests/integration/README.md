@@ -61,13 +61,15 @@ uv sync --group dev --extra msgpack --extra polars --extra excel --extra yaml --
 uv run --group dev pytest tests/integration/test_pipeline_integration.py -o "anyio_mode=auto"
 ```
 
-Run database integration tests (requires Docker):
+Run database integration tests (requires Docker, not available on Windows):
 ```bash
 uv sync --group dev --extra mysql --extra postgresql --extra mongodb
 uv run --group dev pytest tests/integration/test_pipeline_integration.py::test_mysql_pipeline_integration -o "anyio_mode=auto"
 uv run --group dev pytest tests/integration/test_pipeline_integration.py::test_postgresql_pipeline_integration -o "anyio_mode=auto"
 uv run --group dev pytest tests/integration/test_pipeline_integration.py::test_mongodb_pipeline_integration -o "anyio_mode=auto"
 ```
+
+**Note:** Database integration tests using testcontainers are automatically skipped on Windows platforms as Docker doesn't work well in Windows CI environments.
 
 ## Requirements
 
@@ -88,3 +90,5 @@ The database integration tests use [testcontainers](https://testcontainers-pytho
 - Automatically stop and remove the container after tests complete
 
 The test containers are defined in `conftest.py` as session-scoped fixtures, meaning they are started once per test session and shared across all tests that use them. This improves test performance while maintaining isolation.
+
+**Important:** Testcontainer-based tests are automatically disabled on Windows platforms because Docker doesn't work properly in Windows CI environments. The tests will be skipped with an appropriate message when run on Windows.

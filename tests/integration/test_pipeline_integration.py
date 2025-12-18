@@ -13,6 +13,7 @@ This ensures all pipelines work end-to-end in a realistic scenario.
 
 import csv
 import json
+import platform
 import sqlite3
 import sys
 import tempfile
@@ -548,19 +549,25 @@ async def test_multiple_pipelines_simultaneously():
 
 
 # Database pipeline tests with test containers
+# Testcontainers are disabled on Windows as Docker doesn't work well on Windows CI
+IS_WINDOWS = platform.system() == "Windows"
 
-try:
-    from silkworm.pipelines import MySQLPipeline
-    from testcontainers.mysql import MySqlContainer  # noqa: F401
-    import aiomysql
+if not IS_WINDOWS:
+    try:
+        from silkworm.pipelines import MySQLPipeline
+        from testcontainers.mysql import MySqlContainer  # noqa: F401
+        import aiomysql
 
-    MYSQL_AVAILABLE = True
-except ImportError:
+        MYSQL_AVAILABLE = True
+    except ImportError:
+        MYSQL_AVAILABLE = False
+else:
     MYSQL_AVAILABLE = False
 
 
 @pytest.mark.skipif(
-    not MYSQL_AVAILABLE, reason="aiomysql or testcontainers not installed"
+    not MYSQL_AVAILABLE,
+    reason="aiomysql or testcontainers not installed or running on Windows",
 )
 async def test_mysql_pipeline_integration(mysql_container):
     """Test MySQLPipeline with a real MySQL container."""
@@ -615,18 +622,22 @@ async def test_mysql_pipeline_integration(mysql_container):
     await pool.wait_closed()
 
 
-try:
-    from silkworm.pipelines import PostgreSQLPipeline
-    from testcontainers.postgres import PostgresContainer  # noqa: F401
-    import asyncpg
+if not IS_WINDOWS:
+    try:
+        from silkworm.pipelines import PostgreSQLPipeline
+        from testcontainers.postgres import PostgresContainer  # noqa: F401
+        import asyncpg
 
-    POSTGRESQL_AVAILABLE = True
-except ImportError:
+        POSTGRESQL_AVAILABLE = True
+    except ImportError:
+        POSTGRESQL_AVAILABLE = False
+else:
     POSTGRESQL_AVAILABLE = False
 
 
 @pytest.mark.skipif(
-    not POSTGRESQL_AVAILABLE, reason="asyncpg or testcontainers not installed"
+    not POSTGRESQL_AVAILABLE,
+    reason="asyncpg or testcontainers not installed or running on Windows",
 )
 async def test_postgresql_pipeline_integration(postgres_container):
     """Test PostgreSQLPipeline with a real PostgreSQL container."""
@@ -677,18 +688,22 @@ async def test_postgresql_pipeline_integration(postgres_container):
     await conn.close()
 
 
-try:
-    from silkworm.pipelines import MongoDBPipeline
-    from testcontainers.mongodb import MongoDbContainer  # noqa: F401
-    import motor.motor_asyncio
+if not IS_WINDOWS:
+    try:
+        from silkworm.pipelines import MongoDBPipeline
+        from testcontainers.mongodb import MongoDbContainer  # noqa: F401
+        import motor.motor_asyncio
 
-    MONGODB_AVAILABLE = True
-except ImportError:
+        MONGODB_AVAILABLE = True
+    except ImportError:
+        MONGODB_AVAILABLE = False
+else:
     MONGODB_AVAILABLE = False
 
 
 @pytest.mark.skipif(
-    not MONGODB_AVAILABLE, reason="motor or testcontainers not installed"
+    not MONGODB_AVAILABLE,
+    reason="motor or testcontainers not installed or running on Windows",
 )
 async def test_mongodb_pipeline_integration(mongodb_container):
     """Test MongoDBPipeline with a real MongoDB container."""
