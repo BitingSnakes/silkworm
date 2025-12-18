@@ -552,6 +552,7 @@ async def test_multiple_pipelines_simultaneously():
 try:
     from silkworm.pipelines import MySQLPipeline
     from testcontainers.mysql import MySqlContainer
+    import aiomysql
 
     MYSQL_AVAILABLE = True
 except ImportError:
@@ -580,8 +581,6 @@ async def test_mysql_pipeline_integration(mysql_container):
     await run_spider_with_pipeline(TestSpider, pipeline)
 
     # Verify data was inserted by connecting to the database
-    import aiomysql
-
     pool = await aiomysql.create_pool(
         host=host,
         port=port,
@@ -617,6 +616,7 @@ async def test_mysql_pipeline_integration(mysql_container):
 try:
     from silkworm.pipelines import PostgreSQLPipeline
     from testcontainers.postgres import PostgresContainer
+    import asyncpg
 
     POSTGRESQL_AVAILABLE = True
 except ImportError:
@@ -647,8 +647,6 @@ async def test_postgresql_pipeline_integration(postgres_container):
     await run_spider_with_pipeline(TestSpider, pipeline)
 
     # Verify data was inserted by connecting to the database
-    import asyncpg
-
     conn = await asyncpg.connect(
         host=host,
         port=port,
@@ -680,6 +678,7 @@ async def test_postgresql_pipeline_integration(postgres_container):
 try:
     from silkworm.pipelines import MongoDBPipeline
     from testcontainers.mongodb import MongoDbContainer
+    import motor.motor_asyncio
 
     MONGODB_AVAILABLE = True
 except ImportError:
@@ -703,8 +702,6 @@ async def test_mongodb_pipeline_integration(mongodb_container):
     await run_spider_with_pipeline(TestSpider, pipeline)
 
     # Verify data was inserted by connecting to the database
-    import motor.motor_asyncio
-
     client = motor.motor_asyncio.AsyncIOMotorClient(connection_string)
     db = client["test_db"]
     collection = db["test_quotes"]
