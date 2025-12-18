@@ -789,7 +789,8 @@ async def test_elasticsearch_pipeline_integration(elasticsearch_container):
     # Verify data content
     search_result = await client.search(
         index="test_quotes",
-        body={"query": {"match_all": {}}, "size": 100},
+        query={"match_all": {}},
+        size=100,
     )
     hits = search_result["hits"]["hits"]
     assert len(hits) == len(SAMPLE_QUOTES)
@@ -907,6 +908,8 @@ async def test_couchdb_pipeline_integration(couchdb_container):
         # Get all documents
         all_docs = await db.akeys()
         # CouchDB includes design documents, so we filter for our data
+        # Note: This is fine for small test datasets; for production use cases,
+        # consider using a view or _all_docs with startkey/endkey parameters
         data_docs = [doc_id for doc_id in all_docs if not doc_id.startswith("_design")]
         assert len(data_docs) == len(SAMPLE_QUOTES)
 
