@@ -743,3 +743,186 @@ async def test_mongodb_pipeline_integration(mongodb_container):
         assert item["tags"] == matching_quote["tags"]
 
     client.close()
+
+
+if not IS_WINDOWS:
+    try:
+        from silkworm.pipelines import ElasticsearchPipeline
+        from testcontainers.elasticsearch import ElasticsearchContainer  # noqa: F401
+        from elasticsearch import AsyncElasticsearch
+
+        ELASTICSEARCH_AVAILABLE = True
+    except ImportError:
+        ELASTICSEARCH_AVAILABLE = False
+else:
+    ELASTICSEARCH_AVAILABLE = False
+
+
+@pytest.mark.skipif(
+    not ELASTICSEARCH_AVAILABLE,
+    reason="elasticsearch or testcontainers not installed or running on Windows",
+)
+async def test_elasticsearch_pipeline_integration(elasticsearch_container):
+    """Test ElasticsearchPipeline with a real Elasticsearch container."""
+    # Extract connection details from container
+    host = elasticsearch_container.get_container_host_ip()
+    port = int(elasticsearch_container.get_exposed_port(9200))
+    es_url = f"http://{host}:{port}"
+
+    pipeline = ElasticsearchPipeline(
+        hosts=[es_url],
+        index="test_quotes",
+    )
+
+    await run_spider_with_pipeline(TestSpider, pipeline)
+
+    # Verify data was inserted by connecting to Elasticsearch
+    client = AsyncElasticsearch([es_url])
+
+    # Refresh index to make documents available for search
+    await client.indices.refresh(index="test_quotes")
+
+    # Verify document count
+    count_result = await client.count(index="test_quotes")
+    assert count_result["count"] == len(SAMPLE_QUOTES)
+
+    # Verify data content
+    search_result = await client.search(
+        index="test_quotes",
+        query={"match_all": {}},
+        size=100,
+    )
+    hits = search_result["hits"]["hits"]
+    assert len(hits) == len(SAMPLE_QUOTES)
+
+    for hit in hits:
+        item = hit["_source"]
+        # Verify item exists in SAMPLE_QUOTES
+        matching_quote = next(
+            (q for q in SAMPLE_QUOTES if q["text"] == item["text"]), None
+        )
+        assert matching_quote is not None
+        assert item["author"] == matching_quote["author"]
+        assert item["tags"] == matching_quote["tags"]
+
+    await client.close()
+
+
+if not IS_WINDOWS:
+    try:
+        from silkworm.pipelines import CassandraPipeline
+        from testcontainers.cassandra import CassandraContainer  # noqa: F401
+        from cassandra.cluster import Cluster
+
+        CASSANDRA_AVAILABLE = True
+    except ImportError:
+        CASSANDRA_AVAILABLE = False
+else:
+    CASSANDRA_AVAILABLE = False
+
+
+@pytest.mark.skipif(
+    not CASSANDRA_AVAILABLE,
+    reason="cassandra-driver or testcontainers not installed or running on Windows",
+)
+async def test_cassandra_pipeline_integration(cassandra_container):
+    """Test CassandraPipeline with a real Cassandra container."""
+    # Extract connection details from container
+    host = cassandra_container.get_container_host_ip()
+    port = int(cassandra_container.get_exposed_port(9042))
+
+    pipeline = CassandraPipeline(
+        hosts=[host],
+        port=port,
+        keyspace="test_keyspace",
+        table="test_quotes",
+    )
+
+    await run_spider_with_pipeline(TestSpider, pipeline)
+
+    # Verify data was inserted by connecting to Cassandra
+    cluster = Cluster([host], port=port)
+    session = cluster.connect("test_keyspace")
+
+    # Verify row count
+    rows = list(session.execute("SELECT COUNT(*) FROM test_quotes"))
+    assert rows[0].count == len(SAMPLE_QUOTES)
+
+    # Verify data content
+    rows = list(session.execute("SELECT spider, data FROM test_quotes"))
+    assert len(rows) == len(SAMPLE_QUOTES)
+
+    for row in rows:
+        spider_name = row.spider
+        data_json = row.data
+        assert spider_name == "test"
+        item_data = json.loads(data_json)
+        # Verify item exists in SAMPLE_QUOTES
+        matching_quote = next(
+            (q for q in SAMPLE_QUOTES if q["text"] == item_data["text"]), None
+        )
+        assert matching_quote is not None
+        assert item_data["author"] == matching_quote["author"]
+        assert item_data["tags"] == matching_quote["tags"]
+
+    cluster.shutdown()
+
+
+if not IS_WINDOWS:
+    try:
+        from silkworm.pipelines import CouchDBPipeline
+        from testcontainers.couchdb import CouchDbContainer  # noqa: F401
+        import aiocouch
+
+        COUCHDB_AVAILABLE = True
+    except ImportError:
+        COUCHDB_AVAILABLE = False
+else:
+    COUCHDB_AVAILABLE = False
+
+
+@pytest.mark.skipif(
+    not COUCHDB_AVAILABLE,
+    reason="aiocouch or testcontainers not installed or running on Windows",
+)
+async def test_couchdb_pipeline_integration(couchdb_container):
+    """Test CouchDBPipeline with a real CouchDB container."""
+    # Extract connection details from container
+    url = couchdb_container.get_connection_url()
+    username = couchdb_container.username
+    password = couchdb_container.password
+
+    pipeline = CouchDBPipeline(
+        url=url,
+        database="test_db",
+        username=username,
+        password=password,
+    )
+
+    await run_spider_with_pipeline(TestSpider, pipeline)
+
+    # Verify data was inserted by connecting to CouchDB
+    async with aiocouch.CouchDB(url, user=username, password=password) as client:
+        db = await client["test_db"]
+
+        # Get all documents
+        all_docs = await db.akeys()
+        # CouchDB includes design documents, so we filter for our data
+        # Note: This is fine for small test datasets; for production use cases,
+        # consider using a view or _all_docs with startkey/endkey parameters
+        data_docs = [doc_id for doc_id in all_docs if not doc_id.startswith("_design")]
+        assert len(data_docs) == len(SAMPLE_QUOTES)
+
+        # Verify data content
+        for doc_id in data_docs:
+            doc = await db[doc_id]
+            # CouchDB pipeline stores items with spider metadata
+            assert doc["spider"] == "test"
+            item = doc["data"]
+            # Verify item exists in SAMPLE_QUOTES
+            matching_quote = next(
+                (q for q in SAMPLE_QUOTES if q["text"] == item["text"]), None
+            )
+            assert matching_quote is not None
+            assert item["author"] == matching_quote["author"]
+            assert item["tags"] == matching_quote["tags"]

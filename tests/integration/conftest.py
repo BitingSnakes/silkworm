@@ -40,6 +40,9 @@ if not IS_WINDOWS:
         from testcontainers.mysql import MySqlContainer
         from testcontainers.postgres import PostgresContainer
         from testcontainers.mongodb import MongoDbContainer
+        from testcontainers.elasticsearch import ElasticsearchContainer
+        from testcontainers.cassandra import CassandraContainer
+        from testcontainers.couchdb import CouchDbContainer
 
         TESTCONTAINERS_AVAILABLE = True
     except ImportError:
@@ -98,6 +101,63 @@ def mongodb_container():
         pytest.skip("testcontainers not installed")
 
     container = MongoDbContainer("mongo:7")
+    container.start()
+    try:
+        yield container
+    finally:
+        container.stop()
+
+
+@pytest.fixture(scope="session")
+def elasticsearch_container():
+    """
+    Provide an Elasticsearch test container for integration tests.
+
+    Yields an ElasticsearchContainer instance with connection details.
+    The container is automatically started and stopped.
+    """
+    if not TESTCONTAINERS_AVAILABLE:
+        pytest.skip("testcontainers not installed")
+
+    container = ElasticsearchContainer("elasticsearch:8.11.0")
+    container.start()
+    try:
+        yield container
+    finally:
+        container.stop()
+
+
+@pytest.fixture(scope="session")
+def cassandra_container():
+    """
+    Provide a Cassandra test container for integration tests.
+
+    Yields a CassandraContainer instance with connection details.
+    The container is automatically started and stopped.
+    """
+    if not TESTCONTAINERS_AVAILABLE:
+        pytest.skip("testcontainers not installed")
+
+    container = CassandraContainer("cassandra:4.1")
+    container.start()
+    try:
+        yield container
+    finally:
+        container.stop()
+
+
+@pytest.fixture(scope="session")
+def couchdb_container():
+    """
+    Provide a CouchDB test container for integration tests.
+
+    Yields a CouchDbContainer instance with connection details.
+    The container is automatically started and stopped.
+    """
+    if not TESTCONTAINERS_AVAILABLE:
+        pytest.skip("testcontainers not installed")
+
+    container = CouchDbContainer("couchdb:3.3")
     container.start()
     try:
         yield container

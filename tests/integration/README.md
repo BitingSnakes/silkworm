@@ -34,6 +34,9 @@ Database pipelines (tested with Docker containers via testcontainers):
 - `MySQLPipeline` - MySQL database storage (requires Docker)
 - `PostgreSQLPipeline` - PostgreSQL database storage (requires Docker)
 - `MongoDBPipeline` - MongoDB database storage (requires Docker)
+- `ElasticsearchPipeline` - Elasticsearch search engine storage (requires Docker)
+- `CassandraPipeline` - Apache Cassandra database storage (requires Docker)
+- `CouchDBPipeline` - CouchDB database storage (requires Docker)
 
 Additional test:
 - `test_multiple_pipelines_simultaneously()` - Verifies multiple pipelines can run together
@@ -67,6 +70,12 @@ uv sync --group dev --extra mysql --extra postgresql --extra mongodb
 uv run --group dev pytest tests/integration/test_pipeline_integration.py::test_mysql_pipeline_integration -o "anyio_mode=auto"
 uv run --group dev pytest tests/integration/test_pipeline_integration.py::test_postgresql_pipeline_integration -o "anyio_mode=auto"
 uv run --group dev pytest tests/integration/test_pipeline_integration.py::test_mongodb_pipeline_integration -o "anyio_mode=auto"
+
+# New database pipeline tests
+uv sync --group dev --extra elasticsearch --extra cassandra --extra couchdb
+uv run --group dev pytest tests/integration/test_pipeline_integration.py::test_elasticsearch_pipeline_integration -o "anyio_mode=auto"
+uv run --group dev pytest tests/integration/test_pipeline_integration.py::test_cassandra_pipeline_integration -o "anyio_mode=auto"
+uv run --group dev pytest tests/integration/test_pipeline_integration.py::test_couchdb_pipeline_integration -o "anyio_mode=auto"
 ```
 
 **Note:** Database integration tests using testcontainers are automatically skipped on Windows platforms as Docker doesn't work well in Windows CI environments.
@@ -81,7 +90,7 @@ uv run --group dev pytest tests/integration/test_pipeline_integration.py::test_m
 
 ## Database Test Containers
 
-The database integration tests use [testcontainers](https://testcontainers-python.readthedocs.io/) to automatically provision and manage Docker containers for MySQL, PostgreSQL, and MongoDB. These tests:
+The database integration tests use [testcontainers](https://testcontainers-python.readthedocs.io/) to automatically provision and manage Docker containers for MySQL, PostgreSQL, MongoDB, Elasticsearch, Cassandra, and CouchDB. These tests:
 
 - Automatically start a fresh database container for each test session
 - Configure the database pipeline with the container's connection details
