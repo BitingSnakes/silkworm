@@ -33,7 +33,6 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --group dev --extra mysql
-          uv pip install testcontainers[mysql]
 
       - name: Run MySQL integration tests
         env:
@@ -67,7 +66,6 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --group dev --extra postgresql
-          uv pip install testcontainers[postgres]
 
       - name: Run PostgreSQL integration tests
         env:
@@ -101,7 +99,6 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --group dev --extra mongodb
-          uv pip install testcontainers[mongodb]
 
       - name: Run MongoDB integration tests
         env:
@@ -135,7 +132,6 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --group dev --extra elasticsearch
-          uv pip install testcontainers[elasticsearch]
 
       - name: Run Elasticsearch integration tests
         env:
@@ -169,7 +165,6 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --group dev --extra cassandra
-          uv pip install testcontainers[cassandra]
 
       - name: Run Cassandra integration tests
         env:
@@ -203,7 +198,6 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --group dev --extra couchdb
-          uv pip install testcontainers[couchdb]
 
       - name: Run CouchDB integration tests
         env:
