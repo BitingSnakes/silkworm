@@ -545,3 +545,186 @@ async def test_multiple_pipelines_simultaneously():
         root = tree.getroot()
         items = list(root)
         assert len(items) == len(SAMPLE_QUOTES)
+
+
+# Database pipeline tests with test containers
+
+try:
+    from silkworm.pipelines import MySQLPipeline
+    from testcontainers.mysql import MySqlContainer  # noqa: F401
+    import aiomysql
+
+    MYSQL_AVAILABLE = True
+except ImportError:
+    MYSQL_AVAILABLE = False
+
+
+@pytest.mark.skipif(
+    not MYSQL_AVAILABLE, reason="aiomysql or testcontainers not installed"
+)
+async def test_mysql_pipeline_integration(mysql_container):
+    """Test MySQLPipeline with a real MySQL container."""
+    # Extract connection details from container
+    host = mysql_container.get_container_host_ip()
+    port = int(mysql_container.get_exposed_port(3306))
+    user = mysql_container.username
+    password = mysql_container.password
+    database = mysql_container.dbname
+
+    pipeline = MySQLPipeline(
+        host=host,
+        port=port,
+        user=user,
+        password=password,
+        database=database,
+        table="test_quotes",
+    )
+
+    await run_spider_with_pipeline(TestSpider, pipeline)
+
+    # Verify data was inserted by connecting to the database
+    pool = await aiomysql.create_pool(
+        host=host,
+        port=port,
+        user=user,
+        password=password,
+        db=database,
+    )
+
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute("SELECT COUNT(*) FROM test_quotes")
+            result = await cur.fetchone()
+            assert result[0] == len(SAMPLE_QUOTES)
+
+            # Verify data content
+            await cur.execute("SELECT spider, data FROM test_quotes")
+            rows = await cur.fetchall()
+            for row in rows:
+                spider_name, data_json = row
+                assert spider_name == "test"
+                item_data = json.loads(data_json)
+                # Verify item exists in SAMPLE_QUOTES
+                matching_quote = next(
+                    (q for q in SAMPLE_QUOTES if q["text"] == item_data["text"]), None
+                )
+                assert matching_quote is not None
+                assert item_data["author"] == matching_quote["author"]
+
+    pool.close()
+    await pool.wait_closed()
+
+
+try:
+    from silkworm.pipelines import PostgreSQLPipeline
+    from testcontainers.postgres import PostgresContainer  # noqa: F401
+    import asyncpg
+
+    POSTGRESQL_AVAILABLE = True
+except ImportError:
+    POSTGRESQL_AVAILABLE = False
+
+
+@pytest.mark.skipif(
+    not POSTGRESQL_AVAILABLE, reason="asyncpg or testcontainers not installed"
+)
+async def test_postgresql_pipeline_integration(postgres_container):
+    """Test PostgreSQLPipeline with a real PostgreSQL container."""
+    # Extract connection details from container
+    host = postgres_container.get_container_host_ip()
+    port = int(postgres_container.get_exposed_port(5432))
+    user = postgres_container.username
+    password = postgres_container.password
+    database = postgres_container.dbname
+
+    pipeline = PostgreSQLPipeline(
+        host=host,
+        port=port,
+        user=user,
+        password=password,
+        database=database,
+        table="test_quotes",
+    )
+
+    await run_spider_with_pipeline(TestSpider, pipeline)
+
+    # Verify data was inserted by connecting to the database
+    conn = await asyncpg.connect(
+        host=host,
+        port=port,
+        user=user,
+        password=password,
+        database=database,
+    )
+
+    count = await conn.fetchval("SELECT COUNT(*) FROM test_quotes")
+    assert count == len(SAMPLE_QUOTES)
+
+    # Verify data content
+    rows = await conn.fetch("SELECT spider, data FROM test_quotes")
+    for row in rows:
+        spider_name = row["spider"]
+        data_json = row["data"]
+        assert spider_name == "test"
+        item_data = json.loads(data_json)
+        # Verify item exists in SAMPLE_QUOTES
+        matching_quote = next(
+            (q for q in SAMPLE_QUOTES if q["text"] == item_data["text"]), None
+        )
+        assert matching_quote is not None
+        assert item_data["author"] == matching_quote["author"]
+
+    await conn.close()
+
+
+try:
+    from silkworm.pipelines import MongoDBPipeline
+    from testcontainers.mongodb import MongoDbContainer  # noqa: F401
+    import motor.motor_asyncio
+
+    MONGODB_AVAILABLE = True
+except ImportError:
+    MONGODB_AVAILABLE = False
+
+
+@pytest.mark.skipif(
+    not MONGODB_AVAILABLE, reason="motor or testcontainers not installed"
+)
+async def test_mongodb_pipeline_integration(mongodb_container):
+    """Test MongoDBPipeline with a real MongoDB container."""
+    # Extract connection details from container
+    connection_string = mongodb_container.get_connection_url()
+
+    pipeline = MongoDBPipeline(
+        connection_string=connection_string,
+        database="test_db",
+        collection="test_quotes",
+    )
+
+    await run_spider_with_pipeline(TestSpider, pipeline)
+
+    # Verify data was inserted by connecting to the database
+    client = motor.motor_asyncio.AsyncIOMotorClient(connection_string)
+    db = client["test_db"]
+    collection = db["test_quotes"]
+
+    count = await collection.count_documents({})
+    assert count == len(SAMPLE_QUOTES)
+
+    # Verify data content
+    cursor = collection.find({})
+    items = await cursor.to_list(length=None)
+    assert len(items) == len(SAMPLE_QUOTES)
+
+    for item in items:
+        # Remove MongoDB's _id field before comparison
+        item.pop("_id", None)
+        # Verify item exists in SAMPLE_QUOTES
+        matching_quote = next(
+            (q for q in SAMPLE_QUOTES if q["text"] == item["text"]), None
+        )
+        assert matching_quote is not None
+        assert item["author"] == matching_quote["author"]
+        assert item["tags"] == matching_quote["tags"]
+
+    client.close()
