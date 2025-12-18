@@ -101,3 +101,51 @@ The database integration tests use [testcontainers](https://testcontainers-pytho
 The test containers are defined in `conftest.py` as session-scoped fixtures, meaning they are started once per test session and shared across all tests that use them. This improves test performance while maintaining isolation.
 
 **Important:** Testcontainer-based tests are automatically disabled on Windows platforms because Docker doesn't work properly in Windows CI environments. The tests will be skipped with an appropriate message when run on Windows.
+
+## Testing Multiple Database Versions
+
+The integration tests support testing with different database versions via environment variables. This is especially useful for ensuring compatibility across popular versions of each database.
+
+### Testing Locally with Different Versions
+
+You can test specific database versions by setting environment variables:
+
+```bash
+# Test MySQL 5.7
+MYSQL_VERSION=5.7 uv run --group dev pytest tests/integration/test_pipeline_integration.py::test_mysql_pipeline_integration -o "anyio_mode=auto" -v
+
+# Test PostgreSQL 14
+POSTGRES_VERSION=14 uv run --group dev pytest tests/integration/test_pipeline_integration.py::test_postgresql_pipeline_integration -o "anyio_mode=auto" -v
+
+# Test MongoDB 6
+MONGODB_VERSION=6 uv run --group dev pytest tests/integration/test_pipeline_integration.py::test_mongodb_pipeline_integration -o "anyio_mode=auto" -v
+
+# Test Elasticsearch 7.17.0
+ELASTICSEARCH_VERSION=7.17.0 uv run --group dev pytest tests/integration/test_pipeline_integration.py::test_elasticsearch_pipeline_integration -o "anyio_mode=auto" -v
+
+# Test Cassandra 3.11
+CASSANDRA_VERSION=3.11 uv run --group dev pytest tests/integration/test_pipeline_integration.py::test_cassandra_pipeline_integration -o "anyio_mode=auto" -v
+
+# Test CouchDB 3.2
+COUCHDB_VERSION=3.2 uv run --group dev pytest tests/integration/test_pipeline_integration.py::test_couchdb_pipeline_integration -o "anyio_mode=auto" -v
+```
+
+### Supported Database Versions
+
+The CI workflow tests the following popular versions:
+
+- **MySQL**: 5.7, 8.0, 8.4, 9.0
+- **PostgreSQL**: 12, 13, 14, 15, 16, 17
+- **MongoDB**: 5, 6, 7, 8
+- **Elasticsearch**: 7.17.0, 8.11.0, 8.16.0
+- **Cassandra**: 3.11, 4.0, 4.1, 5.0
+- **CouchDB**: 3.2, 3.3, 3.4
+
+### CI Workflow
+
+A dedicated workflow (`.github/workflows/database-integration-tests.yml`) automatically tests all database pipelines against multiple popular versions. The workflow:
+
+- Runs on a weekly schedule (Sundays at 00:00 UTC)
+- Can be manually triggered via workflow_dispatch
+- Tests each database with a matrix of popular versions
+- Runs only on Linux (Docker is not available on Windows CI)
