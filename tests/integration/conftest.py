@@ -45,13 +45,13 @@ except ImportError:
 def mysql_container():
     """
     Provide a MySQL test container for integration tests.
-    
+
     Yields a MySqlContainer instance with connection details.
     The container is automatically started and stopped.
     """
     if not TESTCONTAINERS_AVAILABLE:
         pytest.skip("testcontainers not installed")
-    
+
     container = MySqlContainer("mysql:8.0")
     container.start()
     try:
@@ -64,13 +64,13 @@ def mysql_container():
 def postgres_container():
     """
     Provide a PostgreSQL test container for integration tests.
-    
+
     Yields a PostgresContainer instance with connection details.
     The container is automatically started and stopped.
     """
     if not TESTCONTAINERS_AVAILABLE:
         pytest.skip("testcontainers not installed")
-    
+
     container = PostgresContainer("postgres:16")
     container.start()
     try:
@@ -83,13 +83,13 @@ def postgres_container():
 def mongodb_container():
     """
     Provide a MongoDB test container for integration tests.
-    
+
     Yields a MongoDbContainer instance with connection details.
     The container is automatically started and stopped.
     """
     if not TESTCONTAINERS_AVAILABLE:
         pytest.skip("testcontainers not installed")
-    
+
     container = MongoDbContainer("mongo:7")
     container.start()
     try:

@@ -551,7 +551,7 @@ async def test_multiple_pipelines_simultaneously():
 
 try:
     from silkworm.pipelines import MySQLPipeline
-    from testcontainers.mysql import MySqlContainer
+    from testcontainers.mysql import MySqlContainer  # noqa: F401
     import aiomysql
 
     MYSQL_AVAILABLE = True
@@ -559,7 +559,9 @@ except ImportError:
     MYSQL_AVAILABLE = False
 
 
-@pytest.mark.skipif(not MYSQL_AVAILABLE, reason="aiomysql or testcontainers not installed")
+@pytest.mark.skipif(
+    not MYSQL_AVAILABLE, reason="aiomysql or testcontainers not installed"
+)
 async def test_mysql_pipeline_integration(mysql_container):
     """Test MySQLPipeline with a real MySQL container."""
     # Extract connection details from container
@@ -615,7 +617,7 @@ async def test_mysql_pipeline_integration(mysql_container):
 
 try:
     from silkworm.pipelines import PostgreSQLPipeline
-    from testcontainers.postgres import PostgresContainer
+    from testcontainers.postgres import PostgresContainer  # noqa: F401
     import asyncpg
 
     POSTGRESQL_AVAILABLE = True
@@ -677,7 +679,7 @@ async def test_postgresql_pipeline_integration(postgres_container):
 
 try:
     from silkworm.pipelines import MongoDBPipeline
-    from testcontainers.mongodb import MongoDbContainer
+    from testcontainers.mongodb import MongoDbContainer  # noqa: F401
     import motor.motor_asyncio
 
     MONGODB_AVAILABLE = True
