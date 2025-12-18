@@ -5,6 +5,7 @@ This conftest overrides the parent conftest's dummy modules
 to allow integration tests to use the real implementations.
 """
 
+import os
 import platform
 import sys
 from pathlib import Path
@@ -58,11 +59,15 @@ def mysql_container():
 
     Yields a MySqlContainer instance with connection details.
     The container is automatically started and stopped.
+    
+    The MySQL version can be specified using the MYSQL_VERSION environment variable.
+    Defaults to "8.0" if not specified.
     """
     if not TESTCONTAINERS_AVAILABLE:
         pytest.skip("testcontainers not installed")
 
-    container = MySqlContainer("mysql:8.0")
+    version = os.getenv("MYSQL_VERSION", "8.0")
+    container = MySqlContainer(f"mysql:{version}")
     container.start()
     try:
         yield container
@@ -77,11 +82,15 @@ def postgres_container():
 
     Yields a PostgresContainer instance with connection details.
     The container is automatically started and stopped.
+    
+    The PostgreSQL version can be specified using the POSTGRES_VERSION environment variable.
+    Defaults to "16" if not specified.
     """
     if not TESTCONTAINERS_AVAILABLE:
         pytest.skip("testcontainers not installed")
 
-    container = PostgresContainer("postgres:16")
+    version = os.getenv("POSTGRES_VERSION", "16")
+    container = PostgresContainer(f"postgres:{version}")
     container.start()
     try:
         yield container
@@ -96,11 +105,15 @@ def mongodb_container():
 
     Yields a MongoDbContainer instance with connection details.
     The container is automatically started and stopped.
+    
+    The MongoDB version can be specified using the MONGODB_VERSION environment variable.
+    Defaults to "7" if not specified.
     """
     if not TESTCONTAINERS_AVAILABLE:
         pytest.skip("testcontainers not installed")
 
-    container = MongoDbContainer("mongo:7")
+    version = os.getenv("MONGODB_VERSION", "7")
+    container = MongoDbContainer(f"mongo:{version}")
     container.start()
     try:
         yield container
@@ -115,11 +128,15 @@ def elasticsearch_container():
 
     Yields an ElasticsearchContainer instance with connection details.
     The container is automatically started and stopped.
+    
+    The Elasticsearch version can be specified using the ELASTICSEARCH_VERSION environment variable.
+    Defaults to "8.11.0" if not specified.
     """
     if not TESTCONTAINERS_AVAILABLE:
         pytest.skip("testcontainers not installed")
 
-    container = ElasticsearchContainer("elasticsearch:8.11.0")
+    version = os.getenv("ELASTICSEARCH_VERSION", "8.11.0")
+    container = ElasticsearchContainer(f"elasticsearch:{version}")
     container.start()
     try:
         yield container
@@ -134,11 +151,15 @@ def cassandra_container():
 
     Yields a CassandraContainer instance with connection details.
     The container is automatically started and stopped.
+    
+    The Cassandra version can be specified using the CASSANDRA_VERSION environment variable.
+    Defaults to "4.1" if not specified.
     """
     if not TESTCONTAINERS_AVAILABLE:
         pytest.skip("testcontainers not installed")
 
-    container = CassandraContainer("cassandra:4.1")
+    version = os.getenv("CASSANDRA_VERSION", "4.1")
+    container = CassandraContainer(f"cassandra:{version}")
     container.start()
     try:
         yield container
@@ -153,11 +174,15 @@ def couchdb_container():
 
     Yields a CouchDbContainer instance with connection details.
     The container is automatically started and stopped.
+    
+    The CouchDB version can be specified using the COUCHDB_VERSION environment variable.
+    Defaults to "3.3" if not specified.
     """
     if not TESTCONTAINERS_AVAILABLE:
         pytest.skip("testcontainers not installed")
 
-    container = CouchDbContainer("couchdb:3.3")
+    version = os.getenv("COUCHDB_VERSION", "3.3")
+    container = CouchDbContainer(f"couchdb:{version}")
     container.start()
     try:
         yield container

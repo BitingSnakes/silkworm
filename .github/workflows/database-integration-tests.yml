@@ -1,0 +1,206 @@
+name: Database Integration Tests
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mysql-integration:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mysql-version: ["5.7", "8.0", "8.4", "9.0"]
+        python-version: ["3.13"]
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+
+      - name: Init venv
+        run: uv venv --python ${{ matrix.python-version }}
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libev-dev
+
+      - name: Install dependencies
+        run: |
+          uv sync --group dev --extra mysql
+
+      - name: Run MySQL integration tests
+        env:
+          MYSQL_VERSION: ${{ matrix.mysql-version }}
+        run: |
+          uv run --group dev pytest tests/integration/test_pipeline_integration.py::test_mysql_pipeline_integration -o "anyio_mode=auto" -v
+
+  postgresql-integration:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres-version: ["12", "13", "14", "15", "16", "17"]
+        python-version: ["3.13"]
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+
+      - name: Init venv
+        run: uv venv --python ${{ matrix.python-version }}
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libev-dev
+
+      - name: Install dependencies
+        run: |
+          uv sync --group dev --extra postgresql
+
+      - name: Run PostgreSQL integration tests
+        env:
+          POSTGRES_VERSION: ${{ matrix.postgres-version }}
+        run: |
+          uv run --group dev pytest tests/integration/test_pipeline_integration.py::test_postgresql_pipeline_integration -o "anyio_mode=auto" -v
+
+  mongodb-integration:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mongodb-version: ["5", "6", "7", "8"]
+        python-version: ["3.13"]
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+
+      - name: Init venv
+        run: uv venv --python ${{ matrix.python-version }}
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libev-dev
+
+      - name: Install dependencies
+        run: |
+          uv sync --group dev --extra mongodb
+
+      - name: Run MongoDB integration tests
+        env:
+          MONGODB_VERSION: ${{ matrix.mongodb-version }}
+        run: |
+          uv run --group dev pytest tests/integration/test_pipeline_integration.py::test_mongodb_pipeline_integration -o "anyio_mode=auto" -v
+
+  elasticsearch-integration:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        elasticsearch-version: ["7.17.0", "8.11.0", "8.16.0"]
+        python-version: ["3.13"]
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+
+      - name: Init venv
+        run: uv venv --python ${{ matrix.python-version }}
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libev-dev
+
+      - name: Install dependencies
+        run: |
+          uv sync --group dev --extra elasticsearch
+
+      - name: Run Elasticsearch integration tests
+        env:
+          ELASTICSEARCH_VERSION: ${{ matrix.elasticsearch-version }}
+        run: |
+          uv run --group dev pytest tests/integration/test_pipeline_integration.py::test_elasticsearch_pipeline_integration -o "anyio_mode=auto" -v
+
+  cassandra-integration:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        cassandra-version: ["3.11", "4.0", "4.1", "5.0"]
+        python-version: ["3.13"]
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+
+      - name: Init venv
+        run: uv venv --python ${{ matrix.python-version }}
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libev-dev
+
+      - name: Install dependencies
+        run: |
+          uv sync --group dev --extra cassandra
+
+      - name: Run Cassandra integration tests
+        env:
+          CASSANDRA_VERSION: ${{ matrix.cassandra-version }}
+        run: |
+          uv run --group dev pytest tests/integration/test_pipeline_integration.py::test_cassandra_pipeline_integration -o "anyio_mode=auto" -v
+
+  couchdb-integration:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        couchdb-version: ["3.2", "3.3", "3.4"]
+        python-version: ["3.13"]
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+
+      - name: Init venv
+        run: uv venv --python ${{ matrix.python-version }}
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libev-dev
+
+      - name: Install dependencies
+        run: |
+          uv sync --group dev --extra couchdb
+
+      - name: Run CouchDB integration tests
+        env:
+          COUCHDB_VERSION: ${{ matrix.couchdb-version }}
+        run: |
+          uv run --group dev pytest tests/integration/test_pipeline_integration.py::test_couchdb_pipeline_integration -o "anyio_mode=auto" -v
