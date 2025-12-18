@@ -5,6 +5,7 @@ This conftest overrides the parent conftest's dummy modules
 to allow integration tests to use the real implementations.
 """
 
+import platform
 import sys
 from pathlib import Path
 import pytest
@@ -31,13 +32,19 @@ except ImportError:
 
 
 # Test container fixtures for database integration tests
-try:
-    from testcontainers.mysql import MySqlContainer
-    from testcontainers.postgres import PostgresContainer
-    from testcontainers.mongodb import MongoDbContainer
+# Testcontainers are disabled on Windows as Docker doesn't work well on Windows CI
+IS_WINDOWS = platform.system() == "Windows"
 
-    TESTCONTAINERS_AVAILABLE = True
-except ImportError:
+if not IS_WINDOWS:
+    try:
+        from testcontainers.mysql import MySqlContainer
+        from testcontainers.postgres import PostgresContainer
+        from testcontainers.mongodb import MongoDbContainer
+
+        TESTCONTAINERS_AVAILABLE = True
+    except ImportError:
+        TESTCONTAINERS_AVAILABLE = False
+else:
     TESTCONTAINERS_AVAILABLE = False
 
 
