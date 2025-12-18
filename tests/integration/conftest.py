@@ -38,12 +38,7 @@ IS_WINDOWS = platform.system() == "Windows"
 
 if not IS_WINDOWS:
     try:
-        from testcontainers.mysql import MySqlContainer
-        from testcontainers.postgres import PostgresContainer
-        from testcontainers.mongodb import MongoDbContainer
-        from testcontainers.elasticsearch import ElasticsearchContainer
-        from testcontainers.cassandra import CassandraContainer
-        from testcontainers.couchdb import CouchDbContainer
+        import testcontainers  # type: ignore[import-untyped]  # noqa: F401
 
         TESTCONTAINERS_AVAILABLE = True
     except ImportError:
@@ -65,6 +60,11 @@ def mysql_container():
     """
     if not TESTCONTAINERS_AVAILABLE:
         pytest.skip("testcontainers not installed")
+
+    try:
+        from testcontainers.mysql import MySqlContainer
+    except ImportError:
+        pytest.skip("mysql testcontainer dependencies not installed")
 
     version = os.getenv("MYSQL_VERSION", "8.0")
     container = MySqlContainer(f"mysql:{version}")
@@ -89,6 +89,11 @@ def postgres_container():
     if not TESTCONTAINERS_AVAILABLE:
         pytest.skip("testcontainers not installed")
 
+    try:
+        from testcontainers.postgres import PostgresContainer
+    except ImportError:
+        pytest.skip("postgres testcontainer dependencies not installed")
+
     version = os.getenv("POSTGRES_VERSION", "16")
     container = PostgresContainer(f"postgres:{version}")
     container.start()
@@ -111,6 +116,11 @@ def mongodb_container():
     """
     if not TESTCONTAINERS_AVAILABLE:
         pytest.skip("testcontainers not installed")
+
+    try:
+        from testcontainers.mongodb import MongoDbContainer
+    except ImportError:
+        pytest.skip("mongodb testcontainer dependencies not installed")
 
     version = os.getenv("MONGODB_VERSION", "7")
     container = MongoDbContainer(f"mongo:{version}")
@@ -135,6 +145,11 @@ def elasticsearch_container():
     if not TESTCONTAINERS_AVAILABLE:
         pytest.skip("testcontainers not installed")
 
+    try:
+        from testcontainers.elasticsearch import ElasticsearchContainer
+    except ImportError:
+        pytest.skip("elasticsearch testcontainer dependencies not installed")
+
     version = os.getenv("ELASTICSEARCH_VERSION", "8.11.0")
     container = ElasticsearchContainer(f"elasticsearch:{version}")
     container.start()
@@ -158,6 +173,11 @@ def cassandra_container():
     if not TESTCONTAINERS_AVAILABLE:
         pytest.skip("testcontainers not installed")
 
+    try:
+        from testcontainers.cassandra import CassandraContainer
+    except ImportError:
+        pytest.skip("cassandra testcontainer dependencies not installed")
+
     version = os.getenv("CASSANDRA_VERSION", "4.1")
     container = CassandraContainer(f"cassandra:{version}")
     container.start()
@@ -180,6 +200,11 @@ def couchdb_container():
     """
     if not TESTCONTAINERS_AVAILABLE:
         pytest.skip("testcontainers not installed")
+
+    try:
+        from testcontainers.couchdb import CouchDbContainer
+    except ImportError:
+        pytest.skip("couchdb testcontainer dependencies not installed")
 
     version = os.getenv("COUCHDB_VERSION", "3.3")
     container = CouchDbContainer(f"couchdb:{version}")
