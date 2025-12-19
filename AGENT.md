@@ -922,3 +922,31 @@ When working on this codebase, ensure you:
 - [ ] Use `field(default_factory=...)` for mutable defaults in dataclasses
 - [ ] Run `just fmt && just lint && just typecheck && just test` before committing
 - [ ] Follow the import order: `__future__` → stdlib → third-party → local → TYPE_CHECKING
+
+## Framework API (Public Exports)
+
+The `silkworm` package exports the public API below (from `src/silkworm/__init__.py`).
+
+### Core Types
+- `Request`: Immutable request dataclass with `url`, `method`, `headers`, `params`, `data`, `json`, `meta`, `timeout`, `callback`, `dont_filter`, `priority`, plus `replace(**kwargs)` for copy-with-updates.
+- `Response`: Base response dataclass with `.text`, `.encoding`, `.follow(href, callback=None, **kwargs)`, and `.close()` for releasing payloads.
+- `HTMLResponse`: `Response` with async selectors `select`, `select_first`, `xpath`, `xpath_first`, and HTML size limit via `doc_max_size_bytes`.
+- `Spider`: Base spider with `name`, `start_urls`, `custom_settings`, `start_requests()`, `parse(response)`, and optional `open()`/`close()` hooks.
+- `Engine`: Crawl orchestrator; instantiate with a spider and options, then `await engine.run()`.
+
+### Runner Helpers
+- `crawl(...)`: Async entrypoint; builds `Engine` and awaits `run()`.
+- `run_spider(...)`: Synchronous wrapper around `crawl(...)` using `asyncio.run`.
+- `run_spider_uvloop(...)`: `run_spider(...)` with uvloop policy (requires `silkworm-rs[uvloop]`).
+- `run_spider_winloop(...)`: `run_spider(...)` with winloop policy (requires `silkworm-rs[winloop]`).
+- `run_spider_trio(...)`: Trio entrypoint using `trio` + `trio-asyncio` (requires `silkworm-rs[trio]`).
+
+### Convenience Helpers
+- `fetch_html(url, *, emulation=Emulation.Firefox139, timeout=None) -> tuple[str, Document]`: Fetches HTML and returns `(text, scraper_rs.Document)`.
+- `get_logger(**context)`: Returns a logly logger with optional bound context.
+
+### Exceptions
+- `SilkwormError`: Base framework exception.
+- `HttpError`: HTTP request failures.
+- `SpiderError`: Spider callback failures.
+- `SelectorError`: Selector evaluation failures.
