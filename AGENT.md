@@ -285,6 +285,11 @@ Dataclasses representing HTTP requests and responses.
 - `Request`: Immutable request with URL, method, headers, metadata, callback
 - `Response`: Base response class
 - `HTMLResponse`: Response with HTML parsing capabilities via scraper-rs
+ - `Request` fields used by the engine/client: `params`, `data`, `json`, `timeout`, `meta`, `dont_filter`; `priority` exists but is not used by the engine yet
+- `Request.meta` keys used by built-ins: `proxy` (ProxyMiddleware/HttpClient), `retry_times` (RetryMiddleware), `allow_non_html` (SkipNonHTMLMiddleware), `redirect_times` (HttpClient redirects)
+ - `Response` helpers: `.text` with charset detection, `.encoding`, and `Response.follow(...)` for urljoin + callback reuse
+ - `HTMLResponse` helpers: `select`, `select_first`, `xpath`, `xpath_first` (async selectors with `doc_max_size_bytes` limit)
+ - Only the spider `parse` callback is auto-wrapped into `HTMLResponse`; other callbacks receive the raw `Response` unless you wrap manually
 
 #### 3. Middlewares (`middlewares.py`)
 Process requests before sending and responses after receiving.
@@ -301,7 +306,8 @@ Process requests before sending and responses after receiving.
 #### 4. Pipelines (`pipelines.py`)
 Process and export scraped items.
 
-Built-in pipelines include: JsonLines, SQLite, XML, CSV, MsgPack, Polars, Excel, YAML, Avro, Elasticsearch, MongoDB, MySQL, PostgreSQL, S3, Vortex, Webhook, Google Sheets, Snowflake, FTP, SFTP, Cassandra, CouchDB, DynamoDB, Callback, Taskiq
+Pipelines run in order; each `process_item` return value is passed to the next pipeline.
+See "Pipeline Reference" below for the full list, configuration options, and examples.
 
 #### 5. Engine (`engine.py`)
 Core async engine managing:
@@ -310,6 +316,145 @@ Core async engine managing:
 - Middleware and pipeline execution
 - Request deduplication
 - Statistics tracking
+
+## Pipeline Reference (config + examples)
+
+### Usage Pattern
+Pipelines are instantiated and passed via `item_pipelines`; `open`/`close` are called once
+per run, and `process_item` is called for each scraped item in order.
+
+```python
+from silkworm import run_spider
+from silkworm.pipelines import JsonLinesPipeline
+
+run_spider(MySpider, item_pipelines=[JsonLinesPipeline("data/items.jl")])
+```
+
+### Built-in Pipelines
+
+#### CallbackPipeline (core)
+Config: `callback`
+Example: `CallbackPipeline(callback=process_item)`
+Notes: `callback(item, spider)` can be sync or async; return `None` to keep the item unchanged.
+
+#### JsonLinesPipeline (core; optional async writes via opendal)
+Config: `path="items.jl"`, `use_opendal: bool | None = None`
+Example: `JsonLinesPipeline("data/items.jl", use_opendal=False)`
+Notes: When `use_opendal` is true and opendal is installed, async appends are used.
+
+#### MsgPackPipeline (extra: msgpack)
+Config: `path="items.msgpack"`, `mode="write"` ("write" or "append")
+Example: `MsgPackPipeline("data/items.msgpack", mode="append")`
+
+#### SQLitePipeline (core)
+Config: `path="items.db"`, `table="items"`
+Example: `SQLitePipeline("data/items.db", table="quotes")`
+
+#### XMLPipeline (core)
+Config: `path="items.xml"`, `root_element="items"`, `item_element="item"`
+Example: `XMLPipeline("data/items.xml", root_element="quotes", item_element="quote")`
+
+#### CSVPipeline (core)
+Config: `path="items.csv"`, `fieldnames: list[str] | None = None`
+Example: `CSVPipeline("data/items.csv", fieldnames=["author", "text", "tags"])`
+Notes: Flattens nested dicts with `_` and joins list values with commas.
+
+#### TaskiqPipeline (extra: taskiq)
+Config: `broker`, `task: Taskiq task | None = None`, `task_name: str | None = None`
+Example: `TaskiqPipeline(broker, task=process_item)`
+Notes: Provide either `task` or `task_name` (use full task name like ".:process_item"); broker is started/stopped in `open`/`close`.
+
+#### PolarsPipeline (extra: polars)
+Config: `path="items.parquet"`, `mode="write"` ("write" or "append")
+Example: `PolarsPipeline("data/items.parquet", mode="append")`
+Notes: Buffers items in memory until `close`.
+
+#### ExcelPipeline (extra: excel)
+Config: `path="items.xlsx"`, `sheet_name="Sheet1"`
+Example: `ExcelPipeline("data/items.xlsx", sheet_name="quotes")`
+Notes: Buffers items in memory and flattens dicts like CSVPipeline.
+
+#### YAMLPipeline (extra: yaml)
+Config: `path="items.yaml"`
+Example: `YAMLPipeline("data/items.yaml")`
+Notes: Buffers items in memory until `close`.
+
+#### AvroPipeline (extra: avro)
+Config: `path="items.avro"`, `schema: dict | None = None`
+Example: `AvroPipeline("data/items.avro", schema=my_schema)`
+Notes: If `schema` is None, it is inferred from the first item; items are buffered in memory.
+
+#### ElasticsearchPipeline (extra: elasticsearch)
+Config: `hosts="http://localhost:9200" | list[str]`, `index="items"`, `**es_kwargs`
+Example: `ElasticsearchPipeline(hosts=["http://localhost:9200"], index="quotes")`
+
+#### MongoDBPipeline (extra: mongodb)
+Config: `connection_string="mongodb://localhost:27017"`, `database="scraping"`, `collection="items"`
+Example: `MongoDBPipeline(database="scraping", collection="quotes")`
+
+#### S3JsonLinesPipeline (extra: s3)
+Config: `bucket`, `key="items.jl"`, `region="us-east-1"`, `endpoint=None`, `access_key_id=None`, `secret_access_key=None`
+Example: `S3JsonLinesPipeline(bucket="my-bucket", key="data/items.jl")`
+Notes: Buffers items in memory and writes on `close`.
+
+#### VortexPipeline (extra: vortex)
+Config: `path="items.vortex"`
+Example: `VortexPipeline("data/items.vortex")`
+Notes: Buffers items in memory and writes on `close` using pyarrow + vortex.
+
+#### MySQLPipeline (extra: mysql)
+Config: `host="localhost"`, `port=3306`, `user="root"`, `password=""`, `database="scraping"`, `table="items"`
+Example: `MySQLPipeline(database="scraping", table="quotes")`
+
+#### PostgreSQLPipeline (extra: postgresql)
+Config: `host="localhost"`, `port=5432`, `user="postgres"`, `password=""`, `database="scraping"`, `table="items"`
+Example: `PostgreSQLPipeline(database="scraping", table="quotes")`
+
+#### WebhookPipeline (core)
+Config: `url`, `method="POST"`, `headers: dict[str, str] | None = None`, `timeout=30.0`, `batch_size=1`
+Example: `WebhookPipeline("https://webhook.site/...", headers={"Authorization": "Bearer token"}, batch_size=10)`
+Notes: Sends a single item or a list depending on `batch_size`.
+
+#### GoogleSheetsPipeline (extra: gsheets)
+Config: `spreadsheet_id`, `credentials_file`, `sheet_name="Sheet1"`, `batch_size=100`
+Example: `GoogleSheetsPipeline(spreadsheet_id="...", credentials_file="creds.json", sheet_name="quotes")`
+Notes: Flattens dicts like CSVPipeline and writes a header row on the first batch.
+
+#### SnowflakePipeline (extra: snowflake)
+Config: `account`, `user`, `password`, `database`, `schema`, `warehouse`, `table="items"`, `role=None`
+Example: `SnowflakePipeline(account="acct", user="user", password="pass", database="db", schema="PUBLIC", warehouse="WH")`
+
+#### FTPPipeline (extra: ftp)
+Config: `host`, `user`, `password`, `remote_path="items.jl"`, `port=21`
+Example: `FTPPipeline(host="ftp.example.com", user="user", password="pass", remote_path="data/items.jl")`
+Notes: Buffers items in memory and uploads on `close`.
+
+#### SFTPPipeline (extra: sftp)
+Config: `host`, `user`, `password=None`, `remote_path="items.jl"`, `port=22`, `private_key=None`
+Example: `SFTPPipeline(host="sftp.example.com", user="user", password="pass")`
+Notes: Requires either `password` or `private_key`; buffers items and uploads on `close`.
+
+#### CassandraPipeline (extra: cassandra; not available on Windows)
+Config: `hosts: list[str] | None = None`, `keyspace="scraping"`, `table="items"`, `username=None`, `password=None`, `port=9042`
+Example: `CassandraPipeline(hosts=["127.0.0.1"], keyspace="scraping", table="quotes")`
+
+#### CouchDBPipeline (extra: couchdb)
+Config: `url="http://localhost:5984"`, `database="scraping"`, `username=None`, `password=None`
+Example: `CouchDBPipeline(url="http://localhost:5984", database="scraping")`
+
+#### DynamoDBPipeline (extra: dynamodb)
+Config: `table_name="items"`, `region_name="us-east-1"`, `aws_access_key_id=None`, `aws_secret_access_key=None`, `endpoint_url=None`
+Example: `DynamoDBPipeline(table_name="items", region_name="us-east-1")`
+Notes: Auto-creates a table with `id` as the hash key if missing.
+
+#### DuckDBPipeline (extra: duckdb)
+Config: `database="items.db"`, `table="items"`
+Example: `DuckDBPipeline(database="data/scraping.db", table="items")`
+
+### Memory and Throughput Notes
+- Streaming-friendly: JsonLinesPipeline, CSVPipeline, XMLPipeline, SQLitePipeline, WebhookPipeline (batch_size=1).
+- Buffers all items until `close`: PolarsPipeline, ExcelPipeline, YAMLPipeline, AvroPipeline, VortexPipeline, S3JsonLinesPipeline, FTPPipeline, SFTPPipeline.
+- Batch buffers: WebhookPipeline (`batch_size > 1`) and GoogleSheetsPipeline (`batch_size`).
 
 ## Development Workflow
 
@@ -571,6 +716,8 @@ Available extras:
 - `cassandra`: Cassandra database (not available on Windows)
 - `couchdb`: CouchDB database
 - `dynamodb`: AWS DynamoDB
+- `duckdb`: DuckDB pipeline
+- `memray`: Memory profiling (see `just memray`)
 - `taskiq`: Distributed task queue
 
 ## Performance Considerations
@@ -775,9 +922,3 @@ When working on this codebase, ensure you:
 - [ ] Use `field(default_factory=...)` for mutable defaults in dataclasses
 - [ ] Run `just fmt && just lint && just typecheck && just test` before committing
 - [ ] Follow the import order: `__future__` → stdlib → third-party → local → TYPE_CHECKING
-
----
-
-**Last Updated:** 2025-12-16  
-**Silkworm Version:** 0.2.23  
-**Python Requirement:** >=3.13,<3.15
