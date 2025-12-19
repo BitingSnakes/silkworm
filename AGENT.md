@@ -317,6 +317,89 @@ Core async engine managing:
 - Request deduplication
 - Statistics tracking
 
+### Spider Examples
+
+#### Example 1: Single-page titles
+```python
+from __future__ import annotations
+
+from silkworm import HTMLResponse, Response, Spider
+
+
+class TitlesSpider(Spider):
+    name = "titles"
+    start_urls = ("https://example.com/articles",)
+
+    async def parse(self, response: Response):
+        if not isinstance(response, HTMLResponse):
+            return
+
+        html = response
+        for card in await html.select(".card"):
+            title_el = card.select_first("h2")
+            if title_el is not None:
+                yield {"title": title_el.text.strip()}
+```
+
+#### Example 2: Pagination with follow
+```python
+from __future__ import annotations
+
+from silkworm import HTMLResponse, Response, Spider
+
+
+class QuotesSpider(Spider):
+    name = "quotes"
+    start_urls = ("https://quotes.toscrape.com/",)
+
+    async def parse(self, response: Response):
+        if not isinstance(response, HTMLResponse):
+            return
+
+        html = response
+        for quote in await html.select(".quote"):
+            text_el = quote.select_first(".text")
+            author_el = quote.select_first(".author")
+            if text_el is not None and author_el is not None:
+                yield {"text": text_el.text, "author": author_el.text}
+
+        next_link = await html.select_first("li.next > a")
+        if next_link is not None:
+            href = next_link.attr("href")
+            if href:
+                yield html.follow(href, callback=self.parse)
+```
+
+#### Example 3: Custom start_requests + JSON endpoint
+```python
+from __future__ import annotations
+
+import json
+
+from silkworm import Request, Response, Spider
+
+
+class ApiSpider(Spider):
+    name = "api"
+    start_urls = ("https://api.example.com/items?page=1",)
+
+    async def start_requests(self):
+        for url in self.start_urls:
+            yield Request(
+                url=url,
+                headers={"accept": "application/json"},
+                callback=self.parse_api,
+            )
+
+    async def parse_api(self, response: Response):
+        payload = json.loads(response.text)
+        for item in payload.get("items", []):
+            yield {"id": item.get("id"), "name": item.get("name")}
+        next_url = payload.get("next")
+        if next_url:
+            yield Request(url=next_url, callback=self.parse_api)
+```
+
 ## Pipeline Reference (config + examples)
 
 ### Usage Pattern
