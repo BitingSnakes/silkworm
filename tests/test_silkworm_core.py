@@ -1,3 +1,4 @@
+from datetime import timedelta
 from urllib.parse import parse_qsl, urlsplit
 from typing import Any
 
@@ -258,6 +259,30 @@ async def test_httpclient_keep_alive_when_kwarg_not_supported():
     assert strict.calls
     first_call = strict.calls[0]
     assert first_call["headers"].get("Connection") == "keep-alive"
+
+
+async def test_httpclient_retries_timeout_as_timedelta():
+    class TimedeltaTimeoutClient(_RecordingClient):
+        async def request(  # type: ignore[override]
+            self, method: Any, url: str, **kwargs: Any
+        ) -> _StubResponse:
+            self.calls.append((method, url, kwargs))
+            timeout = kwargs.get("timeout")
+            if isinstance(timeout, (int, float)):
+                raise TypeError(
+                    "argument 'kwds': 'int' object cannot be cast as 'timedelta'",
+                )
+            return _StubResponse(headers={"Content-Type": "text/plain"}, body=b"ok")
+
+    client = HttpClient()
+    client._client = TimedeltaTimeoutClient()  # type: ignore[assignment]
+
+    resp = await client.fetch(Request(url="http://example.com", timeout=5))
+
+    assert resp.status == 200
+    assert len(client._client.calls) == 2
+    assert isinstance(client._client.calls[1][2]["timeout"], timedelta)
+    assert client._timeout_uses_timedelta is True
 
 
 async def test_retry_middleware_returns_retry_request(monkeypatch: pytest.MonkeyPatch):

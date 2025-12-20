@@ -1,5 +1,6 @@
 from __future__ import annotations
 import inspect
+from datetime import timedelta
 
 from scraper_rs import Document  # type: ignore[import]
 from rnet import Client, Emulation  # type: ignore[import]
@@ -15,7 +16,20 @@ async def fetch_html(
     client = cast(Any, Client)(emulation=emulation)
     try:
         if timeout is not None:
-            resp = await client.get(url, timeout=timeout)
+            try:
+                resp = await client.get(url, timeout=timeout)
+            except TypeError as exc:
+                if (
+                    isinstance(timeout, (int, float))
+                    and not isinstance(timeout, bool)
+                    and "timedelta" in str(exc).lower()
+                ):
+                    resp = await client.get(
+                        url,
+                        timeout=timedelta(seconds=float(timeout)),
+                    )
+                else:
+                    raise
         else:
             resp = await client.get(url)
         text = await resp.text()

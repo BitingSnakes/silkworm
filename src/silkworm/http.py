@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
 import inspect
+from datetime import timedelta
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any, AsyncIterator, cast
@@ -42,6 +43,7 @@ class HttpClient:
         self._sem = asyncio.Semaphore(concurrency)
         self._default_headers = default_headers or {}
         self._timeout = timeout
+        self._timeout_uses_timedelta: bool | None = None
         self._html_max_size_bytes = html_max_size_bytes
         self._follow_redirects = follow_redirects
         if max_redirects < 0:
@@ -81,15 +83,17 @@ class HttpClient:
             method = self._normalize_method(current_req.method)
             url = self._build_url(current_req)
             visited_urls.add(url)
-            timeout: float | None = None
+            timeout_raw: float | timedelta | None = None
+            timeout_seconds: float | None = None
 
             try:
                 async with self._sem:
-                    timeout = (
+                    timeout_raw = (
                         current_req.timeout
                         if current_req.timeout is not None
                         else self._timeout
                     )
+                    timeout_seconds = self._timeout_seconds(timeout_raw)
                     headers = {**self._default_headers, **current_req.headers}
                     if self._keep_alive and not self._has_connection_header(headers):
                         headers["Connection"] = "keep-alive"
@@ -99,12 +103,13 @@ class HttpClient:
                         json=current_req.json,
                         proxy=proxy,
                     )
-                    if timeout is not None:
-                        request_kwargs["timeout"] = timeout
+                    client_timeout = self._client_timeout(timeout_raw)
+                    if client_timeout is not None:
+                        request_kwargs["timeout"] = client_timeout
                     if self._keep_alive and self._supports_keep_alive_kwarg:
                         request_kwargs["keep_alive"] = True
 
-                    async with self._request_timeout(timeout):
+                    async with self._request_timeout(timeout_seconds):
                         # Adjust keyword arguments to actual rnet.Client.request signature
                         resp = await self._send_request(method, url, request_kwargs)
 
@@ -147,7 +152,11 @@ class HttpClient:
                         ) * 1000
                 break
             except TimeoutError as exc:
-                suffix = f" after {timeout} seconds" if timeout is not None else ""
+                suffix = (
+                    f" after {timeout_seconds} seconds"
+                    if timeout_seconds is not None
+                    else ""
+                )
                 raise HttpError(f"Request to {req.url} timed out{suffix}") from exc
             except HttpError:
                 raise
@@ -204,6 +213,34 @@ class HttpClient:
             return
         async with asyncio.timeout(timeout):
             yield
+
+    def _timeout_seconds(self, timeout: float | timedelta | None) -> float | None:
+        if timeout is None:
+            return None
+        if isinstance(timeout, timedelta):
+            return timeout.total_seconds()
+        return float(timeout)
+
+    def _client_timeout(
+        self,
+        timeout: float | timedelta | None,
+    ) -> float | timedelta | None:
+        if timeout is None:
+            return None
+        if isinstance(timeout, timedelta):
+            return timeout if self._timeout_uses_timedelta else timeout.total_seconds()
+        if self._timeout_uses_timedelta:
+            return timedelta(seconds=float(timeout))
+        return float(timeout)
+
+    def _should_retry_timeout_as_timedelta(
+        self,
+        exc: TypeError,
+        timeout: object,
+    ) -> bool:
+        if isinstance(timeout, bool) or not isinstance(timeout, (int, float)):
+            return False
+        return "timedelta" in str(exc).lower()
 
     async def _read_body(self, resp: object) -> bytes:
         """
@@ -289,6 +326,11 @@ class HttpClient:
                     "HTTP client rejected keep_alive argument; retrying without",
                     error=str(exc),
                 )
+                return await self._client.request(method, url, **kwargs)
+            timeout = kwargs.get("timeout")
+            if self._should_retry_timeout_as_timedelta(exc, timeout):
+                kwargs["timeout"] = timedelta(seconds=float(timeout))
+                self._timeout_uses_timedelta = True
                 return await self._client.request(method, url, **kwargs)
             raise
 

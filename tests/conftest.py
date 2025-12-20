@@ -45,7 +45,9 @@ def _build_client(*, emulation: Any = None, **_: Any) -> Mock:
         return _mock_response()
 
     client.request = AsyncMock(side_effect=_request)
-    client.get = AsyncMock(side_effect=lambda url, **kwargs: client.request("GET", url, **kwargs))
+    client.get = AsyncMock(
+        side_effect=lambda url, **kwargs: client.request("GET", url, **kwargs)
+    )
 
     async def _close() -> None:
         client.closed = True

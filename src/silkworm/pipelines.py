@@ -1,6 +1,7 @@
 from __future__ import annotations
 import csv
 import inspect
+from datetime import timedelta
 import io
 import json
 import re
@@ -1652,6 +1653,7 @@ class WebhookPipeline:
         self.method = method
         self.headers = headers or {}
         self.timeout = timeout
+        self._timeout_uses_timedelta: bool | None = None
         self.batch_size = batch_size
         self._client: Client | None = None  # type: ignore[name-defined]
         self._batch: list[JSONValue] = []
@@ -1721,9 +1723,32 @@ class WebhookPipeline:
                 "json": payload,
             }
             if self.timeout is not None:
-                kwargs["timeout"] = self.timeout
-
-            response = await self._client.request(method_enum, self.url, **kwargs)  # type: ignore[union-attr, arg-type]
+                if self._timeout_uses_timedelta:
+                    kwargs["timeout"] = timedelta(seconds=float(self.timeout))
+                else:
+                    kwargs["timeout"] = self.timeout
+            try:
+                response = await self._client.request(  # type: ignore[union-attr, arg-type]
+                    method_enum,
+                    self.url,
+                    **kwargs,
+                )
+            except TypeError as exc:
+                if (
+                    self.timeout is not None
+                    and isinstance(self.timeout, (int, float))
+                    and not isinstance(self.timeout, bool)
+                    and "timedelta" in str(exc).lower()
+                ):
+                    kwargs["timeout"] = timedelta(seconds=float(self.timeout))
+                    self._timeout_uses_timedelta = True
+                    response = await self._client.request(  # type: ignore[union-attr, arg-type]
+                        method_enum,
+                        self.url,
+                        **kwargs,
+                    )
+                else:
+                    raise
 
             # Try to get status code
             status = getattr(response, "status", None)
