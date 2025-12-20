@@ -37,7 +37,8 @@ def _mock_response(
 def _build_client(*, emulation: Any = None, **_: Any) -> Mock:
     client = Mock(name="rnet_client")
     client.emulation = emulation
-    client.calls: list[tuple[Any, str, dict[str, Any]]] = []
+    calls: list[tuple[Any, str, dict[str, Any]]] = []
+    client.calls = calls
     client.closed = False
 
     async def _request(method: Any, url: str, **kwargs: Any) -> Mock:
