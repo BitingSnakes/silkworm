@@ -27,6 +27,7 @@ mypy:
 clean:
 	rm -rf .venv/
 	rm -rf .uv-cache/
+	rm -rf .uv_cache/
 	rm -rf dist build .mypy_cache .ruff_cache .pytest_cache *.egg-info
 	rm -rf data/
 	rm -rf **/**/__pycache__
