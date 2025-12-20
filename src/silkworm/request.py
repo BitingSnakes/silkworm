@@ -1,5 +1,6 @@
 from __future__ import annotations
 from dataclasses import dataclass, field, replace
+from datetime import timedelta
 from collections.abc import AsyncIterable, AsyncIterator, Awaitable, Callable, Iterable
 from typing import TYPE_CHECKING, Self
 
@@ -18,7 +19,7 @@ class Request:
     data: BodyData = None
     json: JSONValue | None = None
     meta: MetaData = field(default_factory=dict)
-    timeout: float | None = None
+    timeout: float | timedelta | None = None
     callback: Callback | None = None
     dont_filter: bool = False
     priority: int = 0

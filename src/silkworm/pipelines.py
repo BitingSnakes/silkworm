@@ -1630,7 +1630,7 @@ class WebhookPipeline:
         *,
         method: str = "POST",
         headers: dict[str, str] | None = None,
-        timeout: float | None = 30.0,
+        timeout: float | timedelta | None = 30.0,
         batch_size: int = 1,
     ) -> None:
         """
@@ -1653,7 +1653,6 @@ class WebhookPipeline:
         self.method = method
         self.headers = headers or {}
         self.timeout = timeout
-        self._timeout_uses_timedelta: bool | None = None
         self.batch_size = batch_size
         self._client: Client | None = None  # type: ignore[name-defined]
         self._batch: list[JSONValue] = []
@@ -1723,32 +1722,17 @@ class WebhookPipeline:
                 "json": payload,
             }
             if self.timeout is not None:
-                if self._timeout_uses_timedelta:
-                    kwargs["timeout"] = timedelta(seconds=float(self.timeout))
-                else:
-                    kwargs["timeout"] = self.timeout
-            try:
-                response = await self._client.request(  # type: ignore[union-attr, arg-type]
-                    method_enum,
-                    self.url,
-                    **kwargs,
+                timeout = (
+                    self.timeout
+                    if isinstance(self.timeout, timedelta)
+                    else timedelta(seconds=float(self.timeout))
                 )
-            except TypeError as exc:
-                if (
-                    self.timeout is not None
-                    and isinstance(self.timeout, (int, float))
-                    and not isinstance(self.timeout, bool)
-                    and "timedelta" in str(exc).lower()
-                ):
-                    kwargs["timeout"] = timedelta(seconds=float(self.timeout))
-                    self._timeout_uses_timedelta = True
-                    response = await self._client.request(  # type: ignore[union-attr, arg-type]
-                        method_enum,
-                        self.url,
-                        **kwargs,
-                    )
-                else:
-                    raise
+                kwargs["timeout"] = timeout
+            response = await self._client.request(  # type: ignore[union-attr, arg-type]
+                method_enum,
+                self.url,
+                **kwargs,
+            )
 
             # Try to get status code
             status = getattr(response, "status", None)

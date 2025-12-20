@@ -1,5 +1,6 @@
 from __future__ import annotations
 import asyncio
+from datetime import timedelta
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -43,7 +44,7 @@ def run_spider_trio(
     request_middlewares: Iterable[RequestMiddleware] | None = None,
     response_middlewares: Iterable[ResponseMiddleware] | None = None,
     item_pipelines: Iterable[ItemPipeline] | None = None,
-    request_timeout: float | None = None,
+    request_timeout: float | timedelta | None = None,
     log_stats_interval: float | None = None,
     max_pending_requests: int | None = None,
     html_max_size_bytes: int = 5_000_000,
@@ -114,7 +115,7 @@ async def crawl(
     request_middlewares: Iterable[RequestMiddleware] | None = None,
     response_middlewares: Iterable[ResponseMiddleware] | None = None,
     item_pipelines: Iterable[ItemPipeline] | None = None,
-    request_timeout: float | None = None,
+    request_timeout: float | timedelta | None = None,
     log_stats_interval: float | None = None,
     max_pending_requests: int | None = None,
     html_max_size_bytes: int = 5_000_000,
@@ -144,7 +145,7 @@ def run_spider(
     request_middlewares: Iterable[RequestMiddleware] | None = None,
     response_middlewares: Iterable[ResponseMiddleware] | None = None,
     item_pipelines: Iterable[ItemPipeline] | None = None,
-    request_timeout: float | None = None,
+    request_timeout: float | timedelta | None = None,
     log_stats_interval: float | None = None,
     max_pending_requests: int | None = None,
     html_max_size_bytes: int = 5_000_000,
@@ -175,7 +176,7 @@ def run_spider_uvloop(
     request_middlewares: Iterable[RequestMiddleware] | None = None,
     response_middlewares: Iterable[ResponseMiddleware] | None = None,
     item_pipelines: Iterable[ItemPipeline] | None = None,
-    request_timeout: float | None = None,
+    request_timeout: float | timedelta | None = None,
     log_stats_interval: float | None = None,
     max_pending_requests: int | None = None,
     html_max_size_bytes: int = 5_000_000,
@@ -205,7 +206,7 @@ def run_spider_winloop(
     request_middlewares: Iterable[RequestMiddleware] | None = None,
     response_middlewares: Iterable[ResponseMiddleware] | None = None,
     item_pipelines: Iterable[ItemPipeline] | None = None,
-    request_timeout: float | None = None,
+    request_timeout: float | timedelta | None = None,
     log_stats_interval: float | None = None,
     max_pending_requests: int | None = None,
     html_max_size_bytes: int = 5_000_000,

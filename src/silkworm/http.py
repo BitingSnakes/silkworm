@@ -25,7 +25,7 @@ class HttpClient:
         concurrency: int = 16,
         emulation: Emulation = Emulation.Firefox139,
         default_headers: Headers | None = None,
-        timeout: float | None = None,
+        timeout: float | timedelta | None = None,
         html_max_size_bytes: int = 5_000_000,
         follow_redirects: bool = True,
         max_redirects: int = 10,
@@ -43,7 +43,6 @@ class HttpClient:
         self._sem = asyncio.Semaphore(concurrency)
         self._default_headers = default_headers or {}
         self._timeout = timeout
-        self._timeout_uses_timedelta: bool | None = None
         self._html_max_size_bytes = html_max_size_bytes
         self._follow_redirects = follow_redirects
         if max_redirects < 0:
@@ -103,7 +102,7 @@ class HttpClient:
                         json=current_req.json,
                         proxy=proxy,
                     )
-                    client_timeout = self._client_timeout(timeout_raw)
+                    client_timeout = self._as_timedelta(timeout_raw)
                     if client_timeout is not None:
                         request_kwargs["timeout"] = client_timeout
                     if self._keep_alive and self._supports_keep_alive_kwarg:
@@ -221,26 +220,12 @@ class HttpClient:
             return timeout.total_seconds()
         return float(timeout)
 
-    def _client_timeout(
-        self,
-        timeout: float | timedelta | None,
-    ) -> float | timedelta | None:
+    def _as_timedelta(self, timeout: float | timedelta | None) -> timedelta | None:
         if timeout is None:
             return None
         if isinstance(timeout, timedelta):
-            return timeout if self._timeout_uses_timedelta else timeout.total_seconds()
-        if self._timeout_uses_timedelta:
-            return timedelta(seconds=float(timeout))
-        return float(timeout)
-
-    def _should_retry_timeout_as_timedelta(
-        self,
-        exc: TypeError,
-        timeout: object,
-    ) -> bool:
-        if isinstance(timeout, bool) or not isinstance(timeout, (int, float)):
-            return False
-        return "timedelta" in str(exc).lower()
+            return timeout
+        return timedelta(seconds=float(timeout))
 
     async def _read_body(self, resp: object) -> bytes:
         """
@@ -326,11 +311,6 @@ class HttpClient:
                     "HTTP client rejected keep_alive argument; retrying without",
                     error=str(exc),
                 )
-                return await self._client.request(method, url, **kwargs)
-            timeout = kwargs.get("timeout")
-            if self._should_retry_timeout_as_timedelta(exc, timeout):
-                kwargs["timeout"] = timedelta(seconds=float(timeout))
-                self._timeout_uses_timedelta = True
                 return await self._client.request(method, url, **kwargs)
             raise
 

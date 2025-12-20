@@ -3,6 +3,7 @@ import asyncio
 import inspect
 import sys
 import time
+from datetime import timedelta
 from collections.abc import AsyncIterable, AsyncIterator, Callable, Iterable
 from typing import TYPE_CHECKING, cast
 
@@ -32,7 +33,7 @@ class Engine:
         concurrency: int = 16,
         max_pending_requests: int | None = None,
         emulation=None,
-        request_timeout: float | None = None,
+        request_timeout: float | timedelta | None = None,
         html_max_size_bytes: int = 5_000_000,
         request_middlewares: Iterable[RequestMiddleware] | None = None,
         response_middlewares: Iterable[ResponseMiddleware] | None = None,
