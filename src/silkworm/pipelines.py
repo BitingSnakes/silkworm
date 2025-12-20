@@ -1703,7 +1703,10 @@ class WebhookPipeline:
 
     async def _send_batch(self) -> None:
         """Send the current batch of items to the webhook."""
-        if not self._batch or not self._client:
+        if not self._batch:
+            return
+        client = self._client
+        if client is None:
             return
 
         # Prepare payload
@@ -1717,22 +1720,28 @@ class WebhookPipeline:
                     f"Invalid HTTP method '{self.method}'. Must be one of: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS",
                 )
             method_enum = getattr(Method, method_upper)  # type: ignore[attr-defined]
-            kwargs = {
-                "headers": self.headers,
-                "json": payload,
-            }
+            timeout: timedelta | None = None
             if self.timeout is not None:
                 timeout = (
                     self.timeout
                     if isinstance(self.timeout, timedelta)
                     else timedelta(seconds=float(self.timeout))
                 )
-                kwargs["timeout"] = timeout
-            response = await self._client.request(  # type: ignore[union-attr, arg-type]
-                method_enum,
-                self.url,
-                **kwargs,
-            )
+            if timeout is None:
+                response = await client.request(
+                    method_enum,
+                    self.url,
+                    headers=self.headers,
+                    json=payload,
+                )
+            else:
+                response = await client.request(
+                    method_enum,
+                    self.url,
+                    headers=self.headers,
+                    json=payload,
+                    timeout=timeout,
+                )
 
             # Try to get status code
             status = getattr(response, "status", None)
