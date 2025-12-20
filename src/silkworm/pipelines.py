@@ -1216,7 +1216,9 @@ class MongoDBPipeline:
         if self._coll is None:
             raise RuntimeError("MongoDBPipeline not opened")
 
-        await self._coll.insert_one(item)
+        # Make a copy to avoid mutating the original item when MongoDB adds _id
+        item_copy = dict(item) if isinstance(item, dict) else item
+        await self._coll.insert_one(item_copy)
         self.logger.debug(
             "Inserted item in MongoDB",
             collection=self.collection,
