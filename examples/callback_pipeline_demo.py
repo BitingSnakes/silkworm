@@ -4,7 +4,9 @@ Example demonstrating the CallbackPipeline usage.
 This shows how to use CallbackPipeline to process items with custom callback functions.
 """
 
+from typing import override
 from silkworm import HTMLResponse, Response, Spider, run_spider
+from silkworm.request import CallbackOutput
 from silkworm.middlewares import UserAgentMiddleware
 from silkworm.pipelines import CallbackPipeline
 
@@ -13,16 +15,21 @@ class QuotesSpider(Spider):
     name = "quotes_callback"
     start_urls = ("https://quotes.toscrape.com/page/1/",)
 
-    async def parse(self, response: Response):
+    @override
+    async def parse(self, response: Response) -> CallbackOutput:
         if not isinstance(response, HTMLResponse):
             return
 
         html = response
         for quote in await html.select(".quote"):
+            text = await quote.select_first(".text")
+            author = await quote.select_first(".author")
+            tags = await quote.select(".tag")
+
             yield {
-                "text": quote.select_first(".text").text,
-                "author": quote.select_first(".author").text,
-                "tags": [t.text for t in quote.select(".tag")],
+                "text": text.text if text else "",
+                "author": author.text if author else "",
+                "tags": [t.text for t in tags],
             }
 
         # Only scrape first page for demo
