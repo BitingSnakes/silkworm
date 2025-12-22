@@ -100,7 +100,7 @@ ftp = [
   "aioftp==0.27.2",
 ]
 sftp = [
-  "asyncssh==2.21.1",
+  "asyncssh==2.22.0",
 ]
 cassandra = [
   "cassandra-driver==3.29.3",
