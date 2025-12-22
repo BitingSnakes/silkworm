@@ -1,5 +1,7 @@
 """Example spider demonstrating winloop support."""
 
+from __future__ import annotations
+
 from silkworm import HTMLResponse, Response, Spider, run_spider_winloop
 from silkworm.pipelines import JsonLinesPipeline
 
@@ -17,10 +19,15 @@ class QuotesSpider(Spider):
 
         html = response
         for quote in await html.select(".quote"):
+            text_el = await quote.select_first(".text")
+            author_el = await quote.select_first(".author")
+            if text_el is None or author_el is None:
+                continue
+            tags = await quote.select(".tag")
             yield {
-                "text": quote.select(".text")[0].text,
-                "author": quote.select(".author")[0].text,
-                "tags": [t.text for t in quote.select(".tag")],
+                "text": text_el.text,
+                "author": author_el.text,
+                "tags": [t.text for t in tags],
             }
 
         next_link = await html.select_first("li.next > a")

@@ -61,13 +61,13 @@ class HackerNewsSpider(Spider):
 
         for row in await html.select("tr.athing"):
             post_id = row.attr("id")
-            rank_el = row.select_first(".rank")
+            rank_el = await row.select_first(".rank")
             rank = None
             if rank_el:
                 rank_text = rank_el.text.replace(".", "").strip()
                 rank = int(rank_text) if rank_text.isdigit() else None
 
-            title_el = row.select_first("span.titleline a, a.storylink")
+            title_el = await row.select_first("span.titleline a, a.storylink")
             title = title_el.text if title_el else ""
             href = title_el.attr("href") if title_el else ""
             url = urljoin(html.url, href)
@@ -78,11 +78,11 @@ class HackerNewsSpider(Spider):
                 else None
             )
 
-            points = self._parse_points(subtext)
-            comments = self._parse_comments(subtext)
-            author_el = subtext.select_first("a.hnuser") if subtext else None
+            points = await self._parse_points(subtext)
+            comments = await self._parse_comments(subtext)
+            author_el = await subtext.select_first("a.hnuser") if subtext else None
             author = author_el.text if author_el else None
-            age_el = subtext.select_first(".age a") if subtext else None
+            age_el = await subtext.select_first(".age a") if subtext else None
             age = age_el.text if age_el else None
 
             try:
@@ -114,20 +114,20 @@ class HackerNewsSpider(Spider):
                 yield html.follow(href, callback=self.parse)
 
     @staticmethod
-    def _parse_points(subtext) -> int | None:
+    async def _parse_points(subtext) -> int | None:
         if not subtext:
             return None
-        score_el = subtext.select_first(".score")
+        score_el = await subtext.select_first(".score")
         if not score_el or not score_el.text:
             return None
         value = score_el.text.split()[0]
         return int(value) if value.isdigit() else None
 
     @staticmethod
-    def _parse_comments(subtext) -> int | None:
+    async def _parse_comments(subtext) -> int | None:
         if not subtext:
             return None
-        for link in subtext.select("a"):
+        for link in await subtext.select("a"):
             text = link.text.strip().lower()
             if "comment" in text:
                 first = text.split()[0]

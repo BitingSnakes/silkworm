@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from pydantic import BaseModel, ValidationError, field_validator
 
 from silkworm import HTMLResponse, Response, Spider, run_spider
@@ -55,16 +57,17 @@ class QuotesSpider(Spider):
         html = response
         for el in await html.select(".quote"):
             try:
-                text_el = el.select_first(".text")
-                author_el = el.select_first(".author")
+                text_el = await el.select_first(".text")
+                author_el = await el.select_first(".author")
                 if text_el is None or author_el is None:
                     self.log.warning("Skipping quote with missing fields")
                     continue
 
+                tags = await el.select(".tag")
                 quote = Quote(
                     text=text_el.text,
                     author=author_el.text,
-                    tags=[t.text for t in el.select(".tag")],
+                    tags=[t.text for t in tags],
                 )
                 self.log.debug(
                     "Scraped quote",

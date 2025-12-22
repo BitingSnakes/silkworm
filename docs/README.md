@@ -43,10 +43,15 @@ class QuotesSpider(Spider):
 
         html = response
         for el in await html.select(".quote"):
+            text_el = await el.select_first(".text")
+            author_el = await el.select_first(".author")
+            if text_el is None or author_el is None:
+                continue
+            tags = await el.select(".tag")
             yield {
-                "text": el.select_first(".text").text,
-                "author": el.select_first(".author").text,
-                "tags": [t.text for t in el.select(".tag")],
+                "text": text_el.text,
+                "author": author_el.text,
+                "tags": [t.text for t in tags],
             }
 
         if next_link := await html.select_first("li.next > a"):

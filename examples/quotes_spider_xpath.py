@@ -4,6 +4,8 @@ Example spider using XPath selectors instead of CSS selectors.
 This demonstrates the XPath functionality integrated from scraper-rs.
 """
 
+from __future__ import annotations
+
 from pydantic import BaseModel, ValidationError, field_validator
 
 from silkworm import HTMLResponse, Response, Spider, run_spider
@@ -56,15 +58,15 @@ class QuotesSpiderXPath(Spider):
         for el in await html.xpath("//div[@class='quote']"):
             try:
                 # Use XPath on elements to get nested data
-                text_el = el.xpath_first(".//span[@class='text']")
-                author_el = el.xpath_first(".//span[@class='author']")
+                text_el = await el.xpath_first(".//span[@class='text']")
+                author_el = await el.xpath_first(".//span[@class='author']")
 
                 if text_el is None or author_el is None:
                     self.log.warning("Skipping quote with missing fields")
                     continue
 
                 # Extract tags using XPath
-                tag_elements = el.xpath(".//a[@class='tag']")
+                tag_elements = await el.xpath(".//a[@class='tag']")
 
                 quote = Quote(
                     text=text_el.text,

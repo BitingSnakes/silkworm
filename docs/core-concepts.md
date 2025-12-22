@@ -92,6 +92,13 @@ Selector helpers on `HTMLResponse` (async):
 - **`xpath(xpath)`**
 - **`xpath_first(xpath)`**
 
+Elements returned from these helpers also expose async selectors, so nested lookups should be awaited:
+
+```python
+for card in await response.select(".card"):
+    title = await card.select_first("h2")
+```
+
 The selector engine uses `scraper-rs` and respects `doc_max_size_bytes` (see [HttpClient](../src/silkworm/http.py)). Errors are raised as `SelectorError` in [src/silkworm/exceptions.py](../src/silkworm/exceptions.py).
 
 ## Callback Results (What `parse` Can Return)

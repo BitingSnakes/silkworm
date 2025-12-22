@@ -18,7 +18,7 @@ from .exceptions import SelectorError
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable, Iterable
 
-    from scraper_rs import Element  # type: ignore[import]
+    from scraper_rs.asyncio import AsyncElement  # type: ignore[import]
 
     from .request import Callback, Request
 
@@ -332,22 +332,22 @@ class HTMLResponse(Response):
                 f"{kind} selector '{label}' failed for {self.url}{suffix}",
             ) from exc
 
-    async def select(self, selector: str) -> list[Element]:
+    async def select(self, selector: str) -> list[AsyncElement]:
         return await self._run_selector(select_async, selector, kind="CSS")
 
-    async def select_first(self, selector: str) -> Element | None:
+    async def select_first(self, selector: str) -> AsyncElement | None:
         return await self._run_selector(select_first_async, selector, kind="CSS")
 
-    async def css(self, selector: str) -> list[Element]:
+    async def css(self, selector: str) -> list[AsyncElement]:
         return await self.select(selector)
 
-    async def css_first(self, selector: str) -> Element | None:
+    async def css_first(self, selector: str) -> AsyncElement | None:
         return await self.select_first(selector)
 
-    async def xpath(self, xpath: str) -> list[Element]:
+    async def xpath(self, xpath: str) -> list[AsyncElement]:
         return await self._run_selector(xpath_async, xpath, kind="XPath")
 
-    async def xpath_first(self, xpath: str) -> Element | None:
+    async def xpath_first(self, xpath: str) -> AsyncElement | None:
         return await self._run_selector(xpath_first_async, xpath, kind="XPath")
 
     @override

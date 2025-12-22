@@ -70,27 +70,27 @@ class LobstersSpider(Spider):
             short_id = story.attr("data-shortid") or story.attr("id") or ""
             short_id = short_id.replace("story_", "")
 
-            title_el = story.select_first("span.link a.u-url")
+            title_el = await story.select_first("span.link a.u-url")
             title = title_el.text if title_el else ""
             href = title_el.attr("href") if title_el else ""
             url = urljoin(html.url, href)
 
-            domain_el = story.select_first("a.domain")
+            domain_el = await story.select_first("a.domain")
             domain = domain_el.text if domain_el else None
 
-            tags = [tag.text for tag in story.select("span.tags a.tag")]
+            tags = [tag.text for tag in await story.select("span.tags a.tag")]
 
-            author_el = story.select_first(".byline .u-author")
+            author_el = await story.select_first(".byline .u-author")
             author = author_el.text if author_el else None
 
-            time_el = story.select_first(".byline time")
+            time_el = await story.select_first(".byline time")
             age = time_el.text if time_el else None
 
-            comments_el = story.select_first(".comments_label a")
+            comments_el = await story.select_first(".comments_label a")
             comments_text = comments_el.text.strip() if comments_el else ""
             comments = self._extract_number(comments_text)
 
-            points_el = story.select_first(".voters .upvoter")
+            points_el = await story.select_first(".voters .upvoter")
             points = self._extract_number(points_el.text if points_el else None)
 
             try:

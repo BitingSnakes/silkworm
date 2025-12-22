@@ -103,15 +103,15 @@ class HybridLoggerSpider(Spider):
 
         # Parse quotes
         for quote_elem in await html.select(".quote"):
-            text_elem = quote_elem.select_first(".text")
-            author_elem = quote_elem.select_first(".author")
+            text_elem = await quote_elem.select_first(".text")
+            author_elem = await quote_elem.select_first(".author")
 
             if text_elem and author_elem:
                 quote_text = text_elem.text.strip()
                 author = author_elem.text.strip()
 
                 # Get tags
-                tags = [tag.text for tag in quote_elem.select(".tag")]
+                tags = [tag.text for tag in await quote_elem.select(".tag")]
 
                 self.quotes_count += 1
 

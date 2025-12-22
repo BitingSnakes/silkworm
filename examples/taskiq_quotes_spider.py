@@ -11,6 +11,8 @@ Requirements:
     pip install silkworm-rs taskiq
 """
 
+from __future__ import annotations
+
 from taskiq import InMemoryBroker  # type: ignore[import-not-found]
 
 from silkworm import HTMLResponse, Response, Spider, run_spider
@@ -65,10 +67,15 @@ class TaskiqQuotesSpider(Spider):
         )
 
         for quote in await html.select(".quote"):
+            text_el = await quote.select_first(".text")
+            author_el = await quote.select_first(".author")
+            if text_el is None or author_el is None:
+                continue
+            tags = await quote.select(".tag")
             yield {
-                "text": quote.select(".text")[0].text,
-                "author": quote.select(".author")[0].text,
-                "tags": [t.text for t in quote.select(".tag")],
+                "text": text_el.text,
+                "author": author_el.text,
+                "tags": [t.text for t in tags],
             }
 
         # Follow next page link if we haven't reached max_pages
