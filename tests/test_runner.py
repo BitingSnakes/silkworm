@@ -1,8 +1,11 @@
 """Tests for runner module and uvloop integration."""
 
+from __future__ import annotations
+
 import sys
 from contextlib import contextmanager
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from silkworm.runner import run_spider, run_spider_uvloop, _install_uvloop
@@ -41,9 +44,9 @@ def test_install_uvloop_when_available():
     mock_uvloop.EventLoopPolicy.return_value = mock_policy
 
     with patch.dict("sys.modules", {"uvloop": mock_uvloop}):
-        with patch("asyncio.set_event_loop_policy") as mock_set_policy:
-            _install_uvloop()
-            mock_set_policy.assert_called_once_with(mock_policy)
+        loop_factory = _install_uvloop()
+        mock_uvloop.EventLoopPolicy.assert_called_once_with()
+        assert loop_factory is mock_policy.new_event_loop
 
 
 def test_install_uvloop_raises_when_not_installed():
@@ -88,18 +91,22 @@ def test_run_spider_with_uvloop_enabled():
     mock_uvloop.EventLoopPolicy.return_value = mock_policy
 
     with patch.dict("sys.modules", {"uvloop": mock_uvloop}):
-        with patch("asyncio.set_event_loop_policy") as mock_set_policy:
+        runner_instance = MagicMock()
 
-            def _run_and_close(coro):
-                coro.close()
+        def _run_and_close(coro):
+            coro.close()
 
-            with patch("asyncio.run", side_effect=_run_and_close) as mock_run:
-                run_spider_uvloop(SimpleSpider, concurrency=1)
+        runner_instance.run.side_effect = _run_and_close
 
-                # Verify uvloop policy was set
-                mock_set_policy.assert_called_once_with(mock_policy)
-                # Verify asyncio.run was still called
-                mock_run.assert_called_once()
+        runner_cm = MagicMock()
+        runner_cm.__enter__.return_value = runner_instance
+        runner_cm.__exit__.return_value = False
+
+        with patch("asyncio.Runner", return_value=runner_cm) as mock_runner:
+            run_spider_uvloop(SimpleSpider, concurrency=1)
+
+            mock_runner.assert_called_once_with(loop_factory=mock_policy.new_event_loop)
+            runner_instance.run.assert_called_once()
 
 
 def test_run_spider_with_uvloop_not_installed():

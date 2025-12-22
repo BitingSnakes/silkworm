@@ -1,6 +1,9 @@
 """Tests for winloop runner functionality."""
 
-from unittest.mock import patch, MagicMock
+from __future__ import annotations
+
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from silkworm.runner import run_spider_winloop, _install_winloop
@@ -24,9 +27,9 @@ def test_install_winloop_when_available():
     mock_winloop.EventLoopPolicy.return_value = mock_policy
 
     with patch.dict("sys.modules", {"winloop": mock_winloop}):
-        with patch("asyncio.set_event_loop_policy") as mock_set_policy:
-            _install_winloop()
-            mock_set_policy.assert_called_once_with(mock_policy)
+        loop_factory = _install_winloop()
+        mock_winloop.EventLoopPolicy.assert_called_once_with()
+        assert loop_factory is mock_policy.new_event_loop
 
 
 def test_install_winloop_raises_when_not_installed():
@@ -52,18 +55,22 @@ def test_run_spider_with_winloop_enabled():
     mock_winloop.EventLoopPolicy.return_value = mock_policy
 
     with patch.dict("sys.modules", {"winloop": mock_winloop}):
-        with patch("asyncio.set_event_loop_policy") as mock_set_policy:
+        runner_instance = MagicMock()
 
-            def _run_and_close(coro):
-                coro.close()
+        def _run_and_close(coro):
+            coro.close()
 
-            with patch("asyncio.run", side_effect=_run_and_close) as mock_run:
-                run_spider_winloop(SimpleSpider, concurrency=1)
+        runner_instance.run.side_effect = _run_and_close
 
-                # Verify winloop policy was set
-                mock_set_policy.assert_called_once_with(mock_policy)
-                # Verify asyncio.run was still called
-                mock_run.assert_called_once()
+        runner_cm = MagicMock()
+        runner_cm.__enter__.return_value = runner_instance
+        runner_cm.__exit__.return_value = False
+
+        with patch("asyncio.Runner", return_value=runner_cm) as mock_runner:
+            run_spider_winloop(SimpleSpider, concurrency=1)
+
+            mock_runner.assert_called_once_with(loop_factory=mock_policy.new_event_loop)
+            runner_instance.run.assert_called_once()
 
 
 def test_run_spider_with_winloop_not_installed():
