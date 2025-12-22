@@ -169,7 +169,7 @@ def main() -> None:
         SkipNonHTMLMiddleware(),
     ]
     pipelines: list[ItemPipeline] = [
-        JsonLinesPipeline(args.output),
+        JsonLinesPipeline(args.output, use_opendal=False),
     ]
 
     kwargs = dict(

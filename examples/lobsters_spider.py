@@ -153,7 +153,7 @@ def main() -> None:
         RetryMiddleware(max_times=15, sleep_http_codes=[403, 429]),
     ]
     pipelines: list[ItemPipeline] = [
-        JsonLinesPipeline("data/lobsters.jl"),
+        JsonLinesPipeline("data/lobsters.jl", use_opendal=False),
     ]
 
     run_spider_uvloop(

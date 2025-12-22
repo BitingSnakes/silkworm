@@ -100,7 +100,7 @@ if __name__ == "__main__":
         QuotesSpiderXPath,
         request_middlewares=[UserAgentMiddleware()],
         response_middlewares=[RetryMiddleware(max_times=3)],
-        item_pipelines=[JsonLinesPipeline("data/quotes_xpath.jl")],
+        item_pipelines=[JsonLinesPipeline("data/quotes_xpath.jl", use_opendal=False)],
         request_timeout=10,
         log_stats_interval=10,
     )

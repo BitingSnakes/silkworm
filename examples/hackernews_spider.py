@@ -157,7 +157,7 @@ def main() -> None:
         RetryMiddleware(max_times=3, sleep_http_codes=[403]),
     ]
     pipelines: list[ItemPipeline] = [
-        JsonLinesPipeline("data/hackernews.jl"),
+        JsonLinesPipeline("data/hackernews.jl", use_opendal=False),
     ]
 
     run_spider(

@@ -45,6 +45,6 @@ if __name__ == "__main__":
         concurrency=16,
         request_timeout=10,
         item_pipelines=[
-            JsonLinesPipeline("data/quotes_trio.jl"),
+            JsonLinesPipeline("data/quotes_trio.jl", use_opendal=False),
         ],
     )

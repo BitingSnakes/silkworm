@@ -104,7 +104,7 @@ if __name__ == "__main__":
         RetryMiddleware(max_times=3),
     ]
     pipelines: list[ItemPipeline] = [
-        JsonLinesPipeline("data/quotes.jl"),
+        JsonLinesPipeline("data/quotes.jl", use_opendal=False),
         # SQLitePipeline("data/quotes.db", table="quotes"),
     ]
 

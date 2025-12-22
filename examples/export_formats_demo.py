@@ -121,7 +121,7 @@ if __name__ == "__main__":
 
     # Export to multiple formats simultaneously
     pipelines: list[ItemPipeline] = [
-        JsonLinesPipeline("data/quotes_demo.jl"),
+        JsonLinesPipeline("data/quotes_demo.jl", use_opendal=False),
         XMLPipeline(
             "data/quotes_demo.xml", root_element="quotes", item_element="quote"
         ),
