@@ -2,8 +2,6 @@
 Integration tests for XPath functionality using real scraper_rs library.
 """
 
-import pytest
-
 from silkworm.request import Request
 from silkworm.response import HTMLResponse
 
@@ -70,7 +68,7 @@ async def test_xpath_extracts_text_content():
     # Test nested xpath on element
     containers = await resp.xpath("//div[@class='container']")
     assert len(containers) == 1
-    h1 = containers[0].xpath_first(".//h1")
+    h1 = await containers[0].xpath_first(".//h1")
     assert h1 is not None
     assert h1.text.strip() == "Title"
 

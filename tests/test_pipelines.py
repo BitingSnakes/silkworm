@@ -1,6 +1,7 @@
 import asyncio
 import sys
 import tempfile
+import json
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -13,6 +14,12 @@ from silkworm.pipelines import (
     XMLPipeline,
 )
 from silkworm.spiders import Spider
+
+# SnowflakePipeline tests - skip if snowflake-connector-python not installed
+from silkworm.pipelines import SNOWFLAKE_AVAILABLE, SnowflakePipeline  # type: ignore
+
+# GoogleSheetsPipeline tests - skip if google-api-python-client not installed
+from silkworm.pipelines import GOOGLE_SHEETS_AVAILABLE, GoogleSheetsPipeline  # type: ignore
 
 
 async def test_xml_pipeline_creates_valid_xml():
@@ -1132,10 +1139,6 @@ async def test_webhook_pipeline_not_opened_raises_error():
         await pipeline.process_item({"test": "data"}, spider)
 
 
-# GoogleSheetsPipeline tests - skip if google-api-python-client not installed
-from silkworm.pipelines import GOOGLE_SHEETS_AVAILABLE, GoogleSheetsPipeline  # type: ignore
-
-
 @pytest.mark.skipif(
     not GOOGLE_SHEETS_AVAILABLE, reason="google-api-python-client not installed"
 )
@@ -1164,10 +1167,6 @@ async def test_google_sheets_pipeline_not_opened_raises_error():
 
     with pytest.raises(RuntimeError, match="GoogleSheetsPipeline not opened"):
         await pipeline.process_item({"test": "data"}, spider)
-
-
-# SnowflakePipeline tests - skip if snowflake-connector-python not installed
-from silkworm.pipelines import SNOWFLAKE_AVAILABLE, SnowflakePipeline  # type: ignore
 
 
 @pytest.mark.skipif(

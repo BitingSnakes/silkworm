@@ -1,3 +1,4 @@
+import importlib.util
 import sys
 import types
 from dataclasses import dataclass
@@ -141,13 +142,11 @@ backends = [
 ]
 
 # Only add uvloop if it is actually installed
-try:
-    import uvloop
-
+if importlib.util.find_spec("uvloop") is not None:
     backends.append(
         pytest.param(("asyncio", {"use_uvloop": True}), id="asyncio+uvloop")
     )
-except ImportError:
+else:
     print("uvloop not installed; skipping uvloop backend tests")
 
 
