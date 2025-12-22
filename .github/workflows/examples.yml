@@ -69,7 +69,7 @@ jobs:
           run_example "quotes_spider_trio" python examples/quotes_spider_trio.py
           run_example "hackernews_spider" python examples/hackernews_spider.py --pages 1
           run_example "lobsters_spider" python examples/lobsters_spider.py --pages 1
-          run_example "sitemap_spider" python examples/sitemap_spider.py --sitemap-url https://azure.microsoft.com/en-us/blog/sitemap_index.xml --pages 1 --concurrency 4
+          run_example "sitemap_spider" python examples/sitemap_spider.py --sitemap-url https://azure.microsoft.com/en-us/blog/post-sitemap.xml --pages 1 --concurrency 4
           run_example "taskiq_quotes_spider" python examples/taskiq_quotes_spider.py --pages 1
           run_example "url_titles_spider" python examples/url_titles_spider.py --urls-file data/urls.jsonl --output data/url_titles.jl
 
