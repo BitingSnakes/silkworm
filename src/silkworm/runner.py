@@ -4,7 +4,7 @@ from datetime import timedelta
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
 
     from .middlewares import RequestMiddleware, ResponseMiddleware
     from .pipelines import ItemPipeline
@@ -13,12 +13,13 @@ if TYPE_CHECKING:
 from .engine import Engine
 
 
-def _install_uvloop() -> None:
-    """Install uvloop event loop policy if available."""
+def _install_uvloop() -> Callable[[], asyncio.AbstractEventLoop]:
+    """Return a uvloop event loop factory if available."""
     try:
         import uvloop  # type: ignore[import]
 
-        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+        policy = uvloop.EventLoopPolicy()
+        return policy.new_event_loop
     except ImportError as err:
         msg = (
             "uvloop is not installed. Install it with: pip install silkworm-rs[uvloop]"
@@ -26,12 +27,13 @@ def _install_uvloop() -> None:
         raise ImportError(msg) from err
 
 
-def _install_winloop() -> None:
-    """Install winloop event loop policy if available."""
+def _install_winloop() -> Callable[[], asyncio.AbstractEventLoop]:
+    """Return a winloop event loop factory if available."""
     try:
         import winloop  # type: ignore[import]
 
-        asyncio.set_event_loop_policy(winloop.EventLoopPolicy())
+        policy = winloop.EventLoopPolicy()
+        return policy.new_event_loop
     except ImportError as err:
         msg = "winloop is not installed. Install it with: pip install silkworm-rs[winloop]"
         raise ImportError(msg) from err
@@ -150,23 +152,28 @@ def run_spider(
     max_pending_requests: int | None = None,
     html_max_size_bytes: int = 5_000_000,
     keep_alive: bool = False,
+    loop_factory: Callable[[], asyncio.AbstractEventLoop] | None = None,
     **spider_kwargs,
 ) -> None:
-    asyncio.run(
-        crawl(
-            spider_cls,
-            concurrency=concurrency,
-            request_middlewares=request_middlewares,
-            response_middlewares=response_middlewares,
-            item_pipelines=item_pipelines,
-            request_timeout=request_timeout,
-            log_stats_interval=log_stats_interval,
-            max_pending_requests=max_pending_requests,
-            html_max_size_bytes=html_max_size_bytes,
-            keep_alive=keep_alive,
-            **spider_kwargs,
-        ),
+    coroutine = crawl(
+        spider_cls,
+        concurrency=concurrency,
+        request_middlewares=request_middlewares,
+        response_middlewares=response_middlewares,
+        item_pipelines=item_pipelines,
+        request_timeout=request_timeout,
+        log_stats_interval=log_stats_interval,
+        max_pending_requests=max_pending_requests,
+        html_max_size_bytes=html_max_size_bytes,
+        keep_alive=keep_alive,
+        **spider_kwargs,
     )
+    if loop_factory is None:
+        asyncio.run(coroutine)
+        return
+
+    with asyncio.Runner(loop_factory=loop_factory) as runner:
+        runner.run(coroutine)
 
 
 def run_spider_uvloop(
@@ -183,7 +190,7 @@ def run_spider_uvloop(
     keep_alive: bool = False,
     **spider_kwargs,
 ) -> None:
-    _install_uvloop()
+    loop_factory = _install_uvloop()
     run_spider(
         spider_cls,
         concurrency=concurrency,
@@ -195,6 +202,7 @@ def run_spider_uvloop(
         max_pending_requests=max_pending_requests,
         html_max_size_bytes=html_max_size_bytes,
         keep_alive=keep_alive,
+        loop_factory=loop_factory,
         **spider_kwargs,
     )
 
@@ -236,7 +244,7 @@ def run_spider_winloop(
     Raises:
         ImportError: If winloop is not installed
     """
-    _install_winloop()
+    loop_factory = _install_winloop()
     run_spider(
         spider_cls,
         concurrency=concurrency,
@@ -248,5 +256,6 @@ def run_spider_winloop(
         max_pending_requests=max_pending_requests,
         html_max_size_bytes=html_max_size_bytes,
         keep_alive=keep_alive,
+        loop_factory=loop_factory,
         **spider_kwargs,
     )
