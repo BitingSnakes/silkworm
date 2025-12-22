@@ -5,16 +5,15 @@
 **Silkworm** is an async-first web scraping framework built on top of [rnet](https://github.com/0x676e67/rnet) (HTTP client with browser impersonation) and [scraper-rs](https://github.com/RustedBytes/scraper-rs) (fast HTML parsing). It provides a minimal Spider/Request/Response model, middlewares, and pipelines for building web scrapers and crawlers without boilerplate.
 
 ### Key Features
-- **Async-first architecture** with configurable concurrency and backpressure
-- **Browser impersonation** via rnet HTTP client
-- **Typed spiders** with callback-based architecture
+- **Async-first engine** with configurable concurrency, bounded backpressure (defaults to `concurrency * 10`), and per-request timeouts
+- **rnet-powered HTTP client** with browser impersonation, redirect following with loop detection, query merging, and proxy support
+- **Typed spiders and callbacks** with `HTMLResponse` helpers (`follow`, selectors) and flexible callback outputs
 - **Middleware system** for request/response processing
 - **Pipeline system** for data export to various formats and destinations
-- **Structured logging** via logly
-- **Comprehensive statistics** tracking
+- **Structured logging + crawl stats** via logly (`SILKWORM_LOG_LEVEL`, periodic + final summaries)
 
 ### Target Python Versions
-- **Python 3.13+** (primary target, specified in `.python-version`)
+- **Python 3.13+** (primary target; `pyproject.toml` requires `>=3.13,<3.15`)
 - **Python 3.14** experimental support (including free-threaded build via `justfile-3.14t`)
 
 ## Python 3.13/3.14 Language Features and Best Practices
@@ -158,7 +157,7 @@ class Request:
 
 ### PEP 698: Override Decorator (Python 3.12+)
 
-While not currently used in the codebase, consider using `@override` for clarity in subclasses.
+Use `@override` for overridden methods; it is already used in the codebase (e.g., `HTMLResponse` overrides `Response.follow`).
 
 ```python
 from typing import override
@@ -229,7 +228,7 @@ The project has experimental support for Python 3.14's free-threaded build (PEP 
 
 ```bash
 # From justfile-3.14t
-PYTHON_GIL=0 uv run python examples/url_titles_spider.py
+PYTHON_GIL=0 uv run python examples/lobsters_spider.py --pages 30
 ```
 
 **Note:** When working with free-threaded Python, be aware of:
@@ -278,18 +277,17 @@ class Spider:
     async def parse(self, response: Response) -> CallbackOutput:
         raise NotImplementedError
 ```
+`Spider` accepts an optional `logger` (logly logger or context dict) and exposes `self.log` as a convenience accessor.
 
 #### 2. Request/Response (`request.py`, `response.py`)
 Dataclasses representing HTTP requests and responses.
 
-- `Request`: Immutable request with URL, method, headers, metadata, callback
-- `Response`: Base response class
-- `HTMLResponse`: Response with HTML parsing capabilities via scraper-rs
- - `Request` fields used by the engine/client: `params`, `data`, `json`, `timeout`, `meta`, `dont_filter`; `priority` exists but is not used by the engine yet
+- `Request`: Immutable request with URL, method, headers, params, data, json, timeout, meta, callback, dont_filter, priority
+- `Response`: Base response class with `.text`, `.encoding`, `.url_join(...)`, `.follow(...)`, `.follow_all(...)`, `.close()`
+- `HTMLResponse`: Response with HTML parsing helpers via scraper-rs (`select`, `select_first`, `css`, `css_first`, `xpath`, `xpath_first`), respecting `doc_max_size_bytes`
+- `Request` fields used by the engine/client: `params`, `data`, `json`, `timeout`, `meta`, `dont_filter`; `priority` exists but is not used by the engine yet
 - `Request.meta` keys used by built-ins: `proxy` (ProxyMiddleware/HttpClient), `retry_times` (RetryMiddleware), `allow_non_html` (SkipNonHTMLMiddleware), `redirect_times` (HttpClient redirects)
- - `Response` helpers: `.text` with charset detection, `.encoding`, and `Response.follow(...)` for urljoin + callback reuse
- - `HTMLResponse` helpers: `select`, `select_first`, `xpath`, `xpath_first` (async selectors with `doc_max_size_bytes` limit)
- - Only the spider `parse` callback is auto-wrapped into `HTMLResponse`; other callbacks receive the raw `Response` unless you wrap manually
+- Only the spider `parse` callback is forced to `HTMLResponse`; other callbacks receive whatever the HTTP client returned (`HTMLResponse` for HTML, `Response` otherwise)
 
 #### 3. Middlewares (`middlewares.py`)
 Process requests before sending and responses after receiving.
@@ -336,7 +334,7 @@ class TitlesSpider(Spider):
 
         html = response
         for card in await html.select(".card"):
-            title_el = card.select_first("h2")
+            title_el = await card.select_first("h2")
             if title_el is not None:
                 yield {"title": title_el.text.strip()}
 ```
@@ -358,8 +356,8 @@ class QuotesSpider(Spider):
 
         html = response
         for quote in await html.select(".quote"):
-            text_el = quote.select_first(".text")
-            author_el = quote.select_first(".author")
+            text_el = await quote.select_first(".text")
+            author_el = await quote.select_first(".author")
             if text_el is not None and author_el is not None:
                 yield {"text": text_el.text, "author": author_el.text}
 
@@ -667,7 +665,9 @@ async def process_request(request, spider):
 async def parse(self, response: Response) -> CallbackOutput:
     html = response
     for item in await html.select(".item"):
-        yield {"name": item.select_first(".name").text}
+        name_el = await item.select_first(".name")
+        if name_el is not None:
+            yield {"name": name_el.text}
 
 # ❌ Bad (blocking operation in async context)
 async def parse(self, response: Response) -> CallbackOutput:
@@ -688,6 +688,9 @@ class HttpError(SilkwormError):
 
 class SpiderError(SilkwormError):
     """Spider execution error."""
+
+class SelectorError(SilkwormError):
+    """Selector evaluation failed."""
 ```
 
 ### 5. Logging
@@ -704,6 +707,8 @@ logger.error("Request failed", error=str(e))
 ```
 
 **Environment Variable:** `SILKWORM_LOG_LEVEL=DEBUG` for verbose output
+
+Spiders can receive `logger=...` (logger instance or context dict) and use `self.log` as a guaranteed logger.
 
 ### 6. Dataclass Best Practices
 
@@ -927,7 +932,7 @@ def process(items: list[str] | None) -> dict[str, int | str]:
 ```
 
 ### 5. Request Deduplication
-By default, requests with the same URL are deduplicated. To allow duplicates:
+By default, requests with the same URL are deduplicated (dedupe keys only on `Request.url`, not params/method/body). To allow duplicates:
 
 ```python
 yield Request(url=same_url, dont_filter=True)
@@ -1012,8 +1017,8 @@ The `silkworm` package exports the public API below (from `src/silkworm/__init__
 
 ### Core Types
 - `Request`: Immutable request dataclass with `url`, `method`, `headers`, `params`, `data`, `json`, `meta`, `timeout`, `callback`, `dont_filter`, `priority`, plus `replace(**kwargs)` for copy-with-updates.
-- `Response`: Base response dataclass with `.text`, `.encoding`, `.follow(href, callback=None, **kwargs)`, and `.close()` for releasing payloads.
-- `HTMLResponse`: `Response` with async selectors `select`, `select_first`, `xpath`, `xpath_first`, and HTML size limit via `doc_max_size_bytes`.
+- `Response`: Base response dataclass with `.text`, `.encoding`, `.url_join(href)`, `.follow(href, callback=None, **kwargs)`, `.follow_all(hrefs, ...)`, and `.close()` for releasing payloads.
+- `HTMLResponse`: `Response` with async selectors `select`, `select_first`, `css`, `css_first`, `xpath`, `xpath_first`, and HTML size limit via `doc_max_size_bytes`.
 - `Spider`: Base spider with `name`, `start_urls`, `custom_settings`, `start_requests()`, `parse(response)`, and optional `open()`/`close()` hooks.
 - `Engine`: Crawl orchestrator; instantiate with a spider and options, then `await engine.run()`.
 
