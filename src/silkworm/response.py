@@ -129,6 +129,9 @@ class Response:
             self._decoded_text, self._detected_encoding = self._decode_text()
         return self._detected_encoding or "utf-8"
 
+    def url_join(self, href: str) -> str:
+        return urljoin(self.url, href)
+
     def _decode_text(self) -> tuple[str, str]:
         body = self.body or b""
         if not body:

@@ -83,6 +83,15 @@ def test_htmlresponse_follow_works_with_slots():
     assert next_req.callback is callback
 
 
+def test_htmlresponse_url_join_resolves_relative_url():
+    req = Request(url="http://example.com/dir/page")
+    resp = HTMLResponse(url=req.url, status=200, headers={}, body=b"", request=req)
+
+    resolved = resp.url_join("../other")
+
+    assert resolved == "http://example.com/other"
+
+
 def test_response_close_releases_payload():
     req = Request(url="http://example.com")
     resp = Response(
