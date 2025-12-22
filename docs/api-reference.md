@@ -4,7 +4,7 @@ This page lists the public API exports from [src/silkworm/__init__.py](../src/si
 
 ## Core Types
 - **`Request`**: Immutable request dataclass. [src/silkworm/request.py](../src/silkworm/request.py)
-- **`Response`**: Base response with `text`, `encoding`, `follow`, `close`. [src/silkworm/response.py](../src/silkworm/response.py)
+ - **`Response`**: Base response with `text`, `encoding`, `url_join`, `follow`, `follow_all`, `close`. [src/silkworm/response.py](../src/silkworm/response.py)
 - **`HTMLResponse`**: Response with async selectors. [src/silkworm/response.py](../src/silkworm/response.py)
 - **`Spider`**: Base spider class. [src/silkworm/spiders.py](../src/silkworm/spiders.py)
 - **`Engine`**: Crawl orchestrator. [src/silkworm/engine.py](../src/silkworm/engine.py)

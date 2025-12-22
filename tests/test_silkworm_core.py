@@ -83,6 +83,48 @@ def test_htmlresponse_follow_works_with_slots():
     assert next_req.callback is callback
 
 
+def test_response_follow_all_joins_urls_and_uses_callback():
+    def callback(resp: Response) -> None:
+        return None
+
+    req = Request(url="http://example.com/dir/page", callback=callback)
+    resp = Response(url=req.url, status=200, headers={}, body=b"", request=req)
+
+    next_reqs = resp.follow_all(["next", None, "../up"])
+
+    assert [req.url for req in next_reqs] == [
+        "http://example.com/dir/next",
+        "http://example.com/up",
+    ]
+    assert all(req.callback is callback for req in next_reqs)
+
+
+async def test_htmlresponse_css_aliases_select():
+    html = """
+    <html>
+        <body>
+            <a href="/a">First</a>
+            <a href="/b">Second</a>
+        </body>
+    </html>
+    """
+    req = Request(url="http://example.com")
+    resp = HTMLResponse(
+        url=req.url,
+        status=200,
+        headers={},
+        body=html.encode("utf-8"),
+        request=req,
+    )
+
+    links = await resp.css("a")
+    first = await resp.css_first("a")
+
+    assert len(links) == 2
+    assert first is not None
+    assert first.text.strip() == "First"
+
+
 def test_htmlresponse_url_join_resolves_relative_url():
     req = Request(url="http://example.com/dir/page")
     resp = HTMLResponse(url=req.url, status=200, headers={}, body=b"", request=req)

@@ -67,7 +67,9 @@ These are used by built-in components (you can add your own as well):
 Core APIs:
 - **`text`**: Decoded body text with charset detection.
 - **`encoding`**: Detected or default encoding.
+- **`url_join(href)`**: Resolve a relative URL against the response URL.
 - **`follow(href, callback=None, **kwargs)`**: URL join + callback reuse.
+- **`follow_all(hrefs, callback=None, **kwargs)`**: Convenience helper for multiple follow-up requests.
 - **`close()`**: Release payload references to save memory.
 
 ```python
@@ -85,6 +87,8 @@ async def parse(self, response: Response):
 Selector helpers on `HTMLResponse` (async):
 - **`select(selector)`**
 - **`select_first(selector)`**
+- **`css(selector)`**
+- **`css_first(selector)`**
 - **`xpath(xpath)`**
 - **`xpath_first(xpath)`**
 

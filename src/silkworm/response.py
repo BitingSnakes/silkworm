@@ -16,7 +16,7 @@ from scraper_rs.asyncio import (  # type: ignore[import-untyped]
 from .exceptions import SelectorError
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable
+    from collections.abc import Awaitable, Callable, Iterable
 
     from scraper_rs import Element  # type: ignore[import]
 
@@ -276,12 +276,24 @@ class Response:
     ) -> Request:
         from .request import Request  # local import to avoid cycle
 
-        url = urljoin(self.url, href)
+        url = self.url_join(href)
         return Request(
             url=url,
             callback=callback or self.request.callback,
             **kwargs,  # type: ignore[arg-type]
         )
+
+    def follow_all(
+        self,
+        hrefs: Iterable[str | None],
+        callback: Callback | None = None,
+        **kwargs: object,
+    ) -> list[Request]:
+        return [
+            self.follow(href, callback=callback, **kwargs)
+            for href in hrefs
+            if href is not None
+        ]
 
     def close(self) -> None:
         """
@@ -325,6 +337,12 @@ class HTMLResponse(Response):
 
     async def select_first(self, selector: str) -> Element | None:
         return await self._run_selector(select_first_async, selector, kind="CSS")
+
+    async def css(self, selector: str) -> list[Element]:
+        return await self.select(selector)
+
+    async def css_first(self, selector: str) -> Element | None:
+        return await self.select_first(selector)
 
     async def xpath(self, xpath: str) -> list[Element]:
         return await self._run_selector(xpath_async, xpath, kind="XPath")
