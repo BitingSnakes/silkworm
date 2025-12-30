@@ -72,7 +72,7 @@ avro = [
   "fastavro==1.12.1",
 ]
 elasticsearch = [
-  "elasticsearch==9.2.0",
+  "elasticsearch==9.2.1",
 ]
 mongodb = [
   "motor==3.7.1",
