@@ -30,7 +30,7 @@ run_spider(
 
 ## Streaming vs Buffered Pipelines
 - **Streaming (per item)**: `JsonLinesPipeline`, `CSVPipeline`, `XMLPipeline`, `SQLitePipeline`, `WebhookPipeline` (batch_size=1).
-- **Buffered (write on close)**: `PolarsPipeline`, `ExcelPipeline`, `YAMLPipeline`, `AvroPipeline`, `VortexPipeline`, `S3JsonLinesPipeline`, `FTPPipeline`, `SFTPPipeline`.
+- **Buffered (write on close)**: `PolarsPipeline`, `ExcelPipeline`, `YAMLPipeline`, `AvroPipeline`, `VortexPipeline`, `S3JsonLinesPipeline`, `FTPPipeline`, `SFTPPipeline`, `RssPipeline`.
 - **Batching**: `WebhookPipeline` (batch_size > 1), `GoogleSheetsPipeline`.
 
 > **Note:** Buffered pipelines keep items in memory. Prefer streaming ones for large crawls.
@@ -90,6 +90,22 @@ SQLitePipeline("data/items.db", table="quotes")
 
 ```python
 XMLPipeline("data/items.xml", root_element="items", item_element="item")
+```
+
+### RssPipeline
+- **Purpose**: Write items to an RSS 2.0 feed (buffered).
+- **Options**: `path`, `channel_title`, `channel_link`, `channel_description`, `max_items`, field mappings for item data.
+- **Extras**: none.
+- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+
+```python
+RssPipeline(
+    "data/feed.xml",
+    channel_title="My Feed",
+    channel_link="https://example.com",
+    channel_description="Latest items",
+    max_items=50,
+)
 ```
 
 ### CSVPipeline

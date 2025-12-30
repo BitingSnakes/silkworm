@@ -10,6 +10,7 @@ import pytest
 from silkworm.pipelines import (
     CallbackPipeline,
     CSVPipeline,
+    RssPipeline,
     SQLitePipeline,
     XMLPipeline,
 )
@@ -118,6 +119,72 @@ async def test_xml_pipeline_not_opened_raises_error():
 
     with pytest.raises(RuntimeError, match="XMLPipeline not opened"):
         await pipeline.process_item({"test": "data"}, spider)
+
+
+async def test_rss_pipeline_respects_max_items():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        rss_path = Path(tmpdir) / "feed.xml"
+        pipeline = RssPipeline(
+            rss_path,
+            channel_title="Test Feed",
+            channel_link="https://example.com",
+            channel_description="Test description",
+            max_items=2,
+        )
+        spider = Spider()
+
+        await pipeline.open(spider)
+        await pipeline.process_item(
+            {"title": "First", "link": "https://example.com/1", "description": "One"},
+            spider,
+        )
+        await pipeline.process_item(
+            {"title": "Second", "link": "https://example.com/2", "description": "Two"},
+            spider,
+        )
+        await pipeline.process_item(
+            {"title": "Third", "link": "https://example.com/3", "description": "Three"},
+            spider,
+        )
+        await pipeline.close(spider)
+
+        tree = ET.parse(rss_path)
+        root = tree.getroot()
+        channel = root.find("channel")
+        items = channel.findall("item")
+        assert len(items) == 2
+        titles = [item.find("title").text for item in items]
+        assert titles == ["Second", "Third"]
+
+
+async def test_rss_pipeline_skips_items_missing_required_fields():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        rss_path = Path(tmpdir) / "feed.xml"
+        pipeline = RssPipeline(
+            rss_path,
+            channel_title="Test Feed",
+            channel_link="https://example.com",
+            channel_description="Test description",
+        )
+        spider = Spider()
+
+        await pipeline.open(spider)
+        await pipeline.process_item(
+            {"title": "Ok", "link": "https://example.com/1", "description": "One"},
+            spider,
+        )
+        await pipeline.process_item(
+            {"title": "Missing Description", "link": "https://example.com/2"},
+            spider,
+        )
+        await pipeline.close(spider)
+
+        tree = ET.parse(rss_path)
+        root = tree.getroot()
+        channel = root.find("channel")
+        items = channel.findall("item")
+        assert len(items) == 1
+        assert items[0].find("title").text == "Ok"
 
 
 # CallbackPipeline tests
