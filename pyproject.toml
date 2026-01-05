@@ -91,7 +91,7 @@ postgresql = [
 ]
 gsheets = [
   "google-api-python-client==2.187.0",
-  "google-auth==2.45.0",
+  "google-auth==2.46.0",
 ]
 snowflake = [
   "snowflake-connector-python==4.1.1",
