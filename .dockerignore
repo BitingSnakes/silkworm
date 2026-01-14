@@ -1,0 +1,72 @@
+# Git and version control
+.git/
+.github/
+.gitignore
+
+# Python cache and build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+*.egg
+.eggs/
+.pytest_cache/
+
+# Virtual environments
+.venv/
+.env
+.envrc
+venv/
+ENV/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Test and coverage
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+
+# Tooling caches
+.ruff_cache/
+.mypy_cache/
+.uv_cache/
+.uv-cache/
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Data and output files
+data/
+
+# Logs
+*.log
+
+# Development scripts
+justfile
+justfile-3.14t
+AGENTS.md
+
+# Test files
+tests/
+
+# Binary files
+*.bin
+*.svg
+
+# Lock files (we're using uv.lock in the image)
+# Note: uv.lock is NOT ignored as we need it
