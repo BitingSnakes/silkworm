@@ -2134,7 +2134,7 @@ wheels = [
 
 [[package]]
 name = "silkworm-rs"
-version = "0.2.36"
+version = "0.2.37"
 source = { editable = "." }
 dependencies = [
     { name = "charset-normalizer" },
