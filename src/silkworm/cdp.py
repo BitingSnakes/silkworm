@@ -14,8 +14,8 @@ if TYPE_CHECKING:
     from .request import Request
 
 try:
-    import websockets
-    from websockets.asyncio.client import ClientConnection
+    import websockets  # type: ignore[import-not-found]
+    from websockets.asyncio.client import ClientConnection  # type: ignore[import-not-found]
 
     HAS_WEBSOCKETS = True
 except ImportError:
