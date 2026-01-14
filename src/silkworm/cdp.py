@@ -59,6 +59,7 @@ class CDPClient:
         self._target_id: str | None = None
         self._session_id: str | None = None
         self._recv_task: asyncio.Task[None] | None = None
+        self._page_load_future: asyncio.Future[None] | None = None
         self.logger = get_logger(component="cdp")
 
     @property
@@ -99,6 +100,8 @@ class CDPClient:
 
                 try:
                     data = json.loads(message)
+
+                    # Handle CDP command responses
                     msg_id = data.get("id")
                     if msg_id is not None and msg_id in self._pending_responses:
                         future = self._pending_responses.pop(msg_id)
@@ -109,6 +112,14 @@ class CDPClient:
                             future.set_exception(HttpError(f"CDP error: {error_msg}"))
                         else:
                             future.set_result(data.get("result", {}))
+
+                    # Handle CDP events
+                    method = data.get("method")
+                    if method == "Page.loadEventFired":
+                        # Page has finished loading
+                        if self._page_load_future and not self._page_load_future.done():
+                            self._page_load_future.set_result(None)
+
                 except json.JSONDecodeError:
                     self.logger.warning(
                         "Received invalid JSON from CDP", json_message=message[:200]
@@ -204,15 +215,25 @@ class CDPClient:
             try:
                 # Navigate to the URL
                 async with self._request_timeout(timeout):
+                    # Create a future to track page load
+                    load_future: asyncio.Future[None] = asyncio.Future()
+                    self._page_load_future = load_future
+
                     await self._send_command(
                         "Page.navigate",
                         {"url": url},
                     )
 
-                    # Wait for page load
-                    # In a production implementation, we'd listen for Page.loadEventFired
-                    # For simplicity, we'll add a small delay
-                    await asyncio.sleep(0.5)
+                    # Wait for page load with fallback timeout
+                    # The receive loop will set the load_future when Page.loadEventFired is received
+                    try:
+                        await asyncio.wait_for(load_future, timeout=timeout or 30.0)
+                    except asyncio.TimeoutError:
+                        # Page didn't finish loading, but proceed anyway
+                        self.logger.debug(
+                            "Page load timeout, proceeding with content extraction",
+                            url=url,
+                        )
 
                     # Get the document content
                     result = await self._send_command(
