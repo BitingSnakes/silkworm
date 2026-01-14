@@ -336,12 +336,98 @@ run_spider_trio(
 
 This runs your spider using trio as the async backend via trio-asyncio compatibility layer.
 
+## JavaScript rendering with Lightpanda (CDP)
+For pages that require JavaScript execution, you can use Lightpanda (or any CDP-compatible browser) instead of the standard HTTP client. This uses the Chrome DevTools Protocol (CDP) to control a browser.
+
+### Installation
+```bash
+pip install silkworm-rs[cdp]
+# or with uv:
+uv pip install --prerelease=allow silkworm-rs[cdp]
+```
+
+### Starting Lightpanda
+```bash
+lightpanda --remote-debugging-port=9222
+```
+
+Or use Chrome/Chromium:
+```bash
+chromium --remote-debugging-port=9222 --headless
+```
+
+### Using CDP in your spider
+There are two ways to use CDP: the convenience API or custom spider integration.
+
+#### Convenience API (simple one-off fetches)
+```python
+import asyncio
+from silkworm import fetch_html_cdp
+
+async def main():
+    # Fetch HTML with JavaScript rendering
+    text, doc = await fetch_html_cdp(
+        "https://example.com",
+        ws_endpoint="ws://127.0.0.1:9222",
+        timeout=30.0
+    )
+    
+    # Extract data from rendered page
+    title = doc.select_first("title")
+    print(title.text if title else "No title")
+
+asyncio.run(main())
+```
+
+#### Full Spider Integration
+```python
+from silkworm import HTMLResponse, Request, Response, Spider
+from silkworm.cdp import CDPClient
+
+class LightpandaSpider(Spider):
+    name = "lightpanda"
+    start_urls = ("https://example.com/",)
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._cdp_client = None
+
+    async def start_requests(self):
+        # Connect to CDP endpoint
+        self._cdp_client = CDPClient(
+            ws_endpoint="ws://127.0.0.1:9222",
+            timeout=30.0
+        )
+        await self._cdp_client.connect()
+        
+        for url in self.start_urls:
+            yield Request(url=url, callback=self.parse)
+
+    async def parse(self, response: Response):
+        if not isinstance(response, HTMLResponse):
+            return
+        
+        # Extract links from JavaScript-rendered page
+        for link in await response.select("a"):
+            href = link.attr("href")
+            if href:
+                yield {"url": href}
+
+    async def close(self):
+        if self._cdp_client:
+            await self._cdp_client.close()
+```
+
+See `examples/lightpanda_simple.py` and `examples/lightpanda_spider.py` for complete working examples.
+
+**Note:** CDP support is experimental. For production use, consider using dedicated browser automation tools or the standard HTTP client when JavaScript rendering is not required.
+
 ## Logging and crawl statistics
 - Structured logs via `logly`; set `SILKWORM_LOG_LEVEL=DEBUG` for verbose request/response/middleware output.
 - Periodic statistics with `log_stats_interval`; final stats always include elapsed time, queue size, requests/sec, seen URLs, items scraped, errors, and memory MB.
 
 ## Limitations
-- HTTP fetches are rnet-based only; there is no browser or JavaScript execution, so pages that require client-side rendering need external tooling.
+- By default, HTTP fetches are rnet-based without JavaScript execution; pages requiring client-side rendering can use the optional CDP integration (see "JavaScript rendering with Lightpanda" section) or external browser automation tools.
 - Request deduplication keys only on `Request.url`; query params, HTTP method, and body are ignored, so same-URL requests with different params/data are dropped unless you set `dont_filter=True` or make the URL unique yourself.
 - HTML parsing auto-detects encoding (BOM, HTTP headers/meta, charset detection fallback) but still enforces a `html_max_size_bytes`/`doc_max_size_bytes` cap (default 5 MB) in `scraper-rs` selectors, so very large pages may need a higher limit or preprocessing.
 - Several pipelines buffer all items in memory until close (PolarsPipeline, ExcelPipeline, YAMLPipeline, AvroPipeline, VortexPipeline, S3JsonLinesPipeline, FTPPipeline, SFTPPipeline), which can bloat RAM on long crawls; prefer streaming pipelines like JsonLines/CSV/SQLite for high-volume runs.
@@ -357,16 +443,32 @@ This runs your spider using trio as the async backend via trio-asyncio compatibi
 - `python examples/export_formats_demo.py --pages 2` → JSONL, XML, and CSV outputs in `data/`
 - `python examples/taskiq_quotes_spider.py --pages 2` → demonstrates TaskiqPipeline for queue-based processing
 - `python examples/sitemap_spider.py --sitemap-url https://example.com/sitemap.xml --pages 50` → `data/sitemap_meta.jl` (extracts meta tags and Open Graph data from sitemap URLs)
+- `python examples/lightpanda_simple.py` → demonstrates CDP/Lightpanda for JavaScript rendering (requires `pip install silkworm-rs[cdp]` and running Lightpanda)
+- `python examples/lightpanda_spider.py` → full spider example using CDP/Lightpanda
 
 ## Convenience API
-For one-off fetches without a full spider, use `fetch_html`:
+For one-off fetches without a full spider:
 
+### Standard HTTP fetch
 ```python
 import asyncio
 from silkworm import fetch_html
 
 async def main():
     text, doc = await fetch_html("https://example.com")
+    print(doc.select_first("title").text)
+
+asyncio.run(main())
+```
+
+### CDP-based fetch (with JavaScript rendering)
+```python
+import asyncio
+from silkworm import fetch_html_cdp
+
+async def main():
+    # Requires Lightpanda/Chrome running with CDP enabled
+    text, doc = await fetch_html_cdp("https://example.com")
     print(doc.select_first("title").text)
 
 asyncio.run(main())
