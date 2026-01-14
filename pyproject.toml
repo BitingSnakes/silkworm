@@ -117,6 +117,9 @@ duckdb = [
 memray = [
   "memray==1.19.1",
 ]
+cdp = [
+  "websockets==16.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/BitingSnakes/silkworm"

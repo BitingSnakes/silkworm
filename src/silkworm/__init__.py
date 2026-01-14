@@ -12,7 +12,7 @@ from .runner import (
     run_spider_winloop,
     run_spider_trio,
 )
-from .api import fetch_html
+from .api import fetch_html, fetch_html_cdp
 from .logging import get_logger
 
 __all__ = [
@@ -31,5 +31,14 @@ __all__ = [
     "run_spider_winloop",
     "run_spider_trio",
     "fetch_html",
+    "fetch_html_cdp",
     "get_logger",
 ]
+
+# Optional CDP support
+try:
+    from .cdp import CDPClient  # noqa: F401
+
+    __all__.append("CDPClient")
+except ImportError:
+    pass
