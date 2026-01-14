@@ -1,0 +1,47 @@
+services:
+  # Default spider service using quotes_spider
+  quotes:
+    build: .
+    image: silkworm-rs:latest
+    container_name: silkworm-quotes
+    volumes:
+      - ./data:/app/data
+    environment:
+      - SILKWORM_LOG_LEVEL=INFO
+    command: ["python", "examples/quotes_spider.py"]
+
+  # HackerNews spider with configurable pages
+  hackernews:
+    build: .
+    image: silkworm-rs:latest
+    container_name: silkworm-hackernews
+    volumes:
+      - ./data:/app/data
+    environment:
+      - SILKWORM_LOG_LEVEL=INFO
+    command: ["python", "examples/hackernews_spider.py", "--pages", "5"]
+    profiles: ["hackernews"]
+
+  # Lobsters spider with configurable pages
+  lobsters:
+    build: .
+    image: silkworm-rs:latest
+    container_name: silkworm-lobsters
+    volumes:
+      - ./data:/app/data
+    environment:
+      - SILKWORM_LOG_LEVEL=INFO
+    command: ["python", "examples/lobsters_spider.py", "--pages", "2"]
+    profiles: ["lobsters"]
+
+  # Custom spider - override command when running
+  custom:
+    build: .
+    image: silkworm-rs:latest
+    container_name: silkworm-custom
+    volumes:
+      - ./data:/app/data
+    environment:
+      - SILKWORM_LOG_LEVEL=DEBUG
+    profiles: ["custom"]
+    # Override with: docker compose run custom python examples/your_spider.py
