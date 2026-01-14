@@ -76,7 +76,12 @@ class CDPClient:
             return
 
         try:
-            self._ws = await websockets.connect(self._ws_endpoint)  # type: ignore[attr-defined]
+            # Increase max_size so CDP responses (e.g., full HTML) aren't capped at the
+            # websockets default of 1 MiB. Use the HTML max size budget as the cap.
+            self._ws = await websockets.connect(  # type: ignore[attr-defined]
+                self._ws_endpoint,
+                max_size=self._html_max_size_bytes,
+            )
         except Exception as exc:
             raise HttpError(
                 f"Failed to connect to CDP endpoint {self._ws_endpoint}"
@@ -87,6 +92,13 @@ class CDPClient:
 
         # Create a new browser context and page
         await self._create_target()
+
+    def _fail_pending(self, exc: Exception) -> None:
+        """Fail all pending command futures with the given exception."""
+        for future in self._pending_responses.values():
+            if not future.done():
+                future.set_exception(exc)
+        self._pending_responses.clear()
 
     async def _receive_loop(self) -> None:
         """Background task to receive and dispatch CDP messages."""
@@ -130,6 +142,21 @@ class CDPClient:
             pass
         except Exception as exc:
             self.logger.error("CDP receive loop error", error=str(exc))
+            self._fail_pending(HttpError(f"CDP connection error: {exc}"))
+        finally:
+            # If the socket closed unexpectedly, unblock any waiters.
+            ws_closed = bool(getattr(self._ws, "closed", False)) if self._ws else False
+            if ws_closed:
+                close_reason = getattr(self._ws, "close_reason", None)
+                close_code = getattr(self._ws, "close_code", None)
+                error_detail = (
+                    f" (code={close_code}, reason={close_reason})"
+                    if close_code is not None or close_reason
+                    else ""
+                )
+                self._fail_pending(
+                    HttpError(f"CDP connection closed unexpectedly{error_detail}")
+                )
 
     async def _send_command(
         self,
@@ -249,13 +276,48 @@ class CDPClient:
                     if not html_content:
                         raise HttpError(f"Failed to retrieve HTML content from {url}")
 
-                    # Get the final URL (in case of redirects)
-                    nav_result = await self._send_command("Page.getNavigationHistory")
-                    current_index = nav_result.get("currentIndex", 0)
-                    entries = nav_result.get("entries", [])
                     final_url = url
-                    if entries and current_index < len(entries):
-                        final_url = entries[current_index].get("url", url)
+
+                    # Try to detect the final URL. Some CDP backends (e.g. Lightpanda)
+                    # do not implement Page.getNavigationHistory, so fall back to
+                    # document.location when the command is unsupported.
+                    nav_result: dict[str, Any] | None = None
+                    try:
+                        nav_result = await self._send_command(
+                            "Page.getNavigationHistory"
+                        )
+                    except HttpError as exc:
+                        self.logger.debug(
+                            "CDP getNavigationHistory not available; falling back to document.location",
+                            error=str(exc),
+                            url=url,
+                        )
+
+                    if nav_result is not None:
+                        current_index = nav_result.get("currentIndex", 0)
+                        entries = nav_result.get("entries", [])
+                        if entries and current_index < len(entries):
+                            final_url = entries[current_index].get("url", url)
+                    else:
+                        try:
+                            location_result = await self._send_command(
+                                "Runtime.evaluate",
+                                {
+                                    "expression": "document.location.href",
+                                    "returnByValue": True,
+                                },
+                            )
+                            location_value = location_result.get("result", {}).get(
+                                "value"
+                            )
+                            if isinstance(location_value, str) and location_value:
+                                final_url = location_value
+                        except HttpError as exc:
+                            self.logger.debug(
+                                "CDP document.location fallback failed",
+                                error=str(exc),
+                                url=url,
+                            )
 
                     elapsed_ms = (asyncio.get_running_loop().time() - start_time) * 1000
 
