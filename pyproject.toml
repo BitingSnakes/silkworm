@@ -94,7 +94,7 @@ gsheets = [
   "google-auth==2.47.0",
 ]
 snowflake = [
-  "snowflake-connector-python==4.1.1",
+  "snowflake-connector-python==4.2.0",
 ]
 ftp = [
   "aioftp==0.27.2",
