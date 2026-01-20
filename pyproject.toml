@@ -90,7 +90,7 @@ postgresql = [
   "asyncpg==0.31.0",
 ]
 gsheets = [
-  "google-api-python-client==2.187.0",
+  "google-api-python-client==2.188.0",
   "google-auth==2.47.0",
 ]
 snowflake = [
