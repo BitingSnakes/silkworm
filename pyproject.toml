@@ -57,7 +57,7 @@ trio = [
   "trio-asyncio==0.15.0",
 ]
 msgpack = [
-  "ormsgpack==1.12.1",
+  "ormsgpack==1.12.2",
 ]
 polars = [
   "polars==1.36.1",
