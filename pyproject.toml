@@ -141,7 +141,7 @@ dev = [
     "pydantic==2.12.5",
     "pytest==9.0.2",
     "anyio==4.12.1",
-    "ruff==0.14.13",
+    "ruff==0.14.14",
     "twine==6.2.0",
     "testcontainers==4.14.0",
 ]
