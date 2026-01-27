@@ -36,7 +36,7 @@ classifiers = [
 
 dependencies = [
   "charset-normalizer==3.4.4",
-  "rnet==3.0.0rc17",
+  "rnet==3.0.0rc20",
   "scraper-rust==0.2.27",
   "logly==0.1.6",
   "rxml==2.3.6",
@@ -57,7 +57,7 @@ trio = [
   "trio-asyncio==0.15.0",
 ]
 msgpack = [
-  "ormsgpack==1.12.1",
+  "ormsgpack==1.12.2",
 ]
 polars = [
   "polars==1.36.1",
@@ -90,11 +90,11 @@ postgresql = [
   "asyncpg==0.31.0",
 ]
 gsheets = [
-  "google-api-python-client==2.187.0",
+  "google-api-python-client==2.188.0",
   "google-auth==2.47.0",
 ]
 snowflake = [
-  "snowflake-connector-python==4.1.1",
+  "snowflake-connector-python==4.2.0",
 ]
 ftp = [
   "aioftp==0.27.2",
@@ -141,7 +141,7 @@ dev = [
     "pydantic==2.12.5",
     "pytest==9.0.2",
     "anyio==4.12.1",
-    "ruff==0.14.10",
+    "ruff==0.14.13",
     "twine==6.2.0",
     "testcontainers==4.14.0",
 ]
