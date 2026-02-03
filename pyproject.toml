@@ -112,7 +112,7 @@ dynamodb = [
   "aioboto3==15.5.0",
 ]
 duckdb = [
-  "duckdb==1.4.3",
+  "duckdb==1.4.4",
 ]
 memray = [
   "memray==1.19.1",
