@@ -60,7 +60,7 @@ msgpack = [
   "ormsgpack==1.12.2",
 ]
 polars = [
-  "polars==1.36.1",
+  "polars==1.37.1",
 ]
 excel = [
   "openpyxl==3.1.5",
