@@ -4,6 +4,7 @@ import asyncio
 import json
 from contextlib import asynccontextmanager
 from datetime import timedelta
+from importlib import import_module
 from typing import TYPE_CHECKING, Any, AsyncIterator
 
 from .exceptions import HttpError
@@ -13,14 +14,14 @@ from .response import HTMLResponse, Response
 if TYPE_CHECKING:
     from .request import Request
 
-try:
-    import websockets  # type: ignore[import-not-found]
-    from websockets.asyncio.client import ClientConnection  # type: ignore[import-not-found]
+websockets: Any | None
 
+try:
+    websockets = import_module("websockets")
     HAS_WEBSOCKETS = True
 except ImportError:
     HAS_WEBSOCKETS = False
-    ClientConnection = Any  # type: ignore[misc,assignment]
+    websockets = None
 
 
 class CDPClient:
@@ -53,7 +54,7 @@ class CDPClient:
         self._sem = asyncio.Semaphore(concurrency)
         self._timeout = timeout
         self._html_max_size_bytes = html_max_size_bytes
-        self._ws: ClientConnection | None = None
+        self._ws: Any | None = None
         self._message_id = 0
         self._pending_responses: dict[int, asyncio.Future[dict[str, Any]]] = {}
         self._target_id: str | None = None
@@ -76,9 +77,13 @@ class CDPClient:
             return
 
         try:
+            if websockets is None:
+                raise HttpError(
+                    "websockets package required for CDP support. Install with: pip install silkworm-rs[cdp]"
+                )
             # Increase max_size so CDP responses (e.g., full HTML) aren't capped at the
             # websockets default of 1 MiB. Use the HTML max size budget as the cap.
-            self._ws = await websockets.connect(  # type: ignore[attr-defined]
+            self._ws = await websockets.connect(
                 self._ws_endpoint,
                 max_size=self._html_max_size_bytes,
             )
