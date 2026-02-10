@@ -11,10 +11,10 @@ WORKDIR /app
 # Copy all source files
 COPY . .
 
-# Install pip and the package
-# Using --pre to allow prerelease versions like rnet
+# Install pip, the package, and runtime deps used by bundled examples.
+# Using --pre to allow prerelease versions like rnet.
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir --pre -e .
+    pip install --no-cache-dir --pre -e . "pydantic==2.12.5"
 
 # Create data directory for spider output
 RUN mkdir -p /app/data
