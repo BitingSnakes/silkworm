@@ -17,5 +17,7 @@ All examples live under [examples/](../examples). This page lists each example, 
 | [examples/sitemap_spider.py](../examples/sitemap_spider.py) | XML sitemap parsing, meta tags | `python examples/sitemap_spider.py --sitemap-url https://example.com/sitemap.xml --pages 50` |
 | [examples/logger_configuration_demo.py](../examples/logger_configuration_demo.py) | Logger injection patterns | `python examples/logger_configuration_demo.py` |
 | [examples/hybrid_logger_demo.py](../examples/hybrid_logger_demo.py) | Hybrid console + JSON logs | `python examples/hybrid_logger_demo.py` |
+| [examples/lightpanda_simple.py](../examples/lightpanda_simple.py) | CDP one-off rendered HTML fetch | `python examples/lightpanda_simple.py` |
+| [examples/lightpanda_spider.py](../examples/lightpanda_spider.py) | CDP spider flow with Lightpanda/Chrome endpoint | `python examples/lightpanda_spider.py` |
 
-> **Tip:** Some examples require optional extras (trio, winloop, taskiq). Install them via `pip install "silkworm-rs[trio]"` or similar.
+> **Tip:** Some examples require optional extras (trio, winloop, taskiq, cdp). Install them via `pip install "silkworm-rs[trio]"` or similar.

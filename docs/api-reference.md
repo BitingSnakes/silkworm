@@ -3,8 +3,8 @@
 This page lists the public API exports from [src/silkworm/__init__.py](../src/silkworm/__init__.py) with links to their implementation.
 
 ## Core Types
-- **`Request`**: Immutable request dataclass. [src/silkworm/request.py](../src/silkworm/request.py)
- - **`Response`**: Base response with `text`, `encoding`, `url_join`, `follow`, `follow_all`, `close`. [src/silkworm/response.py](../src/silkworm/response.py)
+- **`Request`**: Slotted request dataclass with URL/method/headers/body/meta/callback fields. [src/silkworm/request.py](../src/silkworm/request.py)
+- **`Response`**: Base response with `text`, `encoding`, `url_join`, `follow`, `follow_all`, `close`. [src/silkworm/response.py](../src/silkworm/response.py)
 - **`HTMLResponse`**: Response with async selectors. [src/silkworm/response.py](../src/silkworm/response.py)
 - **`Spider`**: Base spider class. [src/silkworm/spiders.py](../src/silkworm/spiders.py)
 - **`Engine`**: Crawl orchestrator. [src/silkworm/engine.py](../src/silkworm/engine.py)
@@ -18,7 +18,11 @@ This page lists the public API exports from [src/silkworm/__init__.py](../src/si
 
 ## Convenience Helpers
 - **`fetch_html(...)`**: Fetch HTML text and a scraper-rs Document. [src/silkworm/api.py](../src/silkworm/api.py)
+- **`fetch_html_cdp(...)`**: Fetch rendered HTML text and a scraper-rs Document via CDP. [src/silkworm/api.py](../src/silkworm/api.py)
 - **`get_logger(...)`**: Configured logly logger. [src/silkworm/logging.py](../src/silkworm/logging.py)
+
+## Optional CDP Export
+- **`CDPClient`**: CDP client for browser-driven fetches (available when `cdp` extra is installed). [src/silkworm/cdp.py](../src/silkworm/cdp.py)
 
 ## Exceptions
 - **`SilkwormError`**: Base exception. [src/silkworm/exceptions.py](../src/silkworm/exceptions.py)

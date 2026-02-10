@@ -26,7 +26,7 @@ class MySpider(Spider):
 ```
 
 ## Request
-`Request` is an immutable dataclass used to describe HTTP work. See [src/silkworm/request.py](../src/silkworm/request.py).
+`Request` is a slotted dataclass used to describe HTTP work. See [src/silkworm/request.py](../src/silkworm/request.py).
 
 Important fields:
 - **`url`**, **`method`**, **`headers`**, **`params`**, **`data`**, **`json`**
@@ -35,6 +35,9 @@ Important fields:
 - **`meta`**: Free-form dict for middlewares and custom logic.
 - **`dont_filter`**: Bypass URL deduplication.
 - **`priority`**: Reserved for future queueing (not used by the engine yet).
+
+`Request.replace(**kwargs)` is the safest way to create updated requests, while
+`headers` and `meta` are mutable dicts that middlewares may update in-place.
 
 ```python
 from silkworm import Request
@@ -46,12 +49,6 @@ request = Request(
     headers={"accept": "text/html"},
     timeout=5,
 )
-```
-
-`Request.replace(**kwargs)` returns a copy with updates:
-
-```python
-updated = request.replace(dont_filter=True, headers={"x-trace": "1"})
 ```
 
 ### Built-in `meta` Keys
@@ -118,9 +115,12 @@ Example of mixed results:
 from silkworm import Request
 
 async def parse(self, response: Response):
-    yield {"url": response.url}
-    yield Request(url="https://example.com/page2", callback=self.parse)
-    return [{"ok": True}, {"ok": False}]
+    return [
+        {"url": response.url},
+        Request(url="https://example.com/page2", callback=self.parse),
+        {"ok": True},
+        {"ok": False},
+    ]
 ```
 
 > **Note:** The engine auto-wraps **only** the spider's `parse` callback to `HTMLResponse`. Other callbacks receive the `Response` produced by the HTTP client, which may already be an `HTMLResponse` for HTML content.

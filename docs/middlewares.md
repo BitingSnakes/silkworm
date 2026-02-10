@@ -56,7 +56,7 @@ ProxyMiddleware(proxy_file="proxies.txt", random_selection=True)
 DelayMiddleware(delay=1.0)
 DelayMiddleware(min_delay=0.3, max_delay=1.0)
 
-async def custom_delay(request, spider) -> float:
+def custom_delay(request, spider) -> float:
     return 0.5
 
 DelayMiddleware(delay_func=custom_delay)
@@ -88,6 +88,7 @@ from silkworm.request import Request
 
 class AddHeaderMiddleware:
     async def process_request(self, request: Request, spider):
-        request.headers.setdefault("x-trace", "1")
-        return request
+        headers = {**request.headers}
+        headers.setdefault("x-trace", "1")
+        return request.replace(headers=headers)
 ```

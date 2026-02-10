@@ -24,9 +24,15 @@ Common Engine options (also exposed by `run_spider` and `crawl` in [src/silkworm
 
 ```python
 from silkworm.engine import Engine
-from silkworm.spiders import Spider
+from silkworm import Response, Spider
 
-spider = Spider(name="demo")
+class DemoSpider(Spider):
+    start_urls = ("https://example.com",)
+
+    async def parse(self, response: Response):
+        return None
+
+spider = DemoSpider(name="demo")
 engine = Engine(spider, concurrency=8, log_stats_interval=10)
 # await engine.run()
 ```
@@ -47,7 +53,8 @@ Core features:
 - **HTML detection**: returns `HTMLResponse` when content-type/sniffing indicates HTML.
 
 ### Redirect Behavior
-If a response status is 301, 302, or 303, the client switches non-GET/HEAD methods to GET (body cleared) and updates `request.meta["redirect_times"]`.
+The client follows redirects for 301/302/303/307/308 responses with `Location`.
+For 301/302/303, non-GET/HEAD methods are switched to GET (body cleared). It also updates `request.meta["redirect_times"]`.
 
 ```python
 from silkworm import Request

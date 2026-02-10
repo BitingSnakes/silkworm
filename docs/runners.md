@@ -58,9 +58,15 @@ If you want to manage the lifecycle directly:
 
 ```python
 from silkworm.engine import Engine
-from silkworm.spiders import Spider
+from silkworm import Response, Spider
 
-spider = Spider(name="custom")
+class CustomSpider(Spider):
+    start_urls = ("https://example.com",)
+
+    async def parse(self, response: Response):
+        return None
+
+spider = CustomSpider(name="custom")
 engine = Engine(spider, concurrency=4)
 # await engine.run()
 ```

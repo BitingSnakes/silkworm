@@ -60,6 +60,7 @@ pip install "silkworm-rs[uvloop,polars]"
 | `duckdb` | DuckDB export | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
 | `taskiq` | Taskiq queue pipeline | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
 | `memray` | Memory profiling | [justfile](../justfile) |
+| `cdp` | CDP browser client and rendered HTML fetch | [src/silkworm/cdp.py](../src/silkworm/cdp.py) |
 
 ## Your First Spider
 This is a minimal spider that extracts quotes and writes JSON Lines output. For a full version, see [examples/quotes_spider.py](../examples/quotes_spider.py).
@@ -92,7 +93,8 @@ class QuotesSpider(Spider):
             }
 
         if next_link := await html.select_first("li.next > a"):
-            yield html.follow(next_link.attr("href"), callback=self.parse)
+            if href := next_link.attr("href"):
+                yield html.follow(href, callback=self.parse)
 
 
 run_spider(
@@ -127,6 +129,26 @@ from silkworm import fetch_html
 
 async def main():
     text, doc = await fetch_html("https://example.com")
+    title = doc.select_first("title")
+    print(title.text if title else "no title")
+
+
+asyncio.run(main())
+```
+
+For JS-rendered pages via a CDP-compatible browser (Lightpanda/Chrome), use
+`fetch_html_cdp`:
+
+```python
+import asyncio
+from silkworm import fetch_html_cdp
+
+
+async def main():
+    text, doc = await fetch_html_cdp(
+        "https://example.com",
+        ws_endpoint="ws://127.0.0.1:9222",
+    )
     title = doc.select_first("title")
     print(title.text if title else "no title")
 
