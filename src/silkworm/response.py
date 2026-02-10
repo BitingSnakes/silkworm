@@ -33,6 +33,7 @@ _XML_DECLARATION_RE = re.compile(
     rb"<\?xml[^>]+encoding\s*=\s*['\"]([a-zA-Z0-9._:-]+)['\"]",
     re.I,
 )
+_CHARSET_DETECTION_SAMPLE_BYTES = 128 * 1024
 _BOM_SEQUENCE = (
     (codecs.BOM_UTF32_LE, "utf-32"),
     (codecs.BOM_UTF32_BE, "utf-32"),
@@ -225,28 +226,27 @@ class Response:
         except Exception:
             return None
 
+        # Charset detection is heuristic; a bounded prefix is typically enough and
+        # avoids building large analyzer state for multi-megabyte payloads.
+        sample = (
+            body[:_CHARSET_DETECTION_SAMPLE_BYTES]
+            if len(body) > _CHARSET_DETECTION_SAMPLE_BYTES
+            else body
+        )
+
         try:
-            matches = from_bytes(body)
+            matches = from_bytes(sample)
         except Exception:
             return None
 
-        best: tuple[str, str] | None = None
-        best_score = float("-inf")
+        best_scores: dict[str, float] = {}
 
         for match in matches:
             encoding = self._normalize_encoding(getattr(match, "encoding", None))
             if encoding is None:
                 continue
 
-            decoded = self._try_decode(body, encoding)
-            if decoded is None:
-                continue
-
-            alphabets = [
-                alphabet.lower()
-                for alphabet in getattr(match, "alphabets", []) or []
-                if isinstance(alphabet, str)
-            ]
+            alphabets = getattr(match, "alphabets", None) or ()
             language = str(getattr(match, "language", "") or "").lower()
 
             score = 0.0
@@ -257,16 +257,31 @@ class Response:
                 score += 2.0
             if language and language != "unknown":
                 score += 0.5
-            if any("cyrillic" in alphabet for alphabet in alphabets):
+            if any(
+                isinstance(alphabet, str) and "cyrillic" in alphabet.lower()
+                for alphabet in alphabets
+            ):
                 score += 0.5
-            if any("box drawing" in alphabet for alphabet in alphabets):
+            if any(
+                isinstance(alphabet, str) and "box drawing" in alphabet.lower()
+                for alphabet in alphabets
+            ):
                 score -= 1.5
 
-            if score > best_score:
-                best_score = score
-                best = decoded
+            previous = best_scores.get(encoding)
+            if previous is None or score > previous:
+                best_scores[encoding] = score
 
-        return best
+        for encoding, _score in sorted(
+            best_scores.items(),
+            key=lambda entry: entry[1],
+            reverse=True,
+        ):
+            decoded = self._try_decode(body, encoding)
+            if decoded is not None:
+                return decoded
+
+        return None
 
     def follow(
         self,

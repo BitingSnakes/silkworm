@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import codecs
+import sys
+from types import SimpleNamespace
 
 from silkworm.request import Request
 from silkworm.response import HTMLResponse, Response
@@ -71,3 +73,34 @@ def test_response_falls_back_to_charset_detection():
 
     assert resp.text == original
     assert resp.encoding == "cp1251"
+
+
+def test_response_charset_detection_uses_bounded_sample(monkeypatch):
+    class _Match:
+        encoding = "utf-8"
+        alphabets: list[str] = []
+        language = "unknown"
+
+    seen_sizes: list[int] = []
+
+    def fake_from_bytes(data: bytes):
+        seen_sizes.append(len(data))
+        return [_Match()]
+
+    monkeypatch.setitem(
+        sys.modules,
+        "charset_normalizer",
+        SimpleNamespace(from_bytes=fake_from_bytes),
+    )
+
+    body = b"a" * 200_000
+    resp = Response(
+        url="http://example.com",
+        status=200,
+        headers={},
+        body=body,
+        request=_make_request(),
+    )
+
+    assert resp.text == "a" * 200_000
+    assert seen_sizes == [128 * 1024]

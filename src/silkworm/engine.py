@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
 import inspect
+import reprlib
 import sys
 import time
 from datetime import timedelta
@@ -23,6 +24,15 @@ if TYPE_CHECKING:
     from .middlewares import RequestMiddleware, ResponseMiddleware
     from .pipelines import ItemPipeline
     from .spiders import Spider
+
+
+_SAFE_REPR = reprlib.Repr()
+_SAFE_REPR.maxstring = 120
+_SAFE_REPR.maxother = 120
+_SAFE_REPR.maxlist = 8
+_SAFE_REPR.maxdict = 8
+_SAFE_REPR.maxset = 8
+_SAFE_REPR.maxtuple = 8
 
 
 class Engine:
@@ -194,11 +204,13 @@ class Engine:
                 f"Spider callback '{name}' failed for {self.spider.name}",
             ) from exc
 
-        last_yielded: Request | JSONValue | None = None
+        last_yielded_type: str | None = None
+        last_yielded_repr: str | None = None
 
         try:
             async for x in self._iterate_callback_results(produced):
-                last_yielded = x
+                last_yielded_type = type(x).__name__
+                last_yielded_repr = self._safe_repr(x)
                 if isinstance(x, Request):
                     await self._enqueue(x)
                 else:
@@ -214,10 +226,8 @@ class Engine:
                 "Callback yielded invalid results",
                 callback=name,
                 produced_type=type(produced).__name__,
-                last_yielded_type=type(last_yielded).__name__
-                if last_yielded is not None
-                else None,
-                last_yielded_repr=self._safe_repr(last_yielded),
+                last_yielded_type=last_yielded_type,
+                last_yielded_repr=last_yielded_repr,
                 spider=self.spider.name,
                 url=resp.url,
                 error=str(exc),
@@ -388,7 +398,7 @@ class Engine:
         return HTMLResponse(
             url=resp.url,
             status=resp.status,
-            headers=dict(resp.headers),
+            headers=resp.headers,
             body=resp.body,
             request=resp.request,
             doc_max_size_bytes=self.http.html_max_size_bytes,
@@ -397,5 +407,5 @@ class Engine:
     def _safe_repr(self, value: object, limit: int = 200) -> str:
         if value is None:
             return "None"
-        text = repr(value)
-        return text if len(text) <= limit else f"{text[:limit]}…"
+        text = _SAFE_REPR.repr(value)
+        return text if len(text) <= limit else f"{text[:limit]}..."
