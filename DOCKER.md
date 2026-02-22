@@ -15,6 +15,15 @@ This guide explains how to run Silkworm spiders in Docker containers.
 docker build -t silkworm-rs:latest .
 ```
 
+Optional: match container user/group IDs to your host user for bind-mounted volume writes.
+
+```bash
+docker build \
+  --build-arg APP_UID="$(id -u)" \
+  --build-arg APP_GID="$(id -g)" \
+  -t silkworm-rs:latest .
+```
+
 ### Run the default quotes spider
 
 ```bash
@@ -24,6 +33,16 @@ docker compose up quotes
 Output will be saved to `./data/quotes.jl` on your host machine.
 
 ## Using Docker Compose
+
+### Optional: Build with host UID/GID
+
+To align the image runtime user with your host user, set:
+
+```bash
+export APP_UID="$(id -u)"
+export APP_GID="$(id -g)"
+docker compose build
+```
 
 ### Available Services
 
@@ -110,6 +129,7 @@ The Dockerfile is designed to be minimal and easy to customize:
 - **Base image**: Python 3.13-slim for small size
 - **Dependencies**: Installed via pip with `--pre` flag to allow prerelease versions (required for rnet)
 - **Source code**: Copied from host to container
+- **Runtime user**: Runs as non-root user `app` (UID/GID configurable via build args)
 - **Data volume**: `/app/data` for spider output
 
 ### Example: Adding Extra Dependencies
@@ -129,6 +149,17 @@ Change the first line of the Dockerfile:
 FROM python:3.14-slim  # or any other Python 3.13+ version
 ```
 
+### Example: Customizing Runtime UID/GID
+
+Build with host-matching IDs so bind-mounted `./data` stays writable without permissive permissions:
+
+```bash
+docker build \
+  --build-arg APP_UID="$(id -u)" \
+  --build-arg APP_GID="$(id -g)" \
+  -t silkworm-rs:latest .
+```
+
 ## Troubleshooting
 
 ### Build fails with network errors
@@ -145,9 +176,15 @@ DOCKER_BUILDKIT=1 docker build -t silkworm-rs:latest .
 If you get permission errors when writing to the data directory:
 
 ```bash
-# Create the directory with proper permissions
+# Create the directory and give ownership to your user/group
 mkdir -p ./data
-chmod 777 ./data
+chown "$(id -u):$(id -g)" ./data
+```
+
+If you previously ran containers as root (for example with `sudo docker-compose`), fix existing ownership once:
+
+```bash
+sudo chown -R "$(id -u):$(id -g)" ./data
 ```
 
 ### Container exits immediately
@@ -287,7 +324,6 @@ This file is automatically loaded by Docker Compose and overrides settings from 
 
 ## Security Considerations
 
-- The container runs as root by default. For production, consider adding a non-root user.
 - Sensitive data (API keys, credentials) should be passed via environment variables or Docker secrets, never hardcoded.
 - Keep the base image updated to get security patches.
 

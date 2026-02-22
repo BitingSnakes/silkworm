@@ -1,7 +1,11 @@
 services:
   # Default spider service using quotes_spider
   quotes:
-    build: .
+    build:
+      context: .
+      args:
+        APP_UID: ${APP_UID:-1000}
+        APP_GID: ${APP_GID:-1000}
     image: silkworm-rs:latest
     container_name: silkworm-quotes
     volumes:
@@ -12,7 +16,11 @@ services:
 
   # HackerNews spider with configurable pages
   hackernews:
-    build: .
+    build:
+      context: .
+      args:
+        APP_UID: ${APP_UID:-1000}
+        APP_GID: ${APP_GID:-1000}
     image: silkworm-rs:latest
     container_name: silkworm-hackernews
     volumes:
@@ -24,7 +32,11 @@ services:
 
   # Lobsters spider with configurable pages
   lobsters:
-    build: .
+    build:
+      context: .
+      args:
+        APP_UID: ${APP_UID:-1000}
+        APP_GID: ${APP_GID:-1000}
     image: silkworm-rs:latest
     container_name: silkworm-lobsters
     volumes:
@@ -36,7 +48,11 @@ services:
 
   # Custom spider - override command when running
   custom:
-    build: .
+    build:
+      context: .
+      args:
+        APP_UID: ${APP_UID:-1000}
+        APP_GID: ${APP_GID:-1000}
     image: silkworm-rs:latest
     container_name: silkworm-custom
     volumes:
