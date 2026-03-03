@@ -66,7 +66,7 @@ jobs:
         run: twine check dist/*
 
       - name: Upload wheel artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: wheel
           path: dist/*.whl
@@ -96,7 +96,7 @@ jobs:
         run: twine check dist/*
 
       - name: Upload sdist artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: sdist
           path: dist/*.tar.gz
