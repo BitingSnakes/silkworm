@@ -39,7 +39,7 @@ dependencies = [
   "rnet==3.0.0rc20",
   "scraper-rust==0.3.2",
   "logly==0.1.6",
-  "rxml==2.3.6",
+  "rxml==2.4.1",
 ]
 
 [project.optional-dependencies]
