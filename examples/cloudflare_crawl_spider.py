@@ -14,7 +14,7 @@ from silkworm.request import Request
 
 class CloudflareCrawlSpider(Spider):
     """
-    Submit a single Cloudflare Browser Rendering crawl job and emit one item per page.
+    Submit a single Cloudflare Browser Rendering crawl job and emit one item per record.
     """
 
     name = "cloudflare_crawl"
@@ -51,10 +51,10 @@ class CloudflareCrawlSpider(Spider):
             )
             return
 
-        pages = result.get("pages")
-        if not isinstance(pages, list):
+        records = result.get("records")
+        if not isinstance(records, list):
             self.log.warning(
-                "Cloudflare crawl payload missing pages",
+                "Cloudflare crawl payload missing records",
                 url=response.url,
                 result_keys=sorted(result.keys()),
             )
@@ -63,13 +63,13 @@ class CloudflareCrawlSpider(Spider):
         self.log.info(
             "Processing Cloudflare crawl payload",
             url=response.url,
-            pages=len(pages),
+            records=len(records),
         )
 
-        for page in pages:
-            if not isinstance(page, Mapping):
+        for record in records:
+            if not isinstance(record, Mapping):
                 continue
-            yield dict(page)
+            yield dict(record)
 
     def _extract_result(self, payload: object) -> Mapping[str, Any] | None:
         if not isinstance(payload, dict):
@@ -79,8 +79,8 @@ class CloudflareCrawlSpider(Spider):
         if isinstance(result, Mapping):
             return result
 
-        pages = payload.get("pages")
-        if isinstance(pages, list):
+        records = payload.get("records")
+        if isinstance(records, list):
             return payload
 
         job = payload.get("job")
@@ -155,7 +155,7 @@ def build_crawl_options(args: argparse.Namespace) -> dict[str, Any]:
     if args.limit is not None:
         crawl_options["limit"] = args.limit
     if args.depth is not None:
-        crawl_options["maxDepth"] = args.depth
+        crawl_options["depth"] = args.depth
 
     formats: list[str] = []
     if args.markdown:

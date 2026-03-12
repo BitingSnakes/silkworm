@@ -788,7 +788,7 @@ async def test_cloudflare_crawl_middleware_builds_synthetic_response(
             "success": True,
             "result": {
                 "status": "completed",
-                "pages": [{"url": "https://example.com", "markdown": "# Home"}],
+                "records": [{"url": "https://example.com", "markdown": "# Home"}],
             },
         }
 
@@ -803,7 +803,7 @@ async def test_cloudflare_crawl_middleware_builds_synthetic_response(
     assert mock_response["headers"]["x-silkworm-source"] == "cloudflare-crawl"
 
     payload = json.loads(str(mock_response["body"]))
-    assert payload["result"]["pages"][0]["url"] == "https://example.com"
+    assert payload["result"]["records"][0]["url"] == "https://example.com"
 
 
 async def test_cloudflare_crawl_middleware_polls_until_completion(
@@ -820,14 +820,18 @@ async def test_cloudflare_crawl_middleware_polls_until_completion(
         [
             {"success": True, "result": {"job_id": "job-1"}},
             {"success": True, "result": {"status": "running"}},
+            {"success": True, "result": {"status": "completed"}},
             {
                 "success": True,
-                "result": {"status": "completed", "pages": [{"url": "https://a"}]},
+                "result": {"status": "completed", "records": [{"url": "https://a"}]},
             },
         ]
     )
 
-    async def fake_api_request(*args: Any, **kwargs: Any) -> dict[str, Any]:
+    api_paths: list[str] = []
+
+    async def fake_api_request(method: str, path: str, **kwargs: Any) -> dict[str, Any]:
+        api_paths.append(path)
         return next(responses)
 
     async def fake_sleep(delay: float) -> None:
@@ -839,7 +843,14 @@ async def test_cloudflare_crawl_middleware_polls_until_completion(
     payload = await middleware._run_crawl("https://example.com", {})
 
     assert payload["result"]["status"] == "completed"
+    assert payload["result"]["records"][0]["url"] == "https://a"
     assert sleep_calls == [0.1]
+    assert api_paths == [
+        "/accounts/acct/browser-rendering/crawl",
+        "/accounts/acct/browser-rendering/crawl/job-1?limit=1",
+        "/accounts/acct/browser-rendering/crawl/job-1?limit=1",
+        "/accounts/acct/browser-rendering/crawl/job-1",
+    ]
 
 
 async def test_cloudflare_crawl_middleware_runs_inside_engine(
@@ -876,7 +887,7 @@ async def test_cloudflare_crawl_middleware_runs_inside_engine(
             "success": True,
             "result": {
                 "status": "completed",
-                "pages": [{"url": "https://example.com/about"}],
+                "records": [{"url": "https://example.com/about"}],
             },
         }
 
@@ -886,4 +897,4 @@ async def test_cloudflare_crawl_middleware_runs_inside_engine(
     await engine.run()
 
     assert spider.payload is not None
-    assert spider.payload["result"]["pages"][0]["url"] == "https://example.com/about"
+    assert spider.payload["result"]["records"][0]["url"] == "https://example.com/about"

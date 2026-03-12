@@ -405,15 +405,15 @@ class CloudflareCrawlMiddleware:
         }
 
         result = payload.get("result")
-        page_count: int | None = None
+        record_count: int | None = None
         if isinstance(result, dict):
-            pages = result.get("pages")
-            if isinstance(pages, list):
-                page_count = len(pages)
+            records = result.get("records")
+            if isinstance(records, list):
+                record_count = len(records)
         self.logger.info(
             "Cloudflare crawl completed",
             url=request.url,
-            pages=page_count,
+            records=record_count,
         )
         return request.replace(meta=meta)
 
@@ -465,11 +465,14 @@ class CloudflareCrawlMiddleware:
         while True:
             status_payload = await self._api_request(
                 "GET",
-                f"/accounts/{self.account_id}/browser-rendering/crawl/{job_id}",
+                f"/accounts/{self.account_id}/browser-rendering/crawl/{job_id}?limit=1",
             )
             state = self._extract_job_state(status_payload)
             if state in self._DONE_STATES:
-                return status_payload
+                return await self._api_request(
+                    "GET",
+                    f"/accounts/{self.account_id}/browser-rendering/crawl/{job_id}",
+                )
             if state in self._FAILED_STATES:
                 msg = f"Cloudflare crawl job {job_id} failed with state '{state}'"
                 raise HttpError(msg)
