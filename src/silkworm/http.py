@@ -19,6 +19,9 @@ if TYPE_CHECKING:
     from .request import Request
 
 
+MOCK_RESPONSE_META_KEY = "_silkworm_mock_response"
+
+
 class HttpClient:
     def __init__(
         self,
@@ -66,6 +69,15 @@ class HttpClient:
         return self._html_max_size_bytes
 
     async def fetch(self, req: Request) -> Response:
+        mocked_response = self._build_mock_response(req)
+        if mocked_response is not None:
+            self.logger.debug(
+                "Using synthetic response",
+                url=mocked_response.url,
+                status=mocked_response.status,
+            )
+            return mocked_response
+
         proxy = self._normalize_proxy(req.meta.get("proxy"))
         current_req = req
         redirects_followed = 0
@@ -201,6 +213,40 @@ class HttpClient:
             headers=headers,
             body=body,
             request=current_req,
+        )
+
+    def _build_mock_response(self, req: Request) -> Response | None:
+        raw_response = req.meta.get(MOCK_RESPONSE_META_KEY)
+        if not isinstance(raw_response, Mapping):
+            return None
+
+        url_raw = raw_response.get("url", req.url)
+        headers = self._normalize_headers(raw_response.get("headers"))
+        body = self._ensure_bytes(raw_response.get("body"))
+        status = self._normalize_status(raw_response.get("status", 200))
+        url = url_raw if isinstance(url_raw, str) else req.url
+
+        content_type = headers.get("content-type", "").lower()
+        snippet = body[:2048].lower()
+        looks_html = (
+            "html" in content_type or b"<html" in snippet or b"<!doctype" in snippet
+        )
+        if looks_html:
+            return HTMLResponse(
+                url=url,
+                status=status,
+                headers=headers,
+                body=body,
+                request=req,
+                doc_max_size_bytes=self._html_max_size_bytes,
+            )
+
+        return Response(
+            url=url,
+            status=status,
+            headers=headers,
+            body=body,
+            request=req,
         )
 
     async def _maybe_await(self, value: object) -> object:

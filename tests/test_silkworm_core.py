@@ -1,4 +1,5 @@
 from datetime import timedelta
+import json
 from urllib.parse import parse_qsl, urlsplit
 from typing import Any
 
@@ -6,7 +7,11 @@ import pytest
 
 from silkworm.http import HttpClient
 from silkworm.engine import Engine
-from silkworm.middlewares import DelayMiddleware, RetryMiddleware
+from silkworm.middlewares import (
+    CloudflareCrawlMiddleware,
+    DelayMiddleware,
+    RetryMiddleware,
+)
 from silkworm.request import Request
 from silkworm.response import HTMLResponse, Response
 from silkworm.spiders import Spider
@@ -340,6 +345,27 @@ async def test_httpclient_uses_timedelta_timeout():
     assert resp.status == 200
     assert len(recording.calls) == 1
     assert isinstance(recording.calls[0][2]["timeout"], timedelta)
+
+
+async def test_httpclient_returns_synthetic_response_from_meta():
+    client = HttpClient()
+    request = Request(
+        url="https://example.com/original",
+        meta={
+            "_silkworm_mock_response": {
+                "url": "https://example.com/synthetic",
+                "status": 202,
+                "headers": {"Content-Type": "application/json"},
+                "body": '{"ok": true}',
+            }
+        },
+    )
+
+    response = await client.fetch(request)
+
+    assert response.url == "https://example.com/synthetic"
+    assert response.status == 202
+    assert response.text == '{"ok": true}'
 
 
 async def test_retry_middleware_returns_retry_request(monkeypatch: pytest.MonkeyPatch):
@@ -728,3 +754,136 @@ def test_proxy_middleware_validation_errors(tmp_path):
     # Empty proxies list should raise error
     with pytest.raises(ValueError, match="requires at least one proxy"):
         ProxyMiddleware(proxies=[])
+
+
+async def test_cloudflare_crawl_middleware_passthrough_without_meta():
+    middleware = CloudflareCrawlMiddleware(account_id="acct", api_token="token")
+    request = Request(url="https://example.com")
+
+    result = await middleware.process_request(request, Spider())
+
+    assert result is request
+
+
+async def test_cloudflare_crawl_middleware_builds_synthetic_response(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    middleware = CloudflareCrawlMiddleware(
+        account_id="acct",
+        api_token="token",
+        crawl_options={"limit": 5},
+    )
+    request = Request(
+        url="https://example.com",
+        meta={"cloudflare_crawl": {"depth": 2}},
+    )
+
+    async def fake_run_crawl(
+        url: str,
+        crawl_settings: dict[str, Any],
+    ) -> dict[str, Any]:
+        assert url == "https://example.com"
+        assert crawl_settings == {"limit": 5, "depth": 2}
+        return {
+            "success": True,
+            "result": {
+                "status": "completed",
+                "pages": [{"url": "https://example.com", "markdown": "# Home"}],
+            },
+        }
+
+    monkeypatch.setattr(middleware, "_run_crawl", fake_run_crawl)
+
+    processed = await middleware.process_request(request, Spider())
+
+    mock_response = processed.meta["_silkworm_mock_response"]
+    assert isinstance(mock_response, dict)
+    assert processed.meta["_cloudflare_crawl_applied"] is True
+    assert mock_response["status"] == 200
+    assert mock_response["headers"]["x-silkworm-source"] == "cloudflare-crawl"
+
+    payload = json.loads(str(mock_response["body"]))
+    assert payload["result"]["pages"][0]["url"] == "https://example.com"
+
+
+async def test_cloudflare_crawl_middleware_polls_until_completion(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    middleware = CloudflareCrawlMiddleware(
+        account_id="acct",
+        api_token="token",
+        poll_interval=0.1,
+        timeout=1.0,
+    )
+    sleep_calls: list[float] = []
+    responses = iter(
+        [
+            {"success": True, "result": {"job_id": "job-1"}},
+            {"success": True, "result": {"status": "running"}},
+            {
+                "success": True,
+                "result": {"status": "completed", "pages": [{"url": "https://a"}]},
+            },
+        ]
+    )
+
+    async def fake_api_request(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        return next(responses)
+
+    async def fake_sleep(delay: float) -> None:
+        sleep_calls.append(delay)
+
+    monkeypatch.setattr(middleware, "_api_request", fake_api_request)
+    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+
+    payload = await middleware._run_crawl("https://example.com", {})
+
+    assert payload["result"]["status"] == "completed"
+    assert sleep_calls == [0.1]
+
+
+async def test_cloudflare_crawl_middleware_runs_inside_engine(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    class CrawlSpider(Spider):
+        name = "cloudflare-crawl"
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.payload: dict[str, Any] | None = None
+
+        async def start_requests(self):
+            yield Request(
+                url="https://example.com",
+                callback=self.parse,
+                meta={"cloudflare_crawl": True},
+            )
+
+        async def parse(self, response: Response):
+            self.payload = json.loads(response.text)
+            return None
+
+    spider = CrawlSpider()
+    middleware = CloudflareCrawlMiddleware(account_id="acct", api_token="token")
+
+    async def fake_run_crawl(
+        url: str,
+        crawl_settings: dict[str, Any],
+    ) -> dict[str, Any]:
+        assert url == "https://example.com"
+        assert crawl_settings == {}
+        return {
+            "success": True,
+            "result": {
+                "status": "completed",
+                "pages": [{"url": "https://example.com/about"}],
+            },
+        }
+
+    monkeypatch.setattr(middleware, "_run_crawl", fake_run_crawl)
+
+    engine = Engine(spider, concurrency=1, request_middlewares=[middleware])
+    await engine.run()
+
+    assert spider.payload is not None
+    assert spider.payload["result"]["pages"][0]["url"] == "https://example.com/about"

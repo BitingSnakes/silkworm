@@ -11,7 +11,7 @@ Async-first web scraping framework built on [rnet](https://github.com/0x676e67/r
 - Async engine with configurable concurrency, bounded queue backpressure (defaults to `concurrency * 10`), and per-request timeouts.
 - rnet-powered HTTP client: browser impersonation, redirect following with loop detection, query merging, and proxy support via `request.meta["proxy"]`.
 - Typed spiders and callbacks that can return items or `Request` objects; `HTMLResponse` ships helper methods plus `Response.follow` to reuse callbacks.
-- Middlewares: User-Agent rotation/default, proxy rotation, retry with exponential backoff + optional sleep codes, flexible delays (fixed/random/custom), and `SkipNonHTMLMiddleware` to drop non-HTML callbacks.
+- Middlewares: User-Agent rotation/default, proxy rotation, retry with exponential backoff + optional sleep codes, flexible delays (fixed/random/custom), `SkipNonHTMLMiddleware` to drop non-HTML callbacks, and `CloudflareCrawlMiddleware` for Browser Rendering crawl jobs.
 - Pipelines: JSON Lines, SQLite, XML (nested data preserved), and CSV (flattens dicts and lists) out of the box.
 - Structured logging via `logly` (`SILKWORM_LOG_LEVEL=DEBUG`), plus periodic/final crawl statistics (requests/sec, queue size, memory, seen URLs).
 
@@ -111,6 +111,7 @@ if __name__ == "__main__":
 
 ```python
 from silkworm.middlewares import (
+    CloudflareCrawlMiddleware,
     DelayMiddleware,
     ProxyMiddleware,
     RetryMiddleware,
@@ -179,6 +180,7 @@ run_spider(
   - **From file**: `ProxyMiddleware(proxy_file="proxies.txt")` loads proxies from a file (one proxy per line, blank lines ignored). Combine with `random_selection=True` for random selection from the file.
 - `RetryMiddleware` backs off with `asyncio.sleep`; any status in `sleep_http_codes` is retried even if not in `retry_http_codes`.
 - `SkipNonHTMLMiddleware` checks `Content-Type` and optionally sniffs the body (`sniff_bytes`) to avoid running HTML callbacks on binary/API responses.
+- `CloudflareCrawlMiddleware` is opt-in per request via `request.meta["cloudflare_crawl"]`; it submits a Cloudflare Browser Rendering crawl job, polls until completion, and hands your callback a synthetic JSON `Response` with the final API payload.
 - `JsonLinesPipeline` writes items to a local JSON Lines file and, when `opendal` is installed, appends asynchronously via the filesystem backend (`use_opendal=False` to stick to a regular file handle).
 - `CSVPipeline` flattens nested dicts (e.g., `{"user": {"name": "Alice"}}` -> `user_name`) and joins lists with commas; `XMLPipeline` preserves nesting.
 - `MsgPackPipeline` writes items in binary MessagePack format using [ormsgpack](https://github.com/aviramha/ormsgpack) for fast and compact serialization (requires `pip install silkworm-rs[msgpack]`).
