@@ -12,12 +12,12 @@ from ._types import JSONValue
 from .exceptions import HttpError
 from .http import HttpClient, MOCK_RESPONSE_META_KEY
 from .logging import get_logger
+from .request import Request
 from .response import HTMLResponse, Response
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable, Sequence
 
-    from .request import Request
     from .spiders import Spider
 
 
@@ -451,7 +451,15 @@ class CloudflareCrawlMiddleware:
         )
         job_id = self._extract_job_id(submission)
         if job_id is None:
-            return submission
+            state = self._extract_job_state(submission)
+            if state in self._DONE_STATES:
+                return submission
+
+            msg = (
+                "Cloudflare crawl submission did not include a recognizable job ID. "
+                f"Response keys: {sorted(submission.keys())}"
+            )
+            raise HttpError(msg)
 
         deadline = time.monotonic() + self.timeout
         while True:
@@ -512,30 +520,47 @@ class CloudflareCrawlMiddleware:
         return payload
 
     def _extract_job_id(self, payload: Mapping[str, JSONValue]) -> str | None:
-        candidates = [payload]
+        candidates = self._mapping_candidates(payload)
+        candidates.extend(self._mapping_candidates(payload.get("job")))
         result = payload.get("result")
+        if isinstance(result, str) and result:
+            return result
+        if isinstance(result, (int, float)):
+            return str(result)
         if isinstance(result, Mapping):
             candidates.append(result)
+            candidates.extend(self._mapping_candidates(result.get("job")))
 
         for candidate in candidates:
             for key in ("job_id", "jobId", "id"):
                 value = candidate.get(key)
                 if isinstance(value, str) and value:
                     return value
+                if isinstance(value, (int, float)):
+                    return str(value)
         return None
 
     def _extract_job_state(self, payload: Mapping[str, JSONValue]) -> str:
+        candidates = self._mapping_candidates(payload)
         result = payload.get("result")
-        candidates: list[Mapping[str, JSONValue]] = [payload]
         if isinstance(result, Mapping):
             candidates.append(result)
-            state_obj = result.get("state")
-            if isinstance(state_obj, Mapping):
-                candidates.append(state_obj)
+            candidates.extend(self._mapping_candidates(result.get("state")))
+            candidates.extend(self._mapping_candidates(result.get("job")))
+        candidates.extend(self._mapping_candidates(payload.get("state")))
+        candidates.extend(self._mapping_candidates(payload.get("job")))
 
         for candidate in candidates:
             for key in ("status", "state"):
                 value = candidate.get(key)
                 if isinstance(value, str) and value:
                     return value.lower()
-        return "completed" if self._extract_job_id(payload) is None else "pending"
+        return "pending" if self._extract_job_id(payload) is not None else "completed"
+
+    def _mapping_candidates(
+        self,
+        value: JSONValue | None,
+    ) -> list[Mapping[str, JSONValue]]:
+        if isinstance(value, Mapping):
+            return [value]
+        return []

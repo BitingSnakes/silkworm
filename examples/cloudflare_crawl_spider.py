@@ -40,16 +40,24 @@ class CloudflareCrawlSpider(Spider):
 
     async def parse(self, response: Response):
         payload = json.loads(response.text)
-        result = payload.get("result")
-        if not isinstance(result, Mapping):
+        result = self._extract_result(payload)
+        if result is None:
             self.log.warning(
-                "Cloudflare crawl payload missing result", url=response.url
+                "Cloudflare crawl payload missing result",
+                url=response.url,
+                payload_keys=sorted(payload.keys())
+                if isinstance(payload, dict)
+                else None,
             )
             return
 
         pages = result.get("pages")
         if not isinstance(pages, list):
-            self.log.warning("Cloudflare crawl payload missing pages", url=response.url)
+            self.log.warning(
+                "Cloudflare crawl payload missing pages",
+                url=response.url,
+                result_keys=sorted(result.keys()),
+            )
             return
 
         self.log.info(
@@ -62,6 +70,24 @@ class CloudflareCrawlSpider(Spider):
             if not isinstance(page, Mapping):
                 continue
             yield dict(page)
+
+    def _extract_result(self, payload: object) -> Mapping[str, Any] | None:
+        if not isinstance(payload, dict):
+            return None
+
+        result = payload.get("result")
+        if isinstance(result, Mapping):
+            return result
+
+        pages = payload.get("pages")
+        if isinstance(pages, list):
+            return payload
+
+        job = payload.get("job")
+        if isinstance(job, Mapping):
+            return job
+
+        return None
 
 
 def parse_args() -> argparse.Namespace:
