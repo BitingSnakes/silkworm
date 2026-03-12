@@ -1,13 +1,14 @@
 from __future__ import annotations
+
 import asyncio
 import inspect
-from datetime import timedelta
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import asynccontextmanager
+from datetime import timedelta
 from typing import TYPE_CHECKING, Any, AsyncIterator, cast
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit
 
-from rnet import Client, Emulation, Method  # type: ignore[import]
+from rnet import Client, Emulation, Method, Proxy  # type: ignore[import]
 
 from .exceptions import HttpError
 from .logging import get_logger
@@ -65,7 +66,7 @@ class HttpClient:
         return self._html_max_size_bytes
 
     async def fetch(self, req: Request) -> Response:
-        proxy = req.meta.get("proxy")
+        proxy = self._normalize_proxy(req.meta.get("proxy"))
         current_req = req
         redirects_followed = 0
         visited_urls: set[str] = set()
@@ -276,6 +277,17 @@ class HttpClient:
             return bytes(data)  # type: ignore[call-overload]
         except Exception:
             return str(data).encode("utf-8", errors="replace")
+
+    def _normalize_proxy(self, proxy: object) -> Proxy | None:
+        if proxy is None:
+            return None
+        if isinstance(proxy, Proxy):
+            return proxy
+        if isinstance(proxy, str):
+            return Proxy.all(proxy)
+
+        msg = f"Unsupported proxy type: {type(proxy).__name__}"
+        raise TypeError(msg)
 
     def _has_connection_header(self, headers: Mapping[str, object]) -> bool:
         return any(str(k).lower() == "connection" for k in headers)

@@ -208,6 +208,24 @@ async def test_httpclient_follows_redirects():
     assert client._client.calls[1][1] == "http://example.com/next"
 
 
+async def test_httpclient_converts_string_proxy_to_rnet_proxy():
+    client = HttpClient()
+    client._client = _RecordingClient()  # type: ignore[assignment]
+
+    await client.fetch(
+        Request(
+            url="http://example.com",
+            meta={"proxy": "http://proxy.example:8080"},
+        )
+    )
+
+    proxy = client._client.calls[0][2]["proxy"]
+
+    assert proxy.__class__.__name__ in {"_DummyProxy", "Proxy"}
+    assert not isinstance(proxy, str)
+    assert "proxy.example:8080" in str(proxy)
+
+
 async def test_httpclient_detects_redirect_loops():
     from silkworm.exceptions import HttpError
 

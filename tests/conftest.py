@@ -70,6 +70,28 @@ class _DummyMethod:
     DELETE = "DELETE"
 
 
+class _DummyProxy:
+    def __init__(self, url: str, *, scheme: str = "all") -> None:
+        self.url = url
+        self.scheme = scheme
+
+    @staticmethod
+    def all(url: str, **_: Any) -> "_DummyProxy":
+        return _DummyProxy(url, scheme="all")
+
+    @staticmethod
+    def http(url: str, **_: Any) -> "_DummyProxy":
+        return _DummyProxy(url, scheme="http")
+
+    @staticmethod
+    def https(url: str, **_: Any) -> "_DummyProxy":
+        return _DummyProxy(url, scheme="https")
+
+    @staticmethod
+    def unix(path: str, **_: Any) -> "_DummyProxy":
+        return _DummyProxy(path, scheme="unix")
+
+
 def _mock_document(html: str, *, max_size_bytes: int | None = None) -> Mock:
     doc = Mock()
     doc.html = html
@@ -111,6 +133,7 @@ rnet_module: Any = types.ModuleType("rnet")
 rnet_module.Client = _build_client
 rnet_module.Emulation = _DummyEmulation
 rnet_module.Method = _DummyMethod
+rnet_module.Proxy = _DummyProxy
 
 rxml_module: Any = types.ModuleType("rxml")
 rxml_module.Node = _DummyRxmlNode

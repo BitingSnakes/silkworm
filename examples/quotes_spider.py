@@ -6,7 +6,7 @@ from silkworm import HTMLResponse, Response, Spider, run_spider
 from silkworm.logging import get_logger
 from silkworm.middlewares import (
     # DelayMiddleware,
-    # ProxyMiddleware,
+    ProxyMiddleware,
     RequestMiddleware,
     ResponseMiddleware,
     RetryMiddleware,
@@ -88,18 +88,21 @@ class QuotesSpider(Spider):
 
 
 if __name__ == "__main__":
-    request_mw: list[RequestMiddleware] = [
-        UserAgentMiddleware(),
-        # ProxyMiddleware with round-robin selection (default)
-        # ProxyMiddleware(proxies=["http://user:pass@proxy1:8080", "http://proxy2:8080"]),
-        # ProxyMiddleware with random selection
-        # ProxyMiddleware(proxies=["http://proxy1:8080", "http://proxy2:8080"], random_selection=True),
-        # ProxyMiddleware from file with random selection
-        # ProxyMiddleware(proxy_file="proxies.txt", random_selection=True),
-        # Add delay between requests to be polite to the server
-        # DelayMiddleware(delay=0.5),  # Fixed 0.5s delay
-        # DelayMiddleware(min_delay=0.3, max_delay=1.0),  # Random delay
-    ]
+    request_mw: list[RequestMiddleware] = [UserAgentMiddleware()]
+    proxy_urls: list[str] = []
+    if proxy_urls:
+        request_mw.append(ProxyMiddleware(proxies=proxy_urls))
+    # Other proxy examples:
+    # request_mw.append(
+    #     ProxyMiddleware(
+    #         proxies=["http://proxy1:8080", "http://proxy2:8080"],
+    #         random_selection=True,
+    #     )
+    # )
+    # request_mw.append(ProxyMiddleware(proxy_file="proxies.txt", random_selection=True))
+    # Add delay between requests to be polite to the server.
+    # request_mw.append(DelayMiddleware(delay=0.5))  # Fixed 0.5s delay
+    # request_mw.append(DelayMiddleware(min_delay=0.3, max_delay=1.0))  # Random delay
     response_mw: list[ResponseMiddleware] = [
         RetryMiddleware(max_times=3),
     ]
