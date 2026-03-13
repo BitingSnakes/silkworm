@@ -106,6 +106,30 @@ class Engine:
             req = await mw.process_request(req, self.spider)
         return req
 
+    async def _handle_request_exception(
+        self,
+        req: Request,
+        exc: Exception,
+    ) -> bool:
+        for mw in self.request_middlewares:
+            process_exception = getattr(mw, "process_exception", None)
+            if process_exception is None:
+                continue
+
+            retry_request = await process_exception(req, exc, self.spider)
+            if not isinstance(retry_request, Request):
+                continue
+
+            self.logger.debug(
+                "Retrying request from request middleware",
+                url=retry_request.url,
+                middleware=mw.__class__.__name__,
+            )
+            await self._enqueue(retry_request)
+            return True
+
+        return False
+
     async def _enqueue(self, req: Request) -> None:
         if not req.dont_filter:
             if req.url in self._seen:
@@ -146,6 +170,9 @@ class Engine:
                 )
                 await self._handle_response(resp)
             except Exception as exc:
+                if await self._handle_request_exception(req, exc):
+                    continue
+
                 self._stats["errors"] += 1
                 cause = exc.__cause__ or exc.__context__
                 error_context = {

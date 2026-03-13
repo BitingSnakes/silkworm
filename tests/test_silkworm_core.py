@@ -10,6 +10,7 @@ from silkworm.engine import Engine
 from silkworm.middlewares import (
     CloudflareCrawlMiddleware,
     DelayMiddleware,
+    ProxyMiddleware,
     RetryMiddleware,
 )
 from silkworm.request import Request
@@ -703,8 +704,6 @@ async def test_proxy_middleware_from_file(tmp_path):
 
 
 async def test_proxy_middleware_from_file_with_random_selection(tmp_path):
-    from silkworm.middlewares import ProxyMiddleware
-
     # Create a temporary proxy file
     proxy_file = tmp_path / "proxies.txt"
     proxy_file.write_text(
@@ -727,8 +726,6 @@ async def test_proxy_middleware_from_file_with_random_selection(tmp_path):
 
 
 def test_proxy_middleware_validation_errors(tmp_path):
-    from silkworm.middlewares import ProxyMiddleware
-
     # Must provide either proxies or proxy_file
     with pytest.raises(ValueError, match="Must provide either"):
         ProxyMiddleware()
@@ -754,6 +751,74 @@ def test_proxy_middleware_validation_errors(tmp_path):
     # Empty proxies list should raise error
     with pytest.raises(ValueError, match="requires at least one proxy"):
         ProxyMiddleware(proxies=[])
+
+
+async def test_proxy_middleware_rotates_proxy_after_exception():
+    middleware = ProxyMiddleware(
+        proxies=["http://proxy1:8080", "http://proxy2:8080", "http://proxy3:8080"]
+    )
+    request = await middleware.process_request(
+        Request(url="http://example.com"), Spider()
+    )
+
+    retry_request = await middleware.process_exception(
+        request,
+        RuntimeError("proxy connection failed"),
+        Spider(),
+    )
+
+    assert isinstance(retry_request, Request)
+    assert retry_request.dont_filter is True
+    assert retry_request.meta["proxy"] == "http://proxy2:8080"
+    assert retry_request.meta["_proxy_failed_proxies"] == ["http://proxy1:8080"]
+    assert retry_request.meta["_proxy_retry_times"] == 1
+
+
+async def test_engine_retries_failed_request_with_another_proxy():
+    class DummySpider(Spider):
+        name = "proxy-retry"
+
+        async def start_requests(self):
+            yield Request(url="http://example.com", callback=self.parse)
+
+        async def parse(self, response: Response):
+            yield {"status": response.status}
+
+    proxy_middleware = ProxyMiddleware(
+        proxies=["http://proxy1:8080", "http://proxy2:8080", "http://proxy3:8080"]
+    )
+    engine = Engine(
+        DummySpider(),
+        concurrency=1,
+        request_middlewares=[proxy_middleware],
+    )
+
+    seen_proxies: list[str] = []
+    scraped_items: list[dict[str, int]] = []
+
+    async def fake_process_item(item: Any) -> None:
+        assert isinstance(item, dict)
+        scraped_items.append(item)
+
+    async def fake_fetch(req: Request) -> Response:
+        proxy = req.meta.get("proxy")
+        assert isinstance(proxy, str)
+        seen_proxies.append(proxy)
+        if len(seen_proxies) < 3:
+            raise RuntimeError(f"Proxy failed for {req.url}")
+        return Response(url=req.url, status=200, headers={}, body=b"ok", request=req)
+
+    engine.http.fetch = fake_fetch  # type: ignore[assignment]
+    engine._process_item = fake_process_item  # type: ignore[method-assign]
+
+    await engine.run()
+
+    assert seen_proxies == [
+        "http://proxy1:8080",
+        "http://proxy2:8080",
+        "http://proxy3:8080",
+    ]
+    assert scraped_items == [{"status": 200}]
 
 
 async def test_cloudflare_crawl_middleware_passthrough_without_meta():
