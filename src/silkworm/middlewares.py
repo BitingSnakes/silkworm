@@ -136,7 +136,8 @@ class ProxyMiddleware:
             dont_filter=True,
         )
         retry_request.meta["proxy"] = next_proxy
-        retry_request.meta[self._FAILED_PROXIES_META_KEY] = failed_proxies
+        failed_proxies_meta: list[JSONValue] = [proxy for proxy in failed_proxies]
+        retry_request.meta[self._FAILED_PROXIES_META_KEY] = failed_proxies_meta
 
         retry_raw = retry_request.meta.get(self._PROXY_RETRY_TIMES_META_KEY, 0)
         retry_times = retry_raw if isinstance(retry_raw, int) else 0
@@ -638,7 +639,7 @@ class CloudflareCrawlMiddleware:
 
     def _mapping_candidates(
         self,
-        value: JSONValue | None,
+        value: Mapping[str, JSONValue] | JSONValue | None,
     ) -> list[Mapping[str, JSONValue]]:
         if isinstance(value, Mapping):
             return [value]
