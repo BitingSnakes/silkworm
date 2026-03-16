@@ -136,6 +136,52 @@ async def test_htmlresponse_css_aliases_select(monkeypatch: pytest.MonkeyPatch):
     assert first is first_link
 
 
+async def test_htmlresponse_find_aliases_select_first(monkeypatch: pytest.MonkeyPatch):
+    req = Request(url="http://example.com")
+    resp = HTMLResponse(
+        url=req.url,
+        status=200,
+        headers={},
+        body=b"<html></html>",
+        request=req,
+    )
+
+    found_link = object()
+    select_first_mock = AsyncMock(return_value=found_link)
+    monkeypatch.setattr(response_module, "select_first_async", select_first_mock)
+
+    found = await resp.find("a")
+
+    assert found is found_link
+    select_first_mock.assert_awaited_once_with(
+        resp.text,
+        "a",
+        max_size_bytes=resp.doc_max_size_bytes,
+    )
+
+
+async def test_htmlresponse_prettify_uses_scraper_rs(monkeypatch: pytest.MonkeyPatch):
+    req = Request(url="http://example.com")
+    resp = HTMLResponse(
+        url=req.url,
+        status=200,
+        headers={},
+        body=b"<html></html>",
+        request=req,
+    )
+
+    prettify_mock = AsyncMock(return_value="<html>\n  <body></body>\n</html>")
+    monkeypatch.setattr(response_module, "prettify_async", prettify_mock)
+
+    pretty = await resp.prettify()
+
+    assert pretty == "<html>\n  <body></body>\n</html>"
+    prettify_mock.assert_awaited_once_with(
+        resp.text,
+        max_size_bytes=resp.doc_max_size_bytes,
+    )
+
+
 def test_htmlresponse_url_join_resolves_relative_url():
     req = Request(url="http://example.com/dir/page")
     resp = HTMLResponse(url=req.url, status=200, headers={}, body=b"", request=req)

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, override
 from urllib.parse import urljoin
 
 from scraper_rs.asyncio import (  # type: ignore[import-untyped]
+    prettify as prettify_async,
     select as select_async,
     select_first as select_first_async,
     xpath as xpath_async,
@@ -328,6 +329,28 @@ class Response:
 class HTMLResponse(Response):
     doc_max_size_bytes: int = 5_000_000
 
+    async def _run_document_op[T](
+        self,
+        func: Callable[..., Awaitable[T]],
+        *args: object,
+        kind: str,
+        label: str | None = None,
+    ) -> T:
+        try:
+            return await func(*args, max_size_bytes=self.doc_max_size_bytes)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            detail = str(exc)
+            suffix = f": {detail}" if detail else ""
+            if label is None:
+                raise SelectorError(
+                    f"{kind} failed for {self.url}{suffix}",
+                ) from exc
+            raise SelectorError(
+                f"{kind} '{label}' failed for {self.url}{suffix}",
+            ) from exc
+
     async def _run_selector[T](
         self,
         func: Callable[..., Awaitable[T]],
@@ -335,23 +358,23 @@ class HTMLResponse(Response):
         *,
         kind: str,
     ) -> T:
-        try:
-            return await func(self.text, query, max_size_bytes=self.doc_max_size_bytes)
-        except asyncio.CancelledError:
-            raise
-        except Exception as exc:
-            label = query if len(query) <= 120 else f"{query[:120]}...(truncated)"
-            detail = str(exc)
-            suffix = f": {detail}" if detail else ""
-            raise SelectorError(
-                f"{kind} selector '{label}' failed for {self.url}{suffix}",
-            ) from exc
+        label = query if len(query) <= 120 else f"{query[:120]}...(truncated)"
+        return await self._run_document_op(
+            func,
+            self.text,
+            query,
+            kind=f"{kind} selector",
+            label=label,
+        )
 
     async def select(self, selector: str) -> list[AsyncElement]:
         return await self._run_selector(select_async, selector, kind="CSS")
 
     async def select_first(self, selector: str) -> AsyncElement | None:
         return await self._run_selector(select_first_async, selector, kind="CSS")
+
+    async def find(self, selector: str) -> AsyncElement | None:
+        return await self.select_first(selector)
 
     async def css(self, selector: str) -> list[AsyncElement]:
         return await self.select(selector)
@@ -364,6 +387,13 @@ class HTMLResponse(Response):
 
     async def xpath_first(self, xpath: str) -> AsyncElement | None:
         return await self._run_selector(xpath_first_async, xpath, kind="XPath")
+
+    async def prettify(self) -> str:
+        return await self._run_document_op(
+            prettify_async,
+            self.text,
+            kind="HTML prettify",
+        )
 
     @override
     def follow(
