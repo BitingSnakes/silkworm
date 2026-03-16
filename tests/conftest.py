@@ -75,6 +75,9 @@ class _DummyProxy:
         self.url = url
         self.scheme = scheme
 
+    def __repr__(self) -> str:
+        return f"_DummyProxy(url={self.url!r}, scheme={self.scheme!r})"
+
     @staticmethod
     def all(url: str, **_: Any) -> "_DummyProxy":
         return _DummyProxy(url, scheme="all")
@@ -95,13 +98,43 @@ class _DummyProxy:
 def _mock_document(html: str, *, max_size_bytes: int | None = None) -> Mock:
     doc = Mock()
     doc.html = html
+    doc.text = html
     doc.max_size_bytes = max_size_bytes
     doc.closed = False
     doc.select.side_effect = lambda selector: [f"{selector}-match"]
+    doc.select_first.side_effect = lambda selector: f"{selector}-first"
     doc.find.side_effect = lambda selector: f"{selector}-first"
+    doc.css.side_effect = lambda selector: [f"{selector}-match"]
     doc.xpath.side_effect = lambda xpath: [f"{xpath}-match"]
     doc.xpath_first.side_effect = lambda xpath: f"{xpath}-first"
+    doc.prettify.side_effect = lambda: html
     doc.close.side_effect = lambda: setattr(doc, "closed", True)
+    return doc
+
+
+def _mock_async_document(
+    html: str,
+    *,
+    max_size_bytes: int | None = None,
+    truncate_on_limit: bool = False,  # noqa: ARG001
+) -> Mock:
+    doc = Mock()
+    doc.html = html
+    doc.text = html
+    doc.max_size_bytes = max_size_bytes
+    doc.closed = False
+    doc.select = AsyncMock(return_value=[])
+    doc.select_first = AsyncMock(return_value=None)
+    doc.find = AsyncMock(return_value=None)
+    doc.css = AsyncMock(return_value=[])
+    doc.xpath = AsyncMock(return_value=[])
+    doc.xpath_first = AsyncMock(return_value=None)
+    doc.prettify = AsyncMock(return_value=html)
+    doc.close = Mock(side_effect=lambda: setattr(doc, "closed", True))
+    doc.__enter__ = Mock(return_value=doc)
+    doc.__exit__ = Mock(return_value=None)
+    doc.__aenter__ = AsyncMock(return_value=doc)
+    doc.__aexit__ = AsyncMock(return_value=None)
     return doc
 
 
@@ -143,11 +176,14 @@ scraper_module: Any = types.ModuleType("scraper_rs")
 scraper_module.__path__ = []  # Allow importing submodules from the mock package.
 scraper_module.Document = Mock(side_effect=_mock_document)
 scraper_asyncio_module: Any = types.ModuleType("scraper_rs.asyncio")
-scraper_asyncio_module.Document = scraper_module.Document
+scraper_asyncio_module.Document = Mock(side_effect=_mock_async_document)
+scraper_asyncio_module.parse = AsyncMock(side_effect=_mock_async_document)
 scraper_asyncio_module.select = AsyncMock(return_value=[])
 scraper_asyncio_module.select_first = AsyncMock(return_value=None)
+scraper_asyncio_module.first = scraper_asyncio_module.select_first
 scraper_asyncio_module.xpath = AsyncMock(return_value=[])
 scraper_asyncio_module.xpath_first = AsyncMock(return_value=None)
+scraper_asyncio_module.prettify = AsyncMock(side_effect=lambda html, **_: html)
 
 sys.modules.update(
     {

@@ -1,10 +1,12 @@
 from datetime import timedelta
 import json
+from unittest.mock import AsyncMock
 from urllib.parse import parse_qsl, urlsplit
 from typing import Any
 
 import pytest
 
+import silkworm.response as response_module
 from silkworm.http import HttpClient
 from silkworm.engine import Engine
 from silkworm.middlewares import (
@@ -105,30 +107,33 @@ def test_response_follow_all_joins_urls_and_uses_callback():
     assert all(req.callback is callback for req in next_reqs)
 
 
-async def test_htmlresponse_css_aliases_select():
-    html = """
-    <html>
-        <body>
-            <a href="/a">First</a>
-            <a href="/b">Second</a>
-        </body>
-    </html>
-    """
+async def test_htmlresponse_css_aliases_select(monkeypatch: pytest.MonkeyPatch):
     req = Request(url="http://example.com")
     resp = HTMLResponse(
         url=req.url,
         status=200,
         headers={},
-        body=html.encode("utf-8"),
+        body=b"<html></html>",
         request=req,
+    )
+
+    first_link = object()
+    monkeypatch.setattr(
+        response_module,
+        "select_async",
+        AsyncMock(return_value=["first", "second"]),
+    )
+    monkeypatch.setattr(
+        response_module,
+        "select_first_async",
+        AsyncMock(return_value=first_link),
     )
 
     links = await resp.css("a")
     first = await resp.css_first("a")
 
     assert len(links) == 2
-    assert first is not None
-    assert first.text.strip() == "First"
+    assert first is first_link
 
 
 def test_htmlresponse_url_join_resolves_relative_url():

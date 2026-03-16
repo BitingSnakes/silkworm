@@ -145,3 +145,6 @@ dev = [
     "twine==6.2.0",
     "testcontainers==4.14.1",
 ]
+
+[tool.pytest.ini_options]
+anyio_mode = "auto"

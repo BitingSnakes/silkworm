@@ -17,8 +17,8 @@ async def fetch_html(
     """
     Fetch HTML from a URL using the rnet HTTP client.
 
-    Returns a tuple of (text, Document) where Document is a scraper_rs Document
-    for CSS/XPath selection.
+    Returns a tuple of (text, Document) where Document is a synchronous
+    scraper_rs Document for CSS/XPath selection.
     """
     client = cast(Any, Client)(emulation=emulation)
     try:
@@ -56,7 +56,7 @@ async def fetch_html_cdp(
         timeout: Optional timeout in seconds
 
     Returns:
-        A tuple of (text, Document) where Document is a scraper_rs Document
+        A tuple of (text, Document) where Document is a synchronous scraper_rs Document
 
     Raises:
         ImportError: If websockets package is not installed
