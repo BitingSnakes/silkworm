@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "silkworm-rs"
-version = "0.3.5"
+version = "0.3.6"
 description = "Async-first web scraping framework built on rnet and scraper-rs"
 authors = [
   { name = "Yehor Smoliakov", email = "egorsmkv@gmail.com" }
@@ -37,7 +37,7 @@ classifiers = [
 dependencies = [
   "charset-normalizer==3.4.4",
   "rnet==3.0.0rc22",
-  "scraper-rust==0.3.3",
+  "scraper-rust==0.4.0",
   "logly==0.1.6",
   "rxml==2.4.1",
 ]
@@ -81,7 +81,7 @@ s3 = [
   "opendal==0.46.0",
 ]
 vortex = [
-  "vortex-data==0.63.0",
+  "vortex-data==0.64.0",
 ]
 mysql = [
   "aiomysql==0.3.2",

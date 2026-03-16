@@ -2134,18 +2134,18 @@ wheels = [
 
 [[package]]
 name = "scraper-rust"
-version = "0.3.3"
+version = "0.4.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/25/5b/9052f3eadcce04f1975a69e5e02e1b8c9e157a458d783972f9511e3f4fcd/scraper_rust-0.3.3.tar.gz", hash = "sha256:88753702f97901fb1586b1b4d16c9f3a06b93b07e2b4ebe52ab14e3ee147f591", size = 80358, upload-time = "2026-03-12T19:39:55.335Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8f/c0/12d62af764e5808369424bbb29a69022419e20f43f5cc320992a03ba2a77/scraper_rust-0.4.0.tar.gz", hash = "sha256:2b91d080d52ad5e00a15ecdfa89fdb4a944d08869e947684949f81ac131b59c2", size = 81421, upload-time = "2026-03-16T16:35:43.403Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/00/30/87350a03f4628f26f404b857fad5a600c48ac22c1aa089f8d82a23ddc98d/scraper_rust-0.3.3-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:9ce1cb721f3b018734ac4975b20340127c72827937e96bf515959bcebbb42db7", size = 2189395, upload-time = "2026-03-12T19:39:40.704Z" },
-    { url = "https://files.pythonhosted.org/packages/ff/cd/66c105b2c0ed2ded40cc3b9677f053e4faf27faf66e6eef6a4c5b8c99da1/scraper_rust-0.3.3-cp310-abi3-win_amd64.whl", hash = "sha256:cb79c1b5289592a7bdf8ddf81937760605475e1b6d7910f7d3034c9b884bdc64", size = 2243602, upload-time = "2026-03-12T19:39:42.604Z" },
-    { url = "https://files.pythonhosted.org/packages/aa/f8/4a546073deabf010a0f1cfa0ddb98a5ec1b36b8853f6a983cae3f2a2ae27/scraper_rust-0.3.3-cp313-cp313t-macosx_11_0_arm64.whl", hash = "sha256:d6f5e393bb398b180b2292b797819ce9d4a39944c4897d4c63c79cb19f848748", size = 2184906, upload-time = "2026-03-12T19:39:44.311Z" },
-    { url = "https://files.pythonhosted.org/packages/3a/dc/4c4a38e562624582337f14e47a8574e1690ee918eb73156b97cfa1a1cc0a/scraper_rust-0.3.3-cp313-cp313t-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c47128f0a74cd4a17d65b37fe82478ec275b32e059eb76ae4c664c1a9ad658e8", size = 2479206, upload-time = "2026-03-12T19:39:45.903Z" },
-    { url = "https://files.pythonhosted.org/packages/9e/2c/f6ecf7cdb2359d00f7dbf2f2db42b6542b6dbf7a75a04f32dc87805d134b/scraper_rust-0.3.3-cp313-cp313t-win_amd64.whl", hash = "sha256:8a68ed4cbbe9c9e63592ec78f94b83b13eb6e169cf0b84144052431a904b7663", size = 2244178, upload-time = "2026-03-12T19:39:47.5Z" },
-    { url = "https://files.pythonhosted.org/packages/9e/4a/e037f5b76f4cf100d2517b9373cdf5ff833641d69f378dac38ab8810ee9b/scraper_rust-0.3.3-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:d05ce4174e7cddbafe091532bc19b90a4539d3fea681fc024b07a01c4b057b40", size = 2185146, upload-time = "2026-03-12T19:39:49.195Z" },
-    { url = "https://files.pythonhosted.org/packages/df/67/4feb4986c2494c0bc23fed0e33fe05c86e12c4ffaf76efc287bd052211ed/scraper_rust-0.3.3-cp314-cp314t-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:1d89bc48f2cdfd5c62e314228305b4233cc3f7f6c8bd59494c5a3ab1bc5f6b4b", size = 2475149, upload-time = "2026-03-12T19:39:50.685Z" },
-    { url = "https://files.pythonhosted.org/packages/33/d7/b9eabadf208d6ad199dfed59865ad700c4e0576c176973ef59e2985a1dfc/scraper_rust-0.3.3-cp314-cp314t-win_amd64.whl", hash = "sha256:94ee5dde3ca5cda832341144899220c6175eb662c93f798ccd15dc60bbbd6360", size = 2241307, upload-time = "2026-03-12T19:39:52.337Z" },
+    { url = "https://files.pythonhosted.org/packages/39/8e/109273b89d7e8c747c7e4d317ea5abc18e066d96fa5aec89ac2c6131bf0c/scraper_rust-0.4.0-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:0af93b9b05ca0d26151a8835f171644e6c587d45572f0b22c2639695448aea28", size = 2228987, upload-time = "2026-03-16T16:35:28.872Z" },
+    { url = "https://files.pythonhosted.org/packages/13/2b/9667771a2d168a4056894f9e8a826ddd181033273e09e26679b8122155bd/scraper_rust-0.4.0-cp310-abi3-win_amd64.whl", hash = "sha256:3cad93d9f6412dbe31d0fd29e96d57d692d02bbe876b9957fca183e16da8ff65", size = 2294782, upload-time = "2026-03-16T16:35:30.432Z" },
+    { url = "https://files.pythonhosted.org/packages/1e/ef/7f022edcb2473be1b6ee5a2e71ea33e6669dd22bfbf426a680031d16bb43/scraper_rust-0.4.0-cp313-cp313t-macosx_11_0_arm64.whl", hash = "sha256:82e22c9179aa07e00c2bac5464ad7a0730d3b411c53350104b88aae445747b2e", size = 2226247, upload-time = "2026-03-16T16:35:31.92Z" },
+    { url = "https://files.pythonhosted.org/packages/34/60/fc61714b03e3e7ec5c4a59f415f23315fe989b228a080b298ef3afa3df7b/scraper_rust-0.4.0-cp313-cp313t-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:fb3687bdf68889e9ef6563413934eb10d70931537b19a31f5f22845a89602d79", size = 2534060, upload-time = "2026-03-16T16:35:33.297Z" },
+    { url = "https://files.pythonhosted.org/packages/df/33/2e82e8fa82208ea1b4414b0e0035a0937a9d3d0880bfc41365c7a3717534/scraper_rust-0.4.0-cp313-cp313t-win_amd64.whl", hash = "sha256:3435eb2c83373e9e951af45d6334582e343f93a7b5cfe24a7f0f777dd26714fb", size = 2295452, upload-time = "2026-03-16T16:35:35.108Z" },
+    { url = "https://files.pythonhosted.org/packages/80/3e/ffbec10a40f5af1da03d07a0a6c8e96d2da200d1294f91964d3727d41505/scraper_rust-0.4.0-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:6485e81e88c97a6b8444aaaf019f9ab0532c269a62231add6204544067eaea7f", size = 2226086, upload-time = "2026-03-16T16:35:36.823Z" },
+    { url = "https://files.pythonhosted.org/packages/3f/c7/b7702934bba86a9006593de9ff947d90b7cfd983b42fbce9b3168e5b0653/scraper_rust-0.4.0-cp314-cp314t-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:55c245568659534eb8faf15958faedcac5adf57e8fc26294024bc0d0b1db6cd3", size = 2529438, upload-time = "2026-03-16T16:35:38.549Z" },
+    { url = "https://files.pythonhosted.org/packages/86/6c/3352ed7f50efaaabb434cfc2df424c5859019c1187a6f17f460d06db391d/scraper_rust-0.4.0-cp314-cp314t-win_amd64.whl", hash = "sha256:b57fee679efa3a7023cdcbd462ad47630c3e4aebf06fd54184a6103047705261", size = 2289630, upload-time = "2026-03-16T16:35:40.317Z" },
 ]
 
 [[package]]
@@ -2163,7 +2163,7 @@ wheels = [
 
 [[package]]
 name = "silkworm-rs"
-version = "0.3.5"
+version = "0.3.6"
 source = { editable = "." }
 dependencies = [
     { name = "charset-normalizer" },
@@ -2290,13 +2290,13 @@ requires-dist = [
     { name = "pyyaml", marker = "extra == 'yaml'", specifier = "==6.0.3" },
     { name = "rnet", specifier = "==3.0.0rc22" },
     { name = "rxml", specifier = "==2.4.1" },
-    { name = "scraper-rust", specifier = "==0.3.3" },
+    { name = "scraper-rust", specifier = "==0.4.0" },
     { name = "snowflake-connector-python", marker = "extra == 'snowflake'", specifier = "==4.3.0" },
     { name = "taskiq", marker = "extra == 'taskiq'", specifier = "==0.12.1" },
     { name = "trio", marker = "extra == 'trio'", specifier = "==0.33.0" },
     { name = "trio-asyncio", marker = "extra == 'trio'", specifier = "==0.15.0" },
     { name = "uvloop", marker = "extra == 'uvloop'", specifier = "==0.22.1" },
-    { name = "vortex-data", marker = "extra == 'vortex'", specifier = "==0.63.0" },
+    { name = "vortex-data", marker = "extra == 'vortex'", specifier = "==0.64.0" },
     { name = "websockets", marker = "extra == 'cdp'", specifier = "==16.0" },
     { name = "winloop", marker = "extra == 'winloop'", specifier = "==0.5.0" },
 ]
@@ -2596,7 +2596,7 @@ wheels = [
 
 [[package]]
 name = "vortex-data"
-version = "0.63.0"
+version = "0.64.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pyarrow" },
@@ -2604,10 +2604,10 @@ dependencies = [
     { name = "typing-extensions" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f7/26/7ba5bd35bf1085d6966eefafd66bb3b163aa9635d524d9d59d45b03b97e8/vortex_data-0.63.0-cp311-abi3-macosx_10_12_x86_64.whl", hash = "sha256:f88fa475cbd678800e56c4bd38e3392d7de456fd7061d589aa22e9efd6f87caf", size = 34550519, upload-time = "2026-03-11T17:29:59.204Z" },
-    { url = "https://files.pythonhosted.org/packages/46/b0/ba0a2731a8196de4b00dbdbb619a0f8168005aaaee25c9d5d8a35f7f67f0/vortex_data-0.63.0-cp311-abi3-macosx_11_0_arm64.whl", hash = "sha256:57f7ec94481dccb84494e53c52bb7173b9f9b8d1f1bc49a087ddc129540c2375", size = 32552169, upload-time = "2026-03-11T17:30:02.683Z" },
-    { url = "https://files.pythonhosted.org/packages/41/ba/2670493f6480ae06f2b9e646a06f5e979f1954ea68b65f4786e7a0b27923/vortex_data-0.63.0-cp311-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:dd32d5b44fd0679f7e945bdf88f4905f499e5994e2a0afcba94f58b0852a5284", size = 30102701, upload-time = "2026-03-11T17:30:06.45Z" },
-    { url = "https://files.pythonhosted.org/packages/cd/12/7132132d965643a6479998d350fd1e10f11719e80b472e32582b41a9c67d/vortex_data-0.63.0-cp311-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a1cc7b8aba98c0f75b16fa0be01ceca85ea3c93495dc0bb3900e885b6b6efbbf", size = 32247788, upload-time = "2026-03-11T17:30:10.364Z" },
+    { url = "https://files.pythonhosted.org/packages/7d/b8/f10d21b087d290fcf09317dc225656a226737f87956fa24f32ca8d0c3e25/vortex_data-0.64.0-cp311-abi3-macosx_10_12_x86_64.whl", hash = "sha256:c577fe47cebc16421a4173ce5016a9cbd2d601d3e0525ddfc221f9dfe8c16115", size = 34562196, upload-time = "2026-03-16T11:11:48.232Z" },
+    { url = "https://files.pythonhosted.org/packages/ef/07/b3907ce9b932d7eeb3ee2b94a71161cd75ebf146fe6b4868074061189f8f/vortex_data-0.64.0-cp311-abi3-macosx_11_0_arm64.whl", hash = "sha256:bb32a08cd37e3e7aa120e57e936c62c28bb76cb2c4a36817bbd081b9a2c2cfff", size = 32565823, upload-time = "2026-03-16T11:11:52.242Z" },
+    { url = "https://files.pythonhosted.org/packages/79/13/9891ae14b8ed990a9b7457a4e22d0b8f1f43c89266ac67fc7ae1397c2d87/vortex_data-0.64.0-cp311-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ff3e5fd7bf8ae2770b201ccc373fd31a6ca72dcd9f1f6f66a3f9c5ab0e73e960", size = 30124504, upload-time = "2026-03-16T11:11:55.929Z" },
+    { url = "https://files.pythonhosted.org/packages/ab/cd/ffa45ff2f4a3816cac629d2f4d1512e1c2f68dcc088ba0e48c8ae59f5030/vortex_data-0.64.0-cp311-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:cbef6d2541265857771a64677ea1b4000a49116773bf7c0804ce8be7789baf85", size = 32272708, upload-time = "2026-03-16T11:11:59.97Z" },
 ]
 
 [[package]]
