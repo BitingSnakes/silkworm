@@ -115,7 +115,7 @@ duckdb = [
   "duckdb==1.4.4",
 ]
 memray = [
-  "memray==1.19.1",
+  "memray==1.19.2",
 ]
 cdp = [
   "websockets==16.0",
