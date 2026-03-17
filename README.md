@@ -2,7 +2,6 @@
 
 [![PyPI - Version](https://img.shields.io/pypi/v/silkworm-rs)](https://pypi.org/project/silkworm-rs/)
 [![Tests](https://github.com/BitingSnakes/silkworm/actions/workflows/tests.yml/badge.svg)](https://github.com/BitingSnakes/silkworm/actions/workflows/tests.yml)
-[![Gemini GEM](https://img.shields.io/badge/gemini-gem-blue)](https://gemini.google.com/gem/1OrdVL3XqGL2WapcHdHzdvBU0OlT7dfsM?usp=sharing)
 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/silkworm-rs?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/silkworm-rs)
 
 Async-first web scraping framework built on [rnet](https://github.com/0x676e67/rnet) (HTTP with browser impersonation) and [scraper-rs](https://github.com/RustedBytes/scraper-rs) (fast HTML parsing). Silkworm gives you a minimal Spider/Request/Response model, middlewares, and pipelines so you can script quick scrapes or build larger crawlers without boilerplate.
