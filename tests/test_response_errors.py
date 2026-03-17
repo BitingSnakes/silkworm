@@ -1,4 +1,5 @@
 import asyncio
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -12,7 +13,9 @@ async def test_select_wraps_selector_errors(monkeypatch):
     async def boom(*args, **kwargs):
         raise RuntimeError("no parent ElemInfo")
 
-    monkeypatch.setattr(response_module, "select_async", boom)
+    document = type("Document", (), {})()
+    document.select = boom
+    monkeypatch.setattr(response_module, "parse_async", AsyncMock(return_value=document))
 
     req = Request(url="http://example.com")
     resp = HTMLResponse(
@@ -35,7 +38,9 @@ async def test_select_propagates_cancelled_error(monkeypatch):
     async def cancel(*args, **kwargs):
         raise asyncio.CancelledError
 
-    monkeypatch.setattr(response_module, "select_async", cancel)
+    document = type("Document", (), {})()
+    document.select = cancel
+    monkeypatch.setattr(response_module, "parse_async", AsyncMock(return_value=document))
 
     req = Request(url="http://example.com")
     resp = HTMLResponse(
@@ -54,7 +59,9 @@ async def test_prettify_wraps_scraper_errors(monkeypatch):
     async def boom(*args, **kwargs):
         raise RuntimeError("cannot prettify")
 
-    monkeypatch.setattr(response_module, "prettify_async", boom)
+    document = type("Document", (), {})()
+    document.prettify = boom
+    monkeypatch.setattr(response_module, "parse_async", AsyncMock(return_value=document))
 
     req = Request(url="http://example.com")
     resp = HTMLResponse(

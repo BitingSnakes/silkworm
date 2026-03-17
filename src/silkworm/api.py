@@ -5,7 +5,7 @@ from datetime import timedelta
 from typing import Any, cast
 
 from rnet import Client, Emulation  # type: ignore[import]
-from scraper_rs import Document  # type: ignore[import]
+from scraper_rs.asyncio import AsyncDocument, parse  # type: ignore[import]
 
 
 async def fetch_html(
@@ -13,12 +13,11 @@ async def fetch_html(
     *,
     emulation: Emulation = Emulation.Firefox139,
     timeout: float | timedelta | None = None,
-) -> tuple[str, Document]:
+) -> tuple[str, AsyncDocument]:
     """
     Fetch HTML from a URL using the rnet HTTP client.
 
-    Returns a tuple of (text, Document) where Document is a synchronous
-    scraper_rs Document for CSS/XPath selection.
+    Returns a tuple of (text, AsyncDocument) with awaitable selector helpers.
     """
     client = cast(Any, Client)(emulation=emulation)
     try:
@@ -29,7 +28,7 @@ async def fetch_html(
         else:
             resp = await client.get(url)
         text = await resp.text()
-        return text, Document(text)
+        return text, await parse(text)
     finally:
         closer = getattr(client, "aclose", None) or getattr(client, "close", None)
         if closer and callable(closer):
@@ -43,7 +42,7 @@ async def fetch_html_cdp(
     *,
     ws_endpoint: str = "ws://127.0.0.1:9222",
     timeout: float | None = None,
-) -> tuple[str, Document]:
+) -> tuple[str, AsyncDocument]:
     """
     Fetch HTML from a URL using CDP (Chrome DevTools Protocol).
 
@@ -56,7 +55,7 @@ async def fetch_html_cdp(
         timeout: Optional timeout in seconds
 
     Returns:
-        A tuple of (text, Document) where Document is a synchronous scraper_rs Document
+        A tuple of (text, AsyncDocument) with awaitable selector helpers.
 
     Raises:
         ImportError: If websockets package is not installed
@@ -68,7 +67,7 @@ async def fetch_html_cdp(
         >>>
         >>> async def main():
         ...     text, doc = await fetch_html_cdp("https://example.com")
-        ...     title = doc.select_first("title")
+        ...     title = await doc.select_first("title")
         ...     print(title.text if title else "No title")
         >>>
         >>> asyncio.run(main())
@@ -86,6 +85,6 @@ async def fetch_html_cdp(
         req = Request(url=url)
         response = await client.fetch(req)
         text = response.text
-        return text, Document(text)
+        return text, await parse(text)
     finally:
         await client.close()

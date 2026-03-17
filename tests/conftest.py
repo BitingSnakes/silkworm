@@ -176,6 +176,7 @@ scraper_module: Any = types.ModuleType("scraper_rs")
 scraper_module.__path__ = []  # Allow importing submodules from the mock package.
 scraper_module.Document = Mock(side_effect=_mock_document)
 scraper_asyncio_module: Any = types.ModuleType("scraper_rs.asyncio")
+scraper_asyncio_module.AsyncDocument = Mock(side_effect=_mock_async_document)
 scraper_asyncio_module.Document = Mock(side_effect=_mock_async_document)
 scraper_asyncio_module.parse = AsyncMock(side_effect=_mock_async_document)
 scraper_asyncio_module.select = AsyncMock(return_value=[])

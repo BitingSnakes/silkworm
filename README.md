@@ -102,7 +102,7 @@ if __name__ == "__main__":
 - `max_pending_requests`: queue bound to avoid unbounded memory use (defaults to `concurrency * 10`).
 - `request_timeout`: per-request timeout (seconds).
 - `keep_alive`: reuse HTTP connections when supported by the underlying client (sends `Connection: keep-alive`).
-- `html_max_size_bytes`: limit HTML parsed into `Document` to avoid huge payloads.
+- `html_max_size_bytes`: limit HTML parsed into `AsyncDocument` to avoid huge payloads.
 - `log_stats_interval`: seconds between periodic stats logs; final stats are always emitted.
 - `request_middlewares` / `response_middlewares` / `item_pipelines`: plug-ins run on every request/response/item.
 - use `run_spider_uvloop(...)` instead of `run_spider(...)` to run under uvloop (requires `pip install silkworm-rs[uvloop]`).
@@ -460,7 +460,8 @@ from silkworm import fetch_html
 
 async def main():
     text, doc = await fetch_html("https://example.com")
-    print(doc.select_first("title").text)
+    title = await doc.select_first("title")
+    print(title.text if title else "No title")
 
 asyncio.run(main())
 ```
@@ -473,7 +474,8 @@ from silkworm import fetch_html_cdp
 async def main():
     # Requires Lightpanda/Chrome running with CDP enabled
     text, doc = await fetch_html_cdp("https://example.com")
-    print(doc.select_first("title").text)
+    title = await doc.select_first("title")
+    print(title.text if title else "No title")
 
 asyncio.run(main())
 ```

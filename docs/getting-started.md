@@ -129,7 +129,7 @@ from silkworm import fetch_html
 
 async def main():
     text, doc = await fetch_html("https://example.com")
-    title = doc.select_first("title")
+    title = await doc.select_first("title")
     print(title.text if title else "no title")
 
 
@@ -149,7 +149,7 @@ async def main():
         "https://example.com",
         ws_endpoint="ws://127.0.0.1:9222",
     )
-    title = doc.select_first("title")
+    title = await doc.select_first("title")
     print(title.text if title else "no title")
 
 

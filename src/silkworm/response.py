@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import asyncio
 import codecs
 import re
@@ -7,11 +8,7 @@ from typing import TYPE_CHECKING, override
 from urllib.parse import urljoin
 
 from scraper_rs.asyncio import (  # type: ignore[import-untyped]
-    prettify as prettify_async,
-    select as select_async,
-    select_first as select_first_async,
-    xpath as xpath_async,
-    xpath_first as xpath_first_async,
+    parse as parse_async,
 )
 
 from .exceptions import SelectorError
@@ -19,7 +16,7 @@ from .exceptions import SelectorError
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable, Iterable
 
-    from scraper_rs.asyncio import AsyncElement  # type: ignore[import]
+    from scraper_rs.asyncio import AsyncDocument, AsyncElement  # type: ignore[import]
 
     from .request import Callback, Request
 
@@ -328,6 +325,37 @@ class Response:
 @dataclass(slots=True)
 class HTMLResponse(Response):
     doc_max_size_bytes: int = 5_000_000
+    _document: AsyncDocument | None = field(
+        default=None,
+        init=False,
+        repr=False,
+        compare=False,
+    )
+    _document_lock: asyncio.Lock = field(
+        default_factory=asyncio.Lock,
+        init=False,
+        repr=False,
+        compare=False,
+    )
+
+    async def _get_document(self) -> AsyncDocument:
+        if self._document is not None:
+            return self._document
+
+        async with self._document_lock:
+            if self._document is None:
+                self._document = await self._run_parse(
+                    self.text,
+                )
+        return self._document
+
+    async def _run_parse(self, html: str) -> AsyncDocument:
+        return await self._run_document_op(
+            parse_async,
+            html,
+            kind="HTML parse",
+            include_max_size=True,
+        )
 
     async def _run_document_op[T](
         self,
@@ -335,9 +363,13 @@ class HTMLResponse(Response):
         *args: object,
         kind: str,
         label: str | None = None,
+        include_max_size: bool = False,
     ) -> T:
         try:
-            return await func(*args, max_size_bytes=self.doc_max_size_bytes)
+            kwargs = (
+                {"max_size_bytes": self.doc_max_size_bytes} if include_max_size else {}
+            )
+            return await func(*args, **kwargs)
         except asyncio.CancelledError:
             raise
         except Exception as exc:
@@ -361,17 +393,18 @@ class HTMLResponse(Response):
         label = query if len(query) <= 120 else f"{query[:120]}...(truncated)"
         return await self._run_document_op(
             func,
-            self.text,
             query,
             kind=f"{kind} selector",
             label=label,
         )
 
     async def select(self, selector: str) -> list[AsyncElement]:
-        return await self._run_selector(select_async, selector, kind="CSS")
+        document = await self._get_document()
+        return await self._run_selector(document.select, selector, kind="CSS")
 
     async def select_first(self, selector: str) -> AsyncElement | None:
-        return await self._run_selector(select_first_async, selector, kind="CSS")
+        document = await self._get_document()
+        return await self._run_selector(document.select_first, selector, kind="CSS")
 
     async def find(self, selector: str) -> AsyncElement | None:
         return await self.select_first(selector)
@@ -383,17 +416,16 @@ class HTMLResponse(Response):
         return await self.select_first(selector)
 
     async def xpath(self, xpath: str) -> list[AsyncElement]:
-        return await self._run_selector(xpath_async, xpath, kind="XPath")
+        document = await self._get_document()
+        return await self._run_selector(document.xpath, xpath, kind="XPath")
 
     async def xpath_first(self, xpath: str) -> AsyncElement | None:
-        return await self._run_selector(xpath_first_async, xpath, kind="XPath")
+        document = await self._get_document()
+        return await self._run_selector(document.xpath_first, xpath, kind="XPath")
 
     async def prettify(self) -> str:
-        return await self._run_document_op(
-            prettify_async,
-            self.text,
-            kind="HTML prettify",
-        )
+        document = await self._get_document()
+        return await self._run_document_op(document.prettify, kind="HTML prettify")
 
     @override
     def follow(
@@ -408,10 +440,14 @@ class HTMLResponse(Response):
     @override
     def close(self) -> None:
         """
-        Release the underlying Document when it is no longer needed.
+        Release the underlying AsyncDocument when it is no longer needed.
         """
         if self._closed:
             return
+
+        if self._document is not None:
+            self._document.close()
+            self._document = None
 
         # Explicitly call base class to avoid zero-arg super issues with slotted dataclasses.
         Response.close(self)

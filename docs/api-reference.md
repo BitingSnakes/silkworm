@@ -17,8 +17,8 @@ This page lists the public API exports from [src/silkworm/__init__.py](../src/si
 - **`run_spider_trio(...)`**: Trio runner using trio-asyncio. [src/silkworm/runner.py](../src/silkworm/runner.py)
 
 ## Convenience Helpers
-- **`fetch_html(...)`**: Fetch HTML text and a scraper-rs Document. [src/silkworm/api.py](../src/silkworm/api.py)
-- **`fetch_html_cdp(...)`**: Fetch rendered HTML text and a scraper-rs Document via CDP. [src/silkworm/api.py](../src/silkworm/api.py)
+- **`fetch_html(...)`**: Fetch HTML text and a scraper-rs `AsyncDocument`. [src/silkworm/api.py](../src/silkworm/api.py)
+- **`fetch_html_cdp(...)`**: Fetch rendered HTML text and a scraper-rs `AsyncDocument` via CDP. [src/silkworm/api.py](../src/silkworm/api.py)
 - **`get_logger(...)`**: Configured logly logger. [src/silkworm/logging.py](../src/silkworm/logging.py)
 
 ## Optional CDP Export

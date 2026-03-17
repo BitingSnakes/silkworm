@@ -41,10 +41,8 @@ async def main():
 
         print(f"\nSuccessfully fetched page ({len(text)} bytes)")
 
-        # fetch_html_cdp returns a synchronous scraper_rs.Document, so selector
-        # methods on `doc` are not awaited here.
         links = []
-        for element in doc.select("a"):
+        for element in await doc.select("a"):
             href = element.attr("href")
             if href:
                 links.append(href)

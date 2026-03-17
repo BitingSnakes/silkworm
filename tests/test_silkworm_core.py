@@ -1,6 +1,6 @@
 from datetime import timedelta
 import json
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 from urllib.parse import parse_qsl, urlsplit
 from typing import Any
 
@@ -117,23 +117,24 @@ async def test_htmlresponse_css_aliases_select(monkeypatch: pytest.MonkeyPatch):
         request=req,
     )
 
+    document = type("Document", (), {})()
+    document.select = AsyncMock(return_value=["first", "second"])
     first_link = object()
-    monkeypatch.setattr(
-        response_module,
-        "select_async",
-        AsyncMock(return_value=["first", "second"]),
-    )
-    monkeypatch.setattr(
-        response_module,
-        "select_first_async",
-        AsyncMock(return_value=first_link),
-    )
+    document.select_first = AsyncMock(return_value=first_link)
+    parse_mock = AsyncMock(return_value=document)
+    monkeypatch.setattr(response_module, "parse_async", parse_mock)
 
     links = await resp.css("a")
     first = await resp.css_first("a")
 
     assert len(links) == 2
     assert first is first_link
+    parse_mock.assert_awaited_once_with(
+        resp.text,
+        max_size_bytes=resp.doc_max_size_bytes,
+    )
+    document.select.assert_awaited_once_with("a")
+    document.select_first.assert_awaited_once_with("a")
 
 
 async def test_htmlresponse_find_aliases_select_first(monkeypatch: pytest.MonkeyPatch):
@@ -146,18 +147,20 @@ async def test_htmlresponse_find_aliases_select_first(monkeypatch: pytest.Monkey
         request=req,
     )
 
+    document = type("Document", (), {})()
     found_link = object()
-    select_first_mock = AsyncMock(return_value=found_link)
-    monkeypatch.setattr(response_module, "select_first_async", select_first_mock)
+    document.select_first = AsyncMock(return_value=found_link)
+    parse_mock = AsyncMock(return_value=document)
+    monkeypatch.setattr(response_module, "parse_async", parse_mock)
 
     found = await resp.find("a")
 
     assert found is found_link
-    select_first_mock.assert_awaited_once_with(
+    parse_mock.assert_awaited_once_with(
         resp.text,
-        "a",
         max_size_bytes=resp.doc_max_size_bytes,
     )
+    document.select_first.assert_awaited_once_with("a")
 
 
 async def test_htmlresponse_prettify_uses_scraper_rs(monkeypatch: pytest.MonkeyPatch):
@@ -170,16 +173,44 @@ async def test_htmlresponse_prettify_uses_scraper_rs(monkeypatch: pytest.MonkeyP
         request=req,
     )
 
+    document = type("Document", (), {})()
     prettify_mock = AsyncMock(return_value="<html>\n  <body></body>\n</html>")
-    monkeypatch.setattr(response_module, "prettify_async", prettify_mock)
+    document.prettify = prettify_mock
+    parse_mock = AsyncMock(return_value=document)
+    monkeypatch.setattr(response_module, "parse_async", parse_mock)
 
     pretty = await resp.prettify()
 
     assert pretty == "<html>\n  <body></body>\n</html>"
-    prettify_mock.assert_awaited_once_with(
+    parse_mock.assert_awaited_once_with(
         resp.text,
         max_size_bytes=resp.doc_max_size_bytes,
     )
+    prettify_mock.assert_awaited_once_with()
+
+
+async def test_htmlresponse_close_releases_cached_document(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    req = Request(url="http://example.com")
+    resp = HTMLResponse(
+        url=req.url,
+        status=200,
+        headers={},
+        body=b"<html></html>",
+        request=req,
+    )
+
+    document = type("Document", (), {})()
+    document.select = AsyncMock(return_value=[])
+    document.close = Mock()
+    parse_mock = AsyncMock(return_value=document)
+    monkeypatch.setattr(response_module, "parse_async", parse_mock)
+
+    await resp.select("a")
+    resp.close()
+
+    document.close.assert_called_once_with()
 
 
 def test_htmlresponse_url_join_resolves_relative_url():
