@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "silkworm-rs"
-version = "0.3.6"
+version = "0.3.7"
 description = "Async-first web scraping framework built on rnet and scraper-rs"
 authors = [
   { name = "Yehor Smoliakov", email = "egorsmkv@gmail.com" }
@@ -37,7 +37,7 @@ classifiers = [
 dependencies = [
   "charset-normalizer==3.4.4",
   "rnet==3.0.0rc22",
-  "scraper-rust==0.4.0",
+  "scraper-rust>=0.4.0",
   "logly==0.1.6",
   "rxml==2.4.1",
 ]
@@ -60,7 +60,7 @@ msgpack = [
   "ormsgpack==1.12.2",
 ]
 polars = [
-  "polars==1.38.1",
+  "polars==1.39.0",
 ]
 excel = [
   "openpyxl==3.1.5",
@@ -90,8 +90,8 @@ postgresql = [
   "asyncpg==0.31.0",
 ]
 gsheets = [
-  "google-api-python-client==2.190.0",
-  "google-auth==2.48.0",
+  "google-api-python-client==2.192.0",
+  "google-auth==2.49.1",
 ]
 snowflake = [
   "snowflake-connector-python==4.3.0",
@@ -112,10 +112,10 @@ dynamodb = [
   "aioboto3==15.5.0",
 ]
 duckdb = [
-  "duckdb==1.4.4",
+  "duckdb==1.5.0",
 ]
 memray = [
-  "memray==1.19.1",
+  "memray==1.19.2",
 ]
 cdp = [
   "websockets==16.0",
