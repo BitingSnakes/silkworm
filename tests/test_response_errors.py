@@ -15,7 +15,9 @@ async def test_select_wraps_selector_errors(monkeypatch):
 
     document = type("Document", (), {})()
     document.select = boom
-    monkeypatch.setattr(response_module, "parse_async", AsyncMock(return_value=document))
+    monkeypatch.setattr(
+        response_module, "parse_async", AsyncMock(return_value=document)
+    )
 
     req = Request(url="http://example.com")
     resp = HTMLResponse(
@@ -40,7 +42,9 @@ async def test_select_propagates_cancelled_error(monkeypatch):
 
     document = type("Document", (), {})()
     document.select = cancel
-    monkeypatch.setattr(response_module, "parse_async", AsyncMock(return_value=document))
+    monkeypatch.setattr(
+        response_module, "parse_async", AsyncMock(return_value=document)
+    )
 
     req = Request(url="http://example.com")
     resp = HTMLResponse(
@@ -61,7 +65,9 @@ async def test_prettify_wraps_scraper_errors(monkeypatch):
 
     document = type("Document", (), {})()
     document.prettify = boom
-    monkeypatch.setattr(response_module, "parse_async", AsyncMock(return_value=document))
+    monkeypatch.setattr(
+        response_module, "parse_async", AsyncMock(return_value=document)
+    )
 
     req = Request(url="http://example.com")
     resp = HTMLResponse(
