@@ -48,11 +48,14 @@ jobs:
             --extra snowflake \
             --extra ftp \
             --extra sftp \
-            --extra cassandra \
             --extra couchdb \
             --extra dynamodb
           # Install msgpack for reading in tests (ormsgpack from --extra msgpack is for writing)
           uv pip install msgpack
+
+      - name: Install Cassandra dependency (Linux, Python 3.13)
+        if: runner.os == 'Linux' && matrix.python-version == '3.13'
+        run: uv sync --group dev --extra cassandra
 
       - name: Install dependencies (Windows)
         if: runner.os == 'Windows'
@@ -74,7 +77,6 @@ jobs:
             --extra snowflake \
             --extra ftp \
             --extra sftp \
-            --extra cassandra \
             --extra couchdb \
             --extra dynamodb \
             --extra winloop
