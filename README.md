@@ -105,6 +105,7 @@ if __name__ == "__main__":
 - `html_max_size_bytes`: limit HTML parsed into `AsyncDocument` to avoid huge payloads.
 - `log_stats_interval`: seconds between periodic stats logs; final stats are always emitted.
 - `request_middlewares` / `response_middlewares` / `item_pipelines`: plug-ins run on every request/response/item.
+- use `run_spider_rsloop(...)` instead of `run_spider(...)` to run under rsloop (requires `pip install silkworm-rs[rsloop]`).
 - use `run_spider_uvloop(...)` instead of `run_spider(...)` to run under uvloop (requires `pip install silkworm-rs[uvloop]`).
 - use `run_spider_winloop(...)` instead of `run_spider(...)` to run under winloop on Windows (requires `pip install silkworm-rs[winloop]`).
 
@@ -271,6 +272,26 @@ Keep crawls cheap when URLs mix HTML and binaries/APIs:
 response_middlewares=[SkipNonHTMLMiddleware(sniff_bytes=1024)]
 # Tighten HTML parsing size (bytes) to avoid loading huge bodies into scraper-rs
 run_spider(MySpider, html_max_size_bytes=1_000_000)
+```
+
+## Performance optimization with rsloop
+For improved async performance, enable rsloop as a drop-in replacement for asyncio's event loop:
+
+```bash
+pip install silkworm-rs[rsloop]
+# or with uv:
+uv pip install --prerelease=allow silkworm-rs[rsloop]
+```
+
+Then call `run_spider_rsloop` (same signature as `run_spider`):
+
+```python
+from silkworm import run_spider_rsloop
+
+run_spider_rsloop(
+    QuotesSpider,
+    concurrency=32,
+)
 ```
 
 ## Performance optimization with uvloop

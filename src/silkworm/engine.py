@@ -332,6 +332,8 @@ class Engine:
         module = loop.__class__.__module__.lower()
         name = loop.__class__.__name__.lower()
 
+        if "rsloop" in module or "rsloop" in name:
+            return "rsloop"
         if "uvloop" in module or "uvloop" in name:
             return "uvloop"
         if "trio" in module or "trio" in name:

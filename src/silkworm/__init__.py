@@ -8,6 +8,7 @@ from .engine import Engine
 from .runner import (
     crawl,
     run_spider,
+    run_spider_rsloop,
     run_spider_uvloop,
     run_spider_winloop,
     run_spider_trio,
@@ -27,6 +28,7 @@ __all__ = [
     "Engine",
     "crawl",
     "run_spider",
+    "run_spider_rsloop",
     "run_spider_uvloop",
     "run_spider_winloop",
     "run_spider_trio",

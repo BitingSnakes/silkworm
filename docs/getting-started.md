@@ -31,11 +31,12 @@ uv pip install --prerelease=allow -e .
 Silkworm ships many integrations behind extras. Install only what you need.
 
 ```bash
-pip install "silkworm-rs[uvloop,polars]"
+pip install "silkworm-rs[rsloop,polars]"
 ```
 
 | Extra | Purpose | Related Code |
 | --- | --- | --- |
+| `rsloop` | Faster event loop via `rsloop.new_event_loop()` | [src/silkworm/runner.py](../src/silkworm/runner.py) |
 | `uvloop` | Faster event loop on Unix | [src/silkworm/runner.py](../src/silkworm/runner.py) |
 | `winloop` | Faster event loop on Windows | [src/silkworm/runner.py](../src/silkworm/runner.py) |
 | `trio` | Trio backend | [src/silkworm/runner.py](../src/silkworm/runner.py) |

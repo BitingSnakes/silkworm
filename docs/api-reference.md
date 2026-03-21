@@ -12,6 +12,7 @@ This page lists the public API exports from [src/silkworm/__init__.py](../src/si
 ## Runner Helpers
 - **`crawl(...)`**: Async entrypoint that runs a spider. [src/silkworm/runner.py](../src/silkworm/runner.py)
 - **`run_spider(...)`**: Sync wrapper around `crawl`. [src/silkworm/runner.py](../src/silkworm/runner.py)
+- **`run_spider_rsloop(...)`**: `run_spider` with rsloop. [src/silkworm/runner.py](../src/silkworm/runner.py)
 - **`run_spider_uvloop(...)`**: `run_spider` with uvloop. [src/silkworm/runner.py](../src/silkworm/runner.py)
 - **`run_spider_winloop(...)`**: `run_spider` with winloop. [src/silkworm/runner.py](../src/silkworm/runner.py)
 - **`run_spider_trio(...)`**: Trio runner using trio-asyncio. [src/silkworm/runner.py](../src/silkworm/runner.py)

@@ -20,4 +20,4 @@ All examples live under [examples/](../examples). This page lists each example, 
 | [examples/lightpanda_simple.py](../examples/lightpanda_simple.py) | CDP one-off rendered HTML fetch | `python examples/lightpanda_simple.py` |
 | [examples/lightpanda_spider.py](../examples/lightpanda_spider.py) | CDP spider flow with Lightpanda/Chrome endpoint | `python examples/lightpanda_spider.py` |
 
-> **Tip:** Some examples require optional extras (trio, winloop, taskiq, cdp). Install them via `pip install "silkworm-rs[trio]"` or similar.
+> **Tip:** Some examples require optional extras (rsloop, trio, winloop, taskiq, cdp). Install them via `pip install "silkworm-rs[rsloop]"` or similar.

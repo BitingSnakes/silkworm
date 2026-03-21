@@ -319,8 +319,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/73/7e/3b36461b3f2a7444e0183dcabfd8fe1fb5f700a260812fb0f6b751c3e9ba/cassandra_driver-3.29.3-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:2b72312a8b62a905da6133effbba9b0731c8e30af96e10ca77fc5c34532c6827", size = 365062, upload-time = "2025-10-22T15:14:46.707Z" },
     { url = "https://files.pythonhosted.org/packages/b3/f5/ae49f30eb59c55fb226467129f02fed3ac042f87990b647a7e9021ffb3db/cassandra_driver-3.29.3-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:38216e13d6f2e0d4513a5b8806e70ce4a8f28a82962793a67371582fc2c7141b", size = 374573, upload-time = "2025-10-22T15:14:48.116Z" },
     { url = "https://files.pythonhosted.org/packages/ea/42/a4f10ef8274a2bd05e859b7d2141c2c0cc13a8ef4ea6e825a660960b17d7/cassandra_driver-3.29.3-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:51d6a5390e2454b599500049f0a5c72aa701db155c1e542f9a1157c1c45814b1", size = 374432, upload-time = "2025-10-22T15:14:49.44Z" },
-    { url = "https://files.pythonhosted.org/packages/ea/55/611982779ddeb4b98658d87ab3b150506b2121d8d16a843459c7aacc7884/cassandra_driver-3.29.3-cp313-cp313-win32.whl", hash = "sha256:638047c1f70fb14c9d8f743931d4f4f42aff6793b47afded3097c002ef8c1165", size = 341529, upload-time = "2025-10-22T15:14:50.896Z" },
-    { url = "https://files.pythonhosted.org/packages/b2/13/aaa6c7559bfb11c58a1978dfa46732f4d477230641259f13a14907cb4546/cassandra_driver-3.29.3-cp313-cp313-win_amd64.whl", hash = "sha256:27adf8869937461ad08c5fefb47857532e467b408db496db4dbf8b132a4bd623", size = 349242, upload-time = "2025-10-22T15:14:52.472Z" },
 ]
 
 [[package]]
@@ -2032,6 +2030,20 @@ wheels = [
 ]
 
 [[package]]
+name = "rsloop"
+version = "0.1.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/2f/71/97c2f838256cc2003afe77fa868719f04a284da27770e884fe8e407f13c7/rsloop-0.1.1.tar.gz", hash = "sha256:ce6bf3f85130c554769af62e72a0bdc3d505f75071182f10b5230a08628ebb8d", size = 265993, upload-time = "2026-03-21T19:52:24.885Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/56/69/e8ffca74c1e422dd09d23698cef02d018b92e19cedaa1ec8b7a0e1de86cb/rsloop-0.1.1-cp313-cp313-macosx_10_12_x86_64.whl", hash = "sha256:86e0fbdece5d4e9ebe2958180faecdec3401f97c2010afb4b090590e5d302905", size = 827384, upload-time = "2026-03-21T19:52:10.437Z" },
+    { url = "https://files.pythonhosted.org/packages/8b/a3/bf5b311fd77383328d0aef238a45269f923cf48f2cf754de48e3909b23a9/rsloop-0.1.1-cp313-cp313-manylinux_2_39_x86_64.whl", hash = "sha256:8719be82c95f489ac46f6c4660a2ad750260370fe51d381b93659145b051f7e6", size = 845408, upload-time = "2026-03-21T19:52:11.933Z" },
+    { url = "https://files.pythonhosted.org/packages/d6/3c/7ed8226bfa82d4fb7427986287b9b62b49e2814ab44875c331e9779f9507/rsloop-0.1.1-cp314-cp314-macosx_10_12_x86_64.whl", hash = "sha256:b81aa4ab8943bc49a25d6032047212fec0c084732b61239cc72e92344ee965fc", size = 825251, upload-time = "2026-03-21T19:52:13.243Z" },
+    { url = "https://files.pythonhosted.org/packages/6b/0d/a1b9c2743288684bab092472f1e4ca96da62f2c3382f57d4486294d1207a/rsloop-0.1.1-cp314-cp314-manylinux_2_39_x86_64.whl", hash = "sha256:db951032c437b487e4a4b249606b9a7c8a252b462fc83edd3ec338d256a99d9b", size = 843134, upload-time = "2026-03-21T19:52:14.672Z" },
+    { url = "https://files.pythonhosted.org/packages/69/e5/cb50064f0dbcf83b8bf6e985f596730c9e414bd724ebe32b2ca3490cd96e/rsloop-0.1.1-cp314-cp314t-macosx_10_12_x86_64.whl", hash = "sha256:c86dac6118c3e950c333bf830dfce76314856e208aa138271f331808f752e49c", size = 811733, upload-time = "2026-03-21T19:52:16.028Z" },
+    { url = "https://files.pythonhosted.org/packages/eb/a9/99be6c2d83c40050e16fbeafaf7a1c43666f1ed5c55273fc83b9794688c7/rsloop-0.1.1-cp314-cp314t-manylinux_2_39_x86_64.whl", hash = "sha256:8db31499ce29b3c1bf359edd08aed06a4ca658f3f7836826f16a73b1b0bd2e70", size = 835238, upload-time = "2026-03-21T19:52:17.875Z" },
+]
+
+[[package]]
 name = "ruff"
 version = "0.15.5"
 source = { registry = "https://pypi.org/simple" }
@@ -2165,7 +2177,7 @@ avro = [
     { name = "fastavro" },
 ]
 cassandra = [
-    { name = "cassandra-driver" },
+    { name = "cassandra-driver", marker = "python_full_version < '3.14' and sys_platform != 'win32'" },
 ]
 cdp = [
     { name = "websockets" },
@@ -2209,6 +2221,9 @@ polars = [
 ]
 postgresql = [
     { name = "asyncpg" },
+]
+rsloop = [
+    { name = "rsloop" },
 ]
 s3 = [
     { name = "opendal" },
@@ -2260,7 +2275,7 @@ requires-dist = [
     { name = "aiomysql", marker = "extra == 'mysql'", specifier = "==0.3.2" },
     { name = "asyncpg", marker = "extra == 'postgresql'", specifier = "==0.31.0" },
     { name = "asyncssh", marker = "extra == 'sftp'", specifier = "==2.22.0" },
-    { name = "cassandra-driver", marker = "extra == 'cassandra'", specifier = "==3.29.3" },
+    { name = "cassandra-driver", marker = "python_full_version < '3.14' and sys_platform != 'win32' and extra == 'cassandra'", specifier = "==3.29.3" },
     { name = "charset-normalizer", specifier = "==3.4.4" },
     { name = "duckdb", marker = "extra == 'duckdb'", specifier = "==1.5.0" },
     { name = "elasticsearch", marker = "extra == 'elasticsearch'", specifier = "==9.3.0" },
@@ -2276,6 +2291,7 @@ requires-dist = [
     { name = "polars", marker = "extra == 'polars'", specifier = "==1.39.0" },
     { name = "pyyaml", marker = "extra == 'yaml'", specifier = "==6.0.3" },
     { name = "rnet", specifier = "==3.0.0rc22" },
+    { name = "rsloop", marker = "extra == 'rsloop'", specifier = "==0.1.1" },
     { name = "rxml", specifier = "==2.4.1" },
     { name = "scraper-rust", specifier = ">=0.4.0" },
     { name = "snowflake-connector-python", marker = "extra == 'snowflake'", specifier = "==4.3.0" },
@@ -2287,7 +2303,7 @@ requires-dist = [
     { name = "websockets", marker = "extra == 'cdp'", specifier = "==16.0" },
     { name = "winloop", marker = "extra == 'winloop'", specifier = "==0.5.0" },
 ]
-provides-extras = ["taskiq", "uvloop", "winloop", "trio", "msgpack", "polars", "excel", "yaml", "avro", "elasticsearch", "mongodb", "s3", "vortex", "mysql", "postgresql", "gsheets", "snowflake", "ftp", "sftp", "cassandra", "couchdb", "dynamodb", "duckdb", "memray", "cdp"]
+provides-extras = ["rsloop", "taskiq", "uvloop", "winloop", "trio", "msgpack", "polars", "excel", "yaml", "avro", "elasticsearch", "mongodb", "s3", "vortex", "mysql", "postgresql", "gsheets", "snowflake", "ftp", "sftp", "cassandra", "couchdb", "dynamodb", "duckdb", "memray", "cdp"]
 
 [package.metadata.requires-dev]
 dev = [

@@ -27,6 +27,19 @@ def _install_uvloop() -> Callable[[], asyncio.AbstractEventLoop]:
         raise ImportError(msg) from err
 
 
+def _install_rsloop() -> Callable[[], asyncio.AbstractEventLoop]:
+    """Return an rsloop event loop factory if available."""
+    try:
+        import rsloop  # type: ignore[import]
+
+        return rsloop.new_event_loop
+    except ImportError as err:
+        msg = (
+            "rsloop is not installed. Install it with: pip install silkworm-rs[rsloop]"
+        )
+        raise ImportError(msg) from err
+
+
 def _install_winloop() -> Callable[[], asyncio.AbstractEventLoop]:
     """Return a winloop event loop factory if available."""
     try:
@@ -245,6 +258,60 @@ def run_spider_winloop(
         ImportError: If winloop is not installed
     """
     loop_factory = _install_winloop()
+    run_spider(
+        spider_cls,
+        concurrency=concurrency,
+        request_middlewares=request_middlewares,
+        response_middlewares=response_middlewares,
+        item_pipelines=item_pipelines,
+        request_timeout=request_timeout,
+        log_stats_interval=log_stats_interval,
+        max_pending_requests=max_pending_requests,
+        html_max_size_bytes=html_max_size_bytes,
+        keep_alive=keep_alive,
+        loop_factory=loop_factory,
+        **spider_kwargs,
+    )
+
+
+def run_spider_rsloop(
+    spider_cls: type[Spider],
+    *,
+    concurrency: int = 16,
+    request_middlewares: Iterable[RequestMiddleware] | None = None,
+    response_middlewares: Iterable[ResponseMiddleware] | None = None,
+    item_pipelines: Iterable[ItemPipeline] | None = None,
+    request_timeout: float | timedelta | None = None,
+    log_stats_interval: float | None = None,
+    max_pending_requests: int | None = None,
+    html_max_size_bytes: int = 5_000_000,
+    keep_alive: bool = False,
+    **spider_kwargs,
+) -> None:
+    """
+    Run a spider using rsloop as the event loop.
+
+    This is similar to run_spider_uvloop but uses rsloop instead.
+    Rsloop must be installed separately:
+    pip install silkworm-rs[rsloop]
+
+    Args:
+        spider_cls: Spider class to instantiate and run
+        concurrency: Number of concurrent HTTP requests (default: 16)
+        request_middlewares: Optional request middlewares
+        response_middlewares: Optional response middlewares
+        item_pipelines: Optional item pipelines
+        request_timeout: Per-request timeout in seconds
+        log_stats_interval: Interval for logging statistics
+        max_pending_requests: Maximum pending requests in queue
+        html_max_size_bytes: Maximum HTML size to parse
+        keep_alive: Enable HTTP keep-alive when supported by the HTTP client
+        **spider_kwargs: Additional kwargs passed to spider constructor
+
+    Raises:
+        ImportError: If rsloop is not installed
+    """
+    loop_factory = _install_rsloop()
     run_spider(
         spider_cls,
         concurrency=concurrency,

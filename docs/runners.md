@@ -20,6 +20,17 @@ from silkworm import run_spider
 run_spider(MySpider, concurrency=16, request_timeout=10)
 ```
 
+## rsloop
+`run_spider_rsloop` installs rsloop and then runs the spider.
+
+```python
+from silkworm import run_spider_rsloop
+
+run_spider_rsloop(MySpider, concurrency=32)
+```
+
+> **Requires**: `pip install silkworm-rs[rsloop]`
+
 ## uvloop (Unix)
 `run_spider_uvloop` installs uvloop and then runs the spider.
 
