@@ -88,6 +88,7 @@ class Engine:
 
     async def open_spider(self) -> None:
         self.logger.info("Opening spider", spider=self.spider.name)
+        await self._open_middlewares()
         await self.spider.open()
         for pipe in self.item_pipelines:
             await pipe.open(self.spider)
@@ -100,6 +101,28 @@ class Engine:
         for pipe in self.item_pipelines:
             await pipe.close(self.spider)
         await self.spider.close()
+        await self._close_middlewares()
+
+    def _iter_middlewares(self) -> Iterable[object]:
+        seen_ids: set[int] = set()
+        for middleware in [*self.request_middlewares, *self.response_middlewares]:
+            middleware_id = id(middleware)
+            if middleware_id in seen_ids:
+                continue
+            seen_ids.add(middleware_id)
+            yield middleware
+
+    async def _open_middlewares(self) -> None:
+        for middleware in self._iter_middlewares():
+            open_hook = getattr(middleware, "open", None)
+            if callable(open_hook):
+                await open_hook(self.spider)
+
+    async def _close_middlewares(self) -> None:
+        for middleware in reversed(list(self._iter_middlewares())):
+            close_hook = getattr(middleware, "close", None)
+            if callable(close_hook):
+                await close_hook(self.spider)
 
     async def _apply_request_mw(self, req: Request) -> Request:
         for mw in self.request_middlewares:

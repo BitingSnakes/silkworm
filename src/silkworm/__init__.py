@@ -15,6 +15,7 @@ from .runner import (
 )
 from .api import fetch_html, fetch_html_cdp
 from .logging import get_logger
+from .middlewares import RequestResponseStreamMiddleware
 
 __all__ = [
     "Request",
@@ -35,6 +36,7 @@ __all__ = [
     "fetch_html",
     "fetch_html_cdp",
     "get_logger",
+    "RequestResponseStreamMiddleware",
 ]
 
 # Optional CDP support

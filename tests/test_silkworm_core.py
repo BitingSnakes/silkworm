@@ -13,6 +13,7 @@ from silkworm.middlewares import (
     CloudflareCrawlMiddleware,
     DelayMiddleware,
     ProxyMiddleware,
+    RequestResponseStreamMiddleware,
     RetryMiddleware,
 )
 from silkworm.request import Request
@@ -46,6 +47,10 @@ class _RecordingClient:
     async def request(self, method: Any, url: str, **kwargs: Any) -> _StubResponse:
         self.calls.append((method, url, kwargs))
         return _StubResponse()
+
+
+class _MethodStub:
+    POST = "POST"
 
 
 def test_request_replace_creates_new_request_with_updates():
@@ -1045,3 +1050,195 @@ async def test_cloudflare_crawl_middleware_runs_inside_engine(
 
     assert spider.payload is not None
     assert spider.payload["result"]["records"][0]["url"] == "https://example.com/about"
+
+
+async def test_request_response_stream_middleware_connects_events(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    client = _RecordingClient()
+    monkeypatch.setattr("silkworm.middlewares.Client", lambda: client)
+    monkeypatch.setattr("silkworm.middlewares.Method", _MethodStub)
+
+    middleware = RequestResponseStreamMiddleware(
+        "https://collector.example.com/events",
+    )
+    spider = Spider(name="stream-test")
+    request = Request(
+        url="https://example.com/api",
+        method="POST",
+        headers={"content-type": "application/json"},
+        json={"hello": "world"},
+        callback=spider.parse,
+    )
+
+    await middleware.open(spider)
+    processed_request = await middleware.process_request(request, spider)
+    response = Response(
+        url=processed_request.url,
+        status=201,
+        headers={"content-type": "application/json"},
+        body=b'{"ok": true}',
+        request=processed_request,
+    )
+    await middleware.process_response(response, spider)
+    await middleware.close(spider)
+
+    assert len(client.calls) == 2
+
+    request_event = client.calls[0][2]["json"]
+    response_event = client.calls[1][2]["json"]
+
+    assert request_event["event"] == "request"
+    assert response_event["event"] == "response"
+    assert request_event["exchange_id"] == response_event["exchange_id"]
+    assert request_event["request"]["url"] == "https://example.com/api"
+    assert request_event["request"]["body"]["kind"] == "json"
+    assert request_event["request"]["body"]["value"] == {"hello": "world"}
+    assert response_event["response"]["status"] == 201
+    assert response_event["response"]["encoding"] == "ascii"
+    assert isinstance(response_event["duration_ms"], float)
+
+
+async def test_request_response_stream_middleware_batches_and_adds_auth_header(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    client = _RecordingClient()
+    monkeypatch.setattr("silkworm.middlewares.Client", lambda: client)
+    monkeypatch.setattr("silkworm.middlewares.Method", _MethodStub)
+
+    middleware = RequestResponseStreamMiddleware(
+        "https://collector.example.com/events",
+        auth_token="secret-token",
+        batch_size=2,
+    )
+    spider = Spider(name="stream-test")
+    request = Request(url="https://example.com")
+
+    await middleware.open(spider)
+    processed_request = await middleware.process_request(request, spider)
+    response = Response(
+        url=processed_request.url,
+        status=200,
+        headers={"content-type": "text/plain"},
+        body=b"ok",
+        request=processed_request,
+    )
+    await middleware.process_response(response, spider)
+    await middleware.close(spider)
+
+    assert len(client.calls) == 1
+
+    _, _, kwargs = client.calls[0]
+    assert kwargs["headers"]["Authorization"] == "Bearer secret-token"
+    payload = kwargs["json"]
+    assert payload["count"] == 2
+    assert len(payload["events"]) == 2
+    assert payload["events"][0]["event"] == "request"
+    assert payload["events"][1]["event"] == "response"
+
+
+async def test_engine_runs_middleware_lifecycle_hooks():
+    events: list[str] = []
+
+    class LifecycleMiddleware:
+        async def open(self, spider: Spider) -> None:
+            events.append(f"open:{spider.name}")
+
+        async def close(self, spider: Spider) -> None:
+            events.append(f"close:{spider.name}")
+
+        async def process_request(self, request: Request, spider: Spider) -> Request:
+            events.append(f"request:{spider.name}")
+            return request
+
+    class LifecycleSpider(Spider):
+        name = "lifecycle-spider"
+        start_urls = ("https://example.com",)
+
+        async def parse(self, response: Response):
+            return None
+
+    spider = LifecycleSpider()
+    engine = Engine(
+        spider,
+        concurrency=1,
+        request_middlewares=[LifecycleMiddleware()],
+    )
+
+    async def fake_fetch(request: Request) -> Response:
+        return Response(
+            url=request.url,
+            status=200,
+            headers={"content-type": "text/plain"},
+            body=b"ok",
+            request=request,
+        )
+
+    engine.http.fetch = fake_fetch  # type: ignore[method-assign]
+    await engine.run()
+
+    assert events == [
+        "open:lifecycle-spider",
+        "request:lifecycle-spider",
+        "close:lifecycle-spider",
+    ]
+
+
+async def test_engine_shared_stream_middleware_only_opens_once(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    events: list[str] = []
+
+    class SharedStreamMiddleware:
+        async def open(self, spider: Spider) -> None:
+            events.append(f"open:{spider.name}")
+
+        async def close(self, spider: Spider) -> None:
+            events.append(f"close:{spider.name}")
+
+        async def process_request(self, request: Request, spider: Spider) -> Request:
+            events.append("request")
+            return request
+
+        async def process_response(
+            self,
+            response: Response,
+            spider: Spider,
+        ) -> Response:
+            events.append("response")
+            return response
+
+    class SharedSpider(Spider):
+        name = "shared-stream-spider"
+        start_urls = ("https://example.com",)
+
+        async def parse(self, response: Response):
+            return None
+
+    spider = SharedSpider()
+    middleware = SharedStreamMiddleware()
+    engine = Engine(
+        spider,
+        concurrency=1,
+        request_middlewares=[middleware],
+        response_middlewares=[middleware],
+    )
+
+    async def fake_fetch(request: Request) -> Response:
+        return Response(
+            url=request.url,
+            status=200,
+            headers={"content-type": "text/plain"},
+            body=b"ok",
+            request=request,
+        )
+
+    engine.http.fetch = fake_fetch  # type: ignore[method-assign]
+    await engine.run()
+
+    assert events == [
+        "open:shared-stream-spider",
+        "request",
+        "response",
+        "close:shared-stream-spider",
+    ]
