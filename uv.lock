@@ -2031,16 +2031,25 @@ wheels = [
 
 [[package]]
 name = "rsloop"
-version = "0.1.1"
+version = "0.1.6"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/2f/71/97c2f838256cc2003afe77fa868719f04a284da27770e884fe8e407f13c7/rsloop-0.1.1.tar.gz", hash = "sha256:ce6bf3f85130c554769af62e72a0bdc3d505f75071182f10b5230a08628ebb8d", size = 265993, upload-time = "2026-03-21T19:52:24.885Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/04/c2/368b4273a3ed9268f040266bae990085b224ae5a4934aecb63e07cd8b8c5/rsloop-0.1.6.tar.gz", hash = "sha256:0eb73c7a374d9c25809b8de1a8e9f24cfbe889ce760ae8d7845adfa6b5ab3798", size = 299928, upload-time = "2026-03-23T02:55:34.542Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/56/69/e8ffca74c1e422dd09d23698cef02d018b92e19cedaa1ec8b7a0e1de86cb/rsloop-0.1.1-cp313-cp313-macosx_10_12_x86_64.whl", hash = "sha256:86e0fbdece5d4e9ebe2958180faecdec3401f97c2010afb4b090590e5d302905", size = 827384, upload-time = "2026-03-21T19:52:10.437Z" },
-    { url = "https://files.pythonhosted.org/packages/8b/a3/bf5b311fd77383328d0aef238a45269f923cf48f2cf754de48e3909b23a9/rsloop-0.1.1-cp313-cp313-manylinux_2_39_x86_64.whl", hash = "sha256:8719be82c95f489ac46f6c4660a2ad750260370fe51d381b93659145b051f7e6", size = 845408, upload-time = "2026-03-21T19:52:11.933Z" },
-    { url = "https://files.pythonhosted.org/packages/d6/3c/7ed8226bfa82d4fb7427986287b9b62b49e2814ab44875c331e9779f9507/rsloop-0.1.1-cp314-cp314-macosx_10_12_x86_64.whl", hash = "sha256:b81aa4ab8943bc49a25d6032047212fec0c084732b61239cc72e92344ee965fc", size = 825251, upload-time = "2026-03-21T19:52:13.243Z" },
-    { url = "https://files.pythonhosted.org/packages/6b/0d/a1b9c2743288684bab092472f1e4ca96da62f2c3382f57d4486294d1207a/rsloop-0.1.1-cp314-cp314-manylinux_2_39_x86_64.whl", hash = "sha256:db951032c437b487e4a4b249606b9a7c8a252b462fc83edd3ec338d256a99d9b", size = 843134, upload-time = "2026-03-21T19:52:14.672Z" },
-    { url = "https://files.pythonhosted.org/packages/69/e5/cb50064f0dbcf83b8bf6e985f596730c9e414bd724ebe32b2ca3490cd96e/rsloop-0.1.1-cp314-cp314t-macosx_10_12_x86_64.whl", hash = "sha256:c86dac6118c3e950c333bf830dfce76314856e208aa138271f331808f752e49c", size = 811733, upload-time = "2026-03-21T19:52:16.028Z" },
-    { url = "https://files.pythonhosted.org/packages/eb/a9/99be6c2d83c40050e16fbeafaf7a1c43666f1ed5c55273fc83b9794688c7/rsloop-0.1.1-cp314-cp314t-manylinux_2_39_x86_64.whl", hash = "sha256:8db31499ce29b3c1bf359edd08aed06a4ca658f3f7836826f16a73b1b0bd2e70", size = 835238, upload-time = "2026-03-21T19:52:17.875Z" },
+    { url = "https://files.pythonhosted.org/packages/73/37/824d070cfcc3c0b1a4f170163a9635615112cfca9cb5b53aae99e02af2b2/rsloop-0.1.6-cp313-cp313-macosx_10_12_x86_64.whl", hash = "sha256:fe9ef2d5bb6bea4c39b1aa5a93d04fa92138122e8fa1833723b0498a639e712e", size = 2520803, upload-time = "2026-03-23T02:54:58.762Z" },
+    { url = "https://files.pythonhosted.org/packages/22/90/ed2f032b42be3dcdae305b09b1bd084923ed8cd0a33302c23394beb6e79b/rsloop-0.1.6-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:502fc0025f7c589f76ad3ec4cce120838873ab3eb4646ed5a94c15a66ae40569", size = 2364328, upload-time = "2026-03-23T02:55:00.556Z" },
+    { url = "https://files.pythonhosted.org/packages/60/e1/9d65b44bb8b171daf110e1b97632a07fbb77e17d5585e1604d22fe01fcbe/rsloop-0.1.6-cp313-cp313-manylinux_2_39_x86_64.whl", hash = "sha256:cf37bf8397281f503d3a8093b35b50736576377db6f7985f7173ce09d6eef4b8", size = 2602000, upload-time = "2026-03-23T02:55:02.234Z" },
+    { url = "https://files.pythonhosted.org/packages/ba/0c/5a85716907beb8e5595b47b707164c0900fd044e316e3722cb5c49ac0536/rsloop-0.1.6-cp313-cp313-win_amd64.whl", hash = "sha256:508a30b19faccbb4e36f5a8fafb77d2ab9de72fead01ac4792bbef1d81f9e71c", size = 2140083, upload-time = "2026-03-23T02:55:03.644Z" },
+    { url = "https://files.pythonhosted.org/packages/41/8a/f8325971d7e5829fba0520da9054e14d5485ecef25d707b17ffe5ce2fa62/rsloop-0.1.6-cp313-cp313-win_arm64.whl", hash = "sha256:6e5c630b093208b215770c46c091ebed9e96c10ae78d7b4226ad6c2130123725", size = 2198501, upload-time = "2026-03-23T02:55:05.008Z" },
+    { url = "https://files.pythonhosted.org/packages/b3/32/dd075b3de9f9f18115a94b9100954ed1e2568635c8d61bce66762ced1970/rsloop-0.1.6-cp314-cp314-macosx_10_12_x86_64.whl", hash = "sha256:b65867525ea13dd99b935bc98ad8adeea82bf841aa98810cdad6a49a7fd3577f", size = 2518382, upload-time = "2026-03-23T02:55:06.352Z" },
+    { url = "https://files.pythonhosted.org/packages/55/91/3d9c78ad82c2a1761a0380af901b866be4d0df67b6bd380f346a8a6bdfd6/rsloop-0.1.6-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:22268ec1c290514766380871a3fa16ffa1b0e61fb4d4b0a9ad9fa8a231e89e51", size = 2361436, upload-time = "2026-03-23T02:55:07.693Z" },
+    { url = "https://files.pythonhosted.org/packages/0d/83/3d362d96fadb7c56b2ddd2f1d3420f6a84b3d4fe40e3b730ed848c8ae3f7/rsloop-0.1.6-cp314-cp314-manylinux_2_39_x86_64.whl", hash = "sha256:005e1e631e04f02b6374190139e083d4ee9c74211995fefd514b54eaaf29e75e", size = 2598268, upload-time = "2026-03-23T02:55:09.15Z" },
+    { url = "https://files.pythonhosted.org/packages/ba/1e/a94d66773ee6907487c3ccf2e0cf3b16dcc2437868a98fcc392e4b11cf5a/rsloop-0.1.6-cp314-cp314-win_amd64.whl", hash = "sha256:cba96a91c0176965a69919ec65cac7749e2c3da5b50880acd3c20bab3cdc0300", size = 2137014, upload-time = "2026-03-23T02:55:11.007Z" },
+    { url = "https://files.pythonhosted.org/packages/25/f9/680b3b0d6a7a06cfea3e6f7da5743adaa5873eb2f715a09c7121dbe8426b/rsloop-0.1.6-cp314-cp314-win_arm64.whl", hash = "sha256:5ceba6abb43a62bba32d1b3dc15e45577530f4aa691f096739c45d7e66cd5837", size = 2195735, upload-time = "2026-03-23T02:55:12.59Z" },
+    { url = "https://files.pythonhosted.org/packages/9c/f4/ed131df5d3752a47b81fd1246b2b5ec57b7d831a13ee725864637b15fe14/rsloop-0.1.6-cp314-cp314t-macosx_10_12_x86_64.whl", hash = "sha256:3b7c8819ddb2caa76fd29b19bca6fe2c5b3c93be31baadfe6645dd80103284d2", size = 2504795, upload-time = "2026-03-23T02:55:13.941Z" },
+    { url = "https://files.pythonhosted.org/packages/2a/c4/d060e23320fe7ff5b52cd91ea7a5cd36c231812b858e24ec57f0019fbbf7/rsloop-0.1.6-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:17f8227545ba8fdd3fdd929c436d5104d035a2421900e47f9338f168f921a954", size = 2347576, upload-time = "2026-03-23T02:55:15.597Z" },
+    { url = "https://files.pythonhosted.org/packages/c9/0c/ac418575dcaf12445a85f7677a8453584647bc9fd1a88046e8e05eefaed9/rsloop-0.1.6-cp314-cp314t-manylinux_2_39_x86_64.whl", hash = "sha256:b9419daaf9b4adb75bcd37387ce6e0b2a5bf69af1cb8f9a7e9cd15779fc6ebe2", size = 2589999, upload-time = "2026-03-23T02:55:17.319Z" },
+    { url = "https://files.pythonhosted.org/packages/cb/55/d9feafa1e8ce2e1f6fe81a2d2da3eeb653a05b4a1b0337b4474ba48c1515/rsloop-0.1.6-cp314-cp314t-win_amd64.whl", hash = "sha256:ded7d6989a6a807e2fe0b0d60998602ccc23a91dde6237a909e1c19e6cb38c64", size = 2129943, upload-time = "2026-03-23T02:55:19.447Z" },
+    { url = "https://files.pythonhosted.org/packages/da/05/7f8c5aadce81fca70dc3e773bcba3a5e6da205721aa4042fa52d55162b2c/rsloop-0.1.6-cp314-cp314t-win_arm64.whl", hash = "sha256:1c2badaa2621f3271d511a981de812271dbce7b5fabd9ca32df2cfbe7f0a5b70", size = 2180692, upload-time = "2026-03-23T02:55:20.951Z" },
 ]
 
 [[package]]
@@ -2162,7 +2171,7 @@ wheels = [
 
 [[package]]
 name = "silkworm-rs"
-version = "0.4.2"
+version = "0.4.3"
 source = { editable = "." }
 dependencies = [
     { name = "charset-normalizer" },
@@ -2291,7 +2300,7 @@ requires-dist = [
     { name = "polars", marker = "extra == 'polars'", specifier = "==1.39.0" },
     { name = "pyyaml", marker = "extra == 'yaml'", specifier = "==6.0.3" },
     { name = "rnet", specifier = "==3.0.0rc22" },
-    { name = "rsloop", marker = "extra == 'rsloop'", specifier = "==0.1.1" },
+    { name = "rsloop", marker = "extra == 'rsloop'", specifier = "==0.1.6" },
     { name = "rxml", specifier = "==2.4.1" },
     { name = "scraper-rust", specifier = ">=0.4.0" },
     { name = "snowflake-connector-python", marker = "extra == 'snowflake'", specifier = "==4.3.0" },
