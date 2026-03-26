@@ -40,6 +40,8 @@ dependencies = [
   "logly==0.1.6",
   "rxml==2.4.1",
   "wreq>=0.10.0",
+  "pyopenssl>=26.0.0",
+  "requests>=2.33.0",
 ]
 
 [project.optional-dependencies]
@@ -97,7 +99,7 @@ gsheets = [
   "google-auth==2.49.1",
 ]
 snowflake = [
-  "snowflake-connector-python==4.3.0",
+  "snowflake-connector-python==4.4.0",
 ]
 ftp = [
   "aioftp==0.27.2",
