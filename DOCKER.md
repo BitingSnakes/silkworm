@@ -127,7 +127,6 @@ All scraped data is saved to the `/app/data` directory inside the container. Thi
 The Dockerfile is designed to be minimal and easy to customize:
 
 - **Base image**: Python 3.13-slim for small size
-- **Dependencies**: Installed via pip with `--pre` flag to allow prerelease versions (required for rnet)
 - **Source code**: Copied from host to container
 - **Runtime user**: Runs as non-root user `app` (UID/GID configurable via build args)
 - **Data volume**: `/app/data` for spider output
@@ -296,7 +295,7 @@ You can optimize the Dockerfile with multi-stage builds to reduce the final imag
 FROM python:3.13-slim as builder
 WORKDIR /app
 COPY . .
-RUN pip install --user --pre -e .
+RUN pip install --user -e .
 
 # Runtime stage
 FROM python:3.13-slim

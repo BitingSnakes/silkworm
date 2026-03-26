@@ -83,7 +83,7 @@ uv run --group dev pytest tests/integration/test_pipeline_integration.py::test_c
 ## Requirements
 
 - Python 3.13-3.14
-- Core dependencies: `rnet`, `scraper-rust`, `logly`, `rxml`
+- Core dependencies: `wreq`, `scraper-rust`, `logly`, `rxml`
 - Test dependencies: `pytest`, `anyio`
 - Optional dependencies for specific pipeline tests (see `pyproject.toml`)
 - Docker (for database integration tests with testcontainers)

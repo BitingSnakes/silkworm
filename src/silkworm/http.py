@@ -122,7 +122,7 @@ class HttpClient:
                         request_kwargs["keep_alive"] = True
 
                     async with self._request_timeout(timeout_seconds):
-                        # Adjust keyword arguments to actual rnet.Client.request signature
+                        # Adjust keyword arguments to the actual wreq Client.request signature
                         resp = await self._send_request(method, url, request_kwargs)
 
                         status = self._normalize_status(resp.status)
@@ -276,7 +276,7 @@ class HttpClient:
 
     async def _read_body(self, resp: object) -> bytes:
         """
-        rnet responses may expose the payload differently; try common attributes.
+        wreq responses may expose the payload differently; try common attributes.
         """
         reader = getattr(resp, "read", None)
         if callable(reader):
@@ -380,7 +380,7 @@ class HttpClient:
 
     def _normalize_headers(self, raw_headers: object) -> dict[str, str]:
         """
-        rnet's Response.headers may be a mapping or a list of raw header lines;
+        wreq's Response.headers may be a mapping or a list of raw header lines;
         coerce both shapes into a plain dict without raising.
         """
 
@@ -423,7 +423,7 @@ class HttpClient:
 
     def _normalize_status(self, raw_status: Any) -> int:
         """
-        Coerce various status code representations (ints, enums, rnet StatusCode)
+        Coerce various status code representations (ints, enums, wreq status codes)
         into a plain integer for consistent comparison and hashing.
         """
         if isinstance(raw_status, int):

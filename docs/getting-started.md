@@ -13,19 +13,17 @@ pip install silkworm-rs
 
 ### From PyPI (uv)
 ```bash
-uv pip install --prerelease=allow silkworm-rs
+uv pip install silkworm-rs
 # or if using uv project management
-uv add --prerelease=allow silkworm-rs
+uv add silkworm-rs
 ```
 
 ### From Source
 ```bash
 uv venv --python python3.13
 source .venv/bin/activate
-uv pip install --prerelease=allow -e .
+uv pip install -e .
 ```
-
-> **Note:** `--prerelease=allow` is required because some dependencies ship as prerelease versions.
 
 ## Optional Extras
 Silkworm ships many integrations behind extras. Install only what you need.

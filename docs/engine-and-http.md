@@ -1,6 +1,6 @@
 # Engine and HTTP Client
 
-Silkworm's **Engine** orchestrates crawl execution, while **HttpClient** performs HTTP requests using rnet.
+Silkworm's **Engine** orchestrates crawl execution, while **HttpClient** performs HTTP requests using wreq.
 
 ## Engine
 Engine runs the request queue, applies middlewares, invokes callbacks, and sends items through pipelines. See [src/silkworm/engine.py](../src/silkworm/engine.py).
@@ -41,7 +41,7 @@ engine = Engine(spider, concurrency=8, log_stats_interval=10)
 Engine accepts a wide range of callback outputs (single item, iterable, async iterable, awaitable). Any non-iterable value is treated as a single item to avoid confusing TypeErrors.
 
 ## HttpClient
-HttpClient wraps rnet and is responsible for request serialization, redirects, and HTML detection. See [src/silkworm/http.py](../src/silkworm/http.py).
+HttpClient wraps wreq and is responsible for request serialization, redirects, and HTML detection. See [src/silkworm/http.py](../src/silkworm/http.py).
 
 Core features:
 - **Browser emulation**: `emulation=Emulation.Firefox139` by default.

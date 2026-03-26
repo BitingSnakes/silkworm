@@ -17,7 +17,7 @@ Prerequisites:
 1. Install silkworm with CDP support:
    pip install silkworm-rs[cdp]
    or
-   uv pip install --prerelease=allow silkworm-rs[cdp]
+   uv pip install silkworm-rs[cdp]
 
 2. Start Lightpanda with CDP enabled:
    lightpanda --remote-debugging-port=9222

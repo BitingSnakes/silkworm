@@ -301,7 +301,7 @@ async def test_httpclient_follows_redirects():
     assert client._client.calls[1][1] == "http://example.com/next"
 
 
-async def test_httpclient_converts_string_proxy_to_rnet_proxy():
+async def test_httpclient_converts_string_proxy_to_wreq_proxy():
     client = HttpClient()
     client._client = _RecordingClient()  # type: ignore[assignment]
 

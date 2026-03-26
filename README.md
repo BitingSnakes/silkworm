@@ -4,13 +4,13 @@
 [![Tests](https://github.com/BitingSnakes/silkworm/actions/workflows/tests.yml/badge.svg)](https://github.com/BitingSnakes/silkworm/actions/workflows/tests.yml)
 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/silkworm-rs?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/silkworm-rs)
 
-Async-first web scraping framework built on [rnet](https://github.com/0x676e67/rnet) (HTTP with browser impersonation) and [scraper-rs](https://github.com/RustedBytes/scraper-rs) (fast HTML parsing). Silkworm gives you a minimal Spider/Request/Response model, middlewares, and pipelines so you can script quick scrapes or build larger crawlers without boilerplate.
+Async-first web scraping framework built on `wreq` (HTTP with browser impersonation) and [scraper-rs](https://github.com/RustedBytes/scraper-rs) (fast HTML parsing). Silkworm gives you a minimal Spider/Request/Response model, middlewares, and pipelines so you can script quick scrapes or build larger crawlers without boilerplate.
 
 > **NEW**: Use [silkworm-mcp](https://github.com/BitingSnakes/silkworm-mcp) to build scrapers.
 
 ## Features
 - Async engine with configurable concurrency, bounded queue backpressure (defaults to `concurrency * 10`), and per-request timeouts.
-- rnet-powered HTTP client: browser impersonation, redirect following with loop detection, query merging, and proxy support via `request.meta["proxy"]`.
+- wreq-powered HTTP client: browser impersonation, redirect following with loop detection, query merging, and proxy support via `request.meta["proxy"]`.
 - Typed spiders and callbacks that can return items or `Request` objects; `HTMLResponse` ships helper methods plus `Response.follow` to reuse callbacks.
 - Middlewares: User-Agent rotation/default, proxy rotation, retry with exponential backoff + optional sleep codes, flexible delays (fixed/random/custom), `SkipNonHTMLMiddleware` to drop non-HTML callbacks, and `CloudflareCrawlMiddleware` for Browser Rendering crawl jobs.
 - Pipelines: JSON Lines, SQLite, XML (nested data preserved), and CSV (flattens dicts and lists) out of the box.
@@ -136,7 +136,7 @@ from silkworm.pipelines import (
     PostgreSQLPipeline,  # requires: pip install silkworm-rs[postgresql]
     S3JsonLinesPipeline,  # requires: pip install silkworm-rs[s3]
     VortexPipeline,  # requires: pip install silkworm-rs[vortex]
-    WebhookPipeline,  # sends items to webhook endpoints using rnet
+    WebhookPipeline,  # sends items to webhook endpoints using wreq
     GoogleSheetsPipeline,  # requires: pip install silkworm-rs[gsheets]
     SnowflakePipeline,  # requires: pip install silkworm-rs[snowflake]
     FTPPipeline,  # requires: pip install silkworm-rs[ftp]
@@ -195,7 +195,7 @@ run_spider(
 - `PostgreSQLPipeline` sends items to a PostgreSQL database table as JSONB (requires `pip install silkworm-rs[postgresql]`).
 - `S3JsonLinesPipeline` writes items to AWS S3 in JSON Lines format using async OpenDAL (requires `pip install silkworm-rs[s3]`).
 - `VortexPipeline` writes items to a [Vortex](https://github.com/spiraldb/vortex) file for high-performance columnar storage with 100x faster random access and 10-20x faster scans compared to Parquet (requires `pip install silkworm-rs[vortex]`).
-- `WebhookPipeline` sends items to webhook endpoints via HTTP POST/PUT using rnet (same HTTP client as the spider) with support for batching and custom headers.
+- `WebhookPipeline` sends items to webhook endpoints via HTTP POST/PUT using wreq (same HTTP client as the spider) with support for batching and custom headers.
 - `GoogleSheetsPipeline` appends items to Google Sheets with automatic flattening of nested data structures (requires `pip install silkworm-rs[gsheets]` and service account credentials).
 - `SnowflakePipeline` sends items to Snowflake data warehouse tables as JSON (requires `pip install silkworm-rs[snowflake]`).
 - `FTPPipeline` writes items to an FTP server in JSON Lines format (requires `pip install silkworm-rs[ftp]`).
@@ -450,7 +450,7 @@ See `examples/lightpanda_simple.py` and `examples/lightpanda_spider.py` for comp
 - Periodic statistics with `log_stats_interval`; final stats always include elapsed time, queue size, requests/sec, seen URLs, items scraped, errors, and memory MB.
 
 ## Limitations
-- By default, HTTP fetches are rnet-based without JavaScript execution; pages requiring client-side rendering can use the optional CDP integration (see "JavaScript rendering with Lightpanda" section) or external browser automation tools.
+- By default, HTTP fetches are wreq-based without JavaScript execution; pages requiring client-side rendering can use the optional CDP integration (see "JavaScript rendering with Lightpanda" section) or external browser automation tools.
 - Request deduplication keys only on `Request.url`; query params, HTTP method, and body are ignored, so same-URL requests with different params/data are dropped unless you set `dont_filter=True` or make the URL unique yourself.
 - HTML parsing auto-detects encoding (BOM, HTTP headers/meta, charset detection fallback) but still enforces a `html_max_size_bytes`/`doc_max_size_bytes` cap (default 5 MB) in `scraper-rs` selectors, so very large pages may need a higher limit or preprocessing.
 - Several pipelines buffer all items in memory until close (PolarsPipeline, ExcelPipeline, YAMLPipeline, AvroPipeline, VortexPipeline, S3JsonLinesPipeline, FTPPipeline, SFTPPipeline), which can bloat RAM on long crawls; prefer streaming pipelines like JsonLines/CSV/SQLite for high-volume runs.
@@ -516,7 +516,7 @@ just fmt && just lint && just typecheck && just test
 ## Acknowledgements
 Silkworm is built on top of excellent open-source projects:
 
-- [rnet](https://github.com/0x676e67/rnet) - HTTP client with browser impersonation capabilities
+- `wreq` - HTTP client with browser impersonation capabilities
 - [scraper-rs](https://github.com/RustedBytes/scraper-rs) - Fast HTML parsing library
 - [logly](https://github.com/muhammad-fiaz/logly) - Structured logging
 - [rxml](https://github.com/nephi-dev/rxml) - XML parsing and writing
