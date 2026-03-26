@@ -627,7 +627,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 # Third-party imports
-from rnet import Client
+from wreq import Client
 
 # Local imports
 from .request import Request

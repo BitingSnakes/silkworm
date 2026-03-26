@@ -120,7 +120,7 @@ except ImportError:
     SNOWFLAKE_AVAILABLE = False
 
 try:
-    from rnet import Client, Method  # type: ignore[import]
+    from wreq import Client, Method  # type: ignore[import]
 
     RNET_AVAILABLE = True
 except ImportError:

@@ -8,7 +8,7 @@ from datetime import timedelta
 from typing import TYPE_CHECKING, Any, AsyncIterator, cast
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit
 
-from rnet import Client, Emulation, Method, Proxy  # type: ignore[import]
+from wreq import Client, Emulation, Method, Proxy  # type: ignore[import]
 
 from .exceptions import HttpError
 from .logging import get_logger

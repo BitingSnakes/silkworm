@@ -4,7 +4,7 @@ import inspect
 from datetime import timedelta
 from typing import Any, cast
 
-from rnet import Client, Emulation  # type: ignore[import]
+from wreq import Client, Emulation  # type: ignore[import]
 from scraper_rs.asyncio import AsyncDocument, parse  # type: ignore[import]
 
 
