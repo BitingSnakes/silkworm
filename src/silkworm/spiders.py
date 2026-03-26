@@ -1,6 +1,7 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload, override
 
+from ._types import JSONValue
 from .logging import get_logger
 from .request import Request
 
@@ -11,6 +12,61 @@ if TYPE_CHECKING:
     from .logging import _Logger
     from .request import CallbackOutput
     from .response import Response
+
+
+_RESERVED_STATS_KEYS = frozenset(
+    {
+        "spider",
+        "event_loop",
+        "elapsed_seconds",
+        "requests_sent",
+        "responses_received",
+        "items_scraped",
+        "errors",
+        "queue_size",
+        "requests_per_second",
+        "seen_requests",
+        "memory_mb",
+    }
+)
+
+
+class StatsPayloadDict(dict[str, JSONValue]):
+    __slots__ = ("_reserved_keys",)
+
+    def __init__(self, reserved_keys: frozenset[str], /) -> None:
+        super().__init__()
+        self._reserved_keys = reserved_keys
+
+    def _validate_key(self, key: str) -> None:
+        if key.startswith("_"):
+            raise KeyError(f"Spider stats key cannot start with '_': {key}")
+        if key in self._reserved_keys:
+            raise KeyError(f"Spider stats key is reserved by the engine: {key}")
+
+    @override
+    def __setitem__(self, key: str, value: JSONValue) -> None:
+        self._validate_key(key)
+        super().__setitem__(key, value)
+
+    @override
+    def update(self, *args: object, **kwargs: JSONValue) -> None:
+        updates = dict(*args, **kwargs)
+        for key, value in updates.items():
+            self[key] = value
+
+    @overload
+    def setdefault(self, key: str, default: None = None) -> None: ...
+
+    @overload
+    def setdefault(self, key: str, default: JSONValue) -> JSONValue: ...
+
+    @override
+    def setdefault(
+        self, key: str, default: JSONValue | None = None
+    ) -> JSONValue | None:
+        self._validate_key(key)
+        return super().setdefault(key, default)
 
 
 class Spider:
@@ -45,6 +101,8 @@ class Spider:
         else:
             # If logger is already a _Logger instance, use it directly
             self.logger = logger
+
+        self.stats_payload = StatsPayloadDict(_RESERVED_STATS_KEYS)
 
     @property
     def log(self) -> _Logger:

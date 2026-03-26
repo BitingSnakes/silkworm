@@ -377,6 +377,21 @@ class Engine:
             "memory_mb": round(self._get_memory_usage_mb(), 2),
         }
 
+    def _statistics_log_context(
+        self,
+        elapsed: float,
+        *,
+        include_event_loop: bool = False,
+    ) -> dict[str, object]:
+        context: dict[str, object] = {
+            "spider": self.spider.name,
+            **self._stats_payload(elapsed),
+            **self.spider.stats_payload,
+        }
+        if include_event_loop:
+            context["event_loop"] = self._event_loop_type
+        return context
+
     async def _log_statistics(self) -> None:
         """Periodically log statistics about the crawl progress."""
         if self.log_stats_interval is None:
@@ -394,8 +409,7 @@ class Engine:
             except TimeoutError:
                 self.logger.info(
                     "Crawl statistics",
-                    spider=self.spider.name,
-                    **self._stats_payload(time.time() - self._start_time),
+                    **self._statistics_log_context(time.time() - self._start_time),
                 )
 
     async def run(self) -> None:
@@ -420,9 +434,10 @@ class Engine:
 
             self.logger.info(
                 "Final crawl statistics",
-                spider=self.spider.name,
-                event_loop=self._event_loop_type,
-                **self._stats_payload(time.time() - self._start_time),
+                **self._statistics_log_context(
+                    time.time() - self._start_time,
+                    include_event_loop=True,
+                ),
             )
 
             await self.http.close()

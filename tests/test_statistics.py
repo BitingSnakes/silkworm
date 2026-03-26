@@ -70,6 +70,41 @@ async def test_engine_stats_payload_includes_seen_and_memory(
     assert payload["memory_mb"] == 123.46
 
 
+async def test_spider_stats_payload_allows_custom_keys() -> None:
+    spider = MockSpider()
+
+    spider.stats_payload["oldest_item_age_seconds"] = 42
+    spider.stats_payload.update({"pages_with_warnings": 3})
+
+    assert spider.stats_payload == {
+        "oldest_item_age_seconds": 42,
+        "pages_with_warnings": 3,
+    }
+
+
+async def test_spider_stats_payload_rejects_engine_and_private_keys() -> None:
+    spider = MockSpider()
+
+    with pytest.raises(KeyError, match="cannot start with '_'"):
+        spider.stats_payload["_internal_metric"] = 1
+
+    with pytest.raises(KeyError, match="reserved by the engine"):
+        spider.stats_payload["requests_sent"] = 1
+
+
+async def test_statistics_log_context_includes_spider_stats() -> None:
+    spider = MockSpider()
+    spider.stats_payload["oldest_item_age_seconds"] = 42
+    engine = Engine(spider)
+
+    context = engine._statistics_log_context(elapsed=2.0, include_event_loop=True)
+
+    assert context["spider"] == spider.name
+    assert context["event_loop"] is None
+    assert context["oldest_item_age_seconds"] == 42
+    assert context["requests_sent"] == 0
+
+
 class _SpyLogger:
     def __init__(self) -> None:
         self.info_calls: list[tuple[str, dict[str, object]]] = []
