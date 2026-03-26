@@ -27,19 +27,17 @@ pip install silkworm-rs
 From PyPI with uv (recommended for faster installs):
 
 ```bash
-uv pip install --prerelease=allow silkworm-rs
+uv pip install silkworm-rs
 # or if using uv's project management:
-uv add --prerelease=allow silkworm-rs
+uv add silkworm-rs
 ```
-
-> **Note:** The `--prerelease=allow` flag is required because silkworm-rs depends on prerelease versions of some packages (e.g., rnet).
 
 From source:
 
 ```bash
 uv venv  # install uv from https://docs.astral.sh/uv/getting-started/ if needed
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
-uv pip install --prerelease=allow -e .
+uv pip install -e .
 ```
 
 Targets Python 3.13+; dependencies are pinned in `pyproject.toml`.
@@ -280,7 +278,7 @@ For improved async performance, enable rsloop as a drop-in replacement for async
 ```bash
 pip install silkworm-rs[rsloop]
 # or with uv:
-uv pip install --prerelease=allow silkworm-rs[rsloop]
+uv pip install silkworm-rs[rsloop]
 ```
 
 Then call `run_spider_rsloop` (same signature as `run_spider`):
@@ -300,7 +298,7 @@ For improved async performance, enable uvloop (a fast, drop-in replacement for a
 ```bash
 pip install silkworm-rs[uvloop]
 # or with uv:
-uv pip install --prerelease=allow silkworm-rs[uvloop]
+uv pip install silkworm-rs[uvloop]
 ```
 
 Then call `run_spider_uvloop` (same signature as `run_spider`):
@@ -322,7 +320,7 @@ For Windows users who want improved async performance, enable winloop (a Windows
 ```bash
 pip install silkworm-rs[winloop]
 # or with uv:
-uv pip install --prerelease=allow silkworm-rs[winloop]
+uv pip install silkworm-rs[winloop]
 ```
 
 Then call `run_spider_winloop` (same signature as `run_spider`):
@@ -344,7 +342,7 @@ If you prefer trio over asyncio, you can use `run_spider_trio` instead of `run_s
 ```bash
 pip install silkworm-rs[trio]
 # or with uv:
-uv pip install --prerelease=allow silkworm-rs[trio]
+uv pip install silkworm-rs[trio]
 ```
 
 Then use `run_spider_trio`:
@@ -368,7 +366,7 @@ For pages that require JavaScript execution, you can use Lightpanda (or any CDP-
 ```bash
 pip install silkworm-rs[cdp]
 # or with uv:
-uv pip install --prerelease=allow silkworm-rs[cdp]
+uv pip install silkworm-rs[cdp]
 ```
 
 ### Starting Lightpanda
