@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol, cast, assert_never
 from uuid import uuid4
 
-from rnet import Client, Method  # type: ignore[import]
+from wreq import Client, Method  # type: ignore[import]
 
 from ._types import JSONValue
 from .exceptions import HttpError

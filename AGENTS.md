@@ -2,11 +2,11 @@
 
 ## Project Overview
 
-**Silkworm** is an async-first web scraping framework built on top of [rnet](https://github.com/0x676e67/rnet) (HTTP client with browser impersonation) and [scraper-rs](https://github.com/RustedBytes/scraper-rs) (fast HTML parsing). It provides a minimal Spider/Request/Response model, middlewares, and pipelines for building web scrapers and crawlers without boilerplate.
+**Silkworm** is an async-first web scraping framework built on top of `wreq` (HTTP client with browser impersonation) and [scraper-rs](https://github.com/RustedBytes/scraper-rs) (fast HTML parsing). It provides a minimal Spider/Request/Response model, middlewares, and pipelines for building web scrapers and crawlers without boilerplate.
 
 ### Key Features
 - **Async-first engine** with configurable concurrency, bounded backpressure (defaults to `concurrency * 10`), and per-request timeouts
-- **rnet-powered HTTP client** with browser impersonation, redirect following with loop detection, query merging, and proxy support
+- **wreq-powered HTTP client** with browser impersonation, redirect following with loop detection, query merging, and proxy support
 - **Typed spiders and callbacks** with `HTMLResponse` helpers (`follow`, selectors) and flexible callback outputs
 - **Middleware system** for request/response processing
 - **Pipeline system** for data export to various formats and destinations
@@ -627,7 +627,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 # Third-party imports
-from rnet import Client
+from wreq import Client
 
 # Local imports
 from .request import Request
@@ -772,7 +772,7 @@ async def parse(self, response: Response) -> CallbackOutput:
 ## Dependencies and Optional Features
 
 ### Core Dependencies
-- `rnet`: HTTP client with browser impersonation
+- `wreq`: HTTP client with browser impersonation
 - `scraper-rust`: Fast HTML parsing
 - `logly`: Structured logging
 - `rxml`: XML parsing/writing
@@ -893,7 +893,7 @@ async def fetch():
 ```python
 async def fetch():
     await asyncio.sleep(1)  # Non-blocking
-    # Use async HTTP client (rnet)
+    # Use async HTTP client (wreq)
 ```
 
 ### 3. Missing `from __future__ import annotations`
@@ -980,7 +980,7 @@ Add support for custom delay functions in DelayMiddleware
 - PEP 695 (Type Parameters): https://peps.python.org/pep-0695/
 
 ### Project Dependencies
-- rnet: https://github.com/0x676e67/rnet
+- wreq
 - scraper-rs: https://github.com/RustedBytes/scraper-rs
 - logly: https://github.com/muhammad-fiaz/logly
 - rxml: https://github.com/nephi-dev/rxml

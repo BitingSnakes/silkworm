@@ -1,6 +1,6 @@
 # Silkworm Documentation
 
-**Silkworm** is an async-first web scraping framework built on [rnet](https://github.com/0x676e67/rnet) (HTTP client with browser impersonation) and [scraper-rs](https://github.com/RustedBytes/scraper-rs) (fast HTML parsing). It provides a small, typed Spider/Request/Response model, middlewares, and pipelines so you can ship scrapers quickly without boilerplate.
+**Silkworm** is an async-first web scraping framework built on `wreq` (HTTP client with browser impersonation) and [scraper-rs](https://github.com/RustedBytes/scraper-rs) (fast HTML parsing). It provides a small, typed Spider/Request/Response model, middlewares, and pipelines so you can ship scrapers quickly without boilerplate.
 
 ## Feature Map (Code Links)
 - **Engine and concurrency**: async workers, queue backpressure, stats tracking in [src/silkworm/engine.py](../src/silkworm/engine.py)

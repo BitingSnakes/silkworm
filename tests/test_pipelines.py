@@ -1182,7 +1182,7 @@ except ImportError:
     WebhookPipeline = None  # type: ignore
 
 
-@pytest.mark.skipif(not WEBHOOK_AVAILABLE, reason="rnet not available")
+@pytest.mark.skipif(not WEBHOOK_AVAILABLE, reason="wreq not available")
 def test_webhook_pipeline_initialization():
     # Test that we can initialize the pipeline
     pipeline = WebhookPipeline(  # type: ignore
@@ -1197,7 +1197,7 @@ def test_webhook_pipeline_initialization():
     assert pipeline.batch_size == 5
 
 
-@pytest.mark.skipif(not WEBHOOK_AVAILABLE, reason="rnet not available")
+@pytest.mark.skipif(not WEBHOOK_AVAILABLE, reason="wreq not available")
 async def test_webhook_pipeline_not_opened_raises_error():
     pipeline = WebhookPipeline("https://webhook.site/test")  # type: ignore
     spider = Spider()

@@ -4,7 +4,7 @@ import inspect
 from datetime import timedelta
 from typing import Any, cast
 
-from rnet import Client, Emulation  # type: ignore[import]
+from wreq import Client, Emulation  # type: ignore[import]
 from scraper_rs.asyncio import AsyncDocument, parse  # type: ignore[import]
 
 
@@ -15,7 +15,7 @@ async def fetch_html(
     timeout: float | timedelta | None = None,
 ) -> tuple[str, AsyncDocument]:
     """
-    Fetch HTML from a URL using the rnet HTTP client.
+    Fetch HTML from a URL using the wreq HTTP client.
 
     Returns a tuple of (text, AsyncDocument) with awaitable selector helpers.
     """

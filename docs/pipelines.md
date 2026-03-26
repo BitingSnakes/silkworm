@@ -229,10 +229,10 @@ PostgreSQLPipeline(database="scraping", table="items")
 ```
 
 ### WebhookPipeline
-- **Purpose**: Send items to a webhook using rnet.
+- **Purpose**: Send items to a webhook using wreq.
 - **Options**: `url`, `method`, `headers`, `timeout`, `batch_size`.
 - **Behavior**: If `batch_size` > 1, the payload is a list of items.
-- **Extras**: none (rnet is core).
+- **Extras**: none (wreq is core).
 - **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
 
 ```python

@@ -36,7 +36,7 @@ def _mock_response(
 
 
 def _build_client(*, emulation: Any = None, **_: Any) -> Mock:
-    client = Mock(name="rnet_client")
+    client = Mock(name="wreq_client")
     client.emulation = emulation
     calls: list[tuple[Any, str, dict[str, Any]]] = []
     client.calls = calls
@@ -162,11 +162,11 @@ def _dummy_write_string(
 logly_module: Any = types.ModuleType("logly")
 logly_module.logger = _mock_logger()
 
-rnet_module: Any = types.ModuleType("rnet")
-rnet_module.Client = _build_client
-rnet_module.Emulation = _DummyEmulation
-rnet_module.Method = _DummyMethod
-rnet_module.Proxy = _DummyProxy
+wreq_module: Any = types.ModuleType("wreq")
+wreq_module.Client = _build_client
+wreq_module.Emulation = _DummyEmulation
+wreq_module.Method = _DummyMethod
+wreq_module.Proxy = _DummyProxy
 
 rxml_module: Any = types.ModuleType("rxml")
 rxml_module.Node = _DummyRxmlNode
@@ -189,7 +189,7 @@ scraper_asyncio_module.prettify = AsyncMock(side_effect=lambda html, **_: html)
 sys.modules.update(
     {
         "logly": logly_module,
-        "rnet": rnet_module,
+        "wreq": wreq_module,
         "rxml": rxml_module,
         "scraper_rs": scraper_module,
         "scraper_rs.asyncio": scraper_asyncio_module,

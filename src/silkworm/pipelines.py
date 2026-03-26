@@ -120,13 +120,13 @@ except ImportError:
     SNOWFLAKE_AVAILABLE = False
 
 try:
-    from rnet import Client, Method  # type: ignore[import]
+    from wreq import Client, Method  # type: ignore[import]
 
-    RNET_AVAILABLE = True
+    WREQ_AVAILABLE = True
 except ImportError:
     Client = None  # type: ignore
     Method = None  # type: ignore
-    RNET_AVAILABLE = False
+    WREQ_AVAILABLE = False
 
 try:
     import aioftp  # type: ignore[import-not-found]
@@ -1772,9 +1772,9 @@ class PostgreSQLPipeline:
 
 class WebhookPipeline:
     """
-    Pipeline that sends items to a webhook endpoint using rnet HTTP client.
+    Pipeline that sends items to a webhook endpoint using the wreq HTTP client.
 
-    This pipeline uses the same HTTP client (rnet) as the spider itself for
+    This pipeline uses the same HTTP client (wreq) as the spider itself for
     sending data to webhooks, ensuring consistent behavior and browser impersonation.
 
     Example:
@@ -1806,10 +1806,10 @@ class WebhookPipeline:
             timeout: Request timeout in seconds (default: 30.0)
             batch_size: Number of items to batch before sending (default: 1 for immediate sending)
         """
-        if not RNET_AVAILABLE:
+        if not WREQ_AVAILABLE:
             raise ImportError(
-                "rnet is required for WebhookPipeline but appears to be unavailable. "
-                "This should not happen as rnet is a core dependency.",
+                "wreq is required for WebhookPipeline but appears to be unavailable. "
+                "This should not happen as wreq is a core dependency.",
             )
 
         self.url = url
@@ -1876,7 +1876,7 @@ class WebhookPipeline:
         payload = self._batch[0] if len(self._batch) == 1 else self._batch
 
         try:
-            # Use rnet client to send the request
+            # Use the wreq client to send the request
             method_upper = self.method.upper()
             if not hasattr(Method, method_upper):  # type: ignore[attr-defined]
                 raise ValueError(
