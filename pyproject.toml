@@ -140,7 +140,7 @@ force-include = {"src/silkworm/py.typed" = "silkworm/py.typed"}
 
 [dependency-groups]
 dev = [
-    "build==1.4.0",
+    "build==1.4.2",
     "mypy==1.19.1",
     "py-spy==0.4.1",
     "pydantic==2.12.5",
