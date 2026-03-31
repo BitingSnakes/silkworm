@@ -86,7 +86,7 @@ s3 = [
   "opendal==0.46.0",
 ]
 vortex = [
-  "vortex-data==0.64.0",
+  "vortex-data==0.67.0",
 ]
 mysql = [
   "aiomysql==0.3.2",
