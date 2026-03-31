@@ -46,7 +46,7 @@ dependencies = [
 
 [project.optional-dependencies]
 rsloop = [
-  "rsloop==0.1.10",
+  "rsloop==0.1.14",
 ]
 taskiq = [
   "taskiq==0.12.1",
