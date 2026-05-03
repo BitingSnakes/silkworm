@@ -27,7 +27,7 @@ class HttpClient:
         self,
         *,
         concurrency: int = 16,
-        emulation: Emulation = Emulation.Firefox139,
+        emulation: Any = Emulation.Firefox139,
         default_headers: Headers | None = None,
         timeout: float | timedelta | None = None,
         html_max_size_bytes: int = 5_000_000,
@@ -406,6 +406,9 @@ class HttpClient:
                     if ":" not in text:
                         continue
                     k, v = text.split(":", 1)
+                elif hasattr(entry, "name") and hasattr(entry, "value"):
+                    k = getattr(entry, "name")
+                    v = getattr(entry, "value")
                 else:
                     continue
                 headers[self._textify(k).strip().lower()] = self._textify(v).strip()

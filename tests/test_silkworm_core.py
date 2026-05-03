@@ -1,5 +1,7 @@
 from datetime import timedelta
 import json
+import sys
+import types
 from unittest.mock import AsyncMock, Mock
 from urllib.parse import parse_qsl, urlsplit
 from typing import Any
@@ -16,6 +18,7 @@ from silkworm.middlewares import (
     RequestResponseStreamMiddleware,
     RetryMiddleware,
 )
+from silkworm.onionlink import OnionLinkClient
 from silkworm.request import Request
 from silkworm.response import HTMLResponse, Response
 from silkworm.spiders import Spider
@@ -51,6 +54,51 @@ class _RecordingClient:
 
 class _MethodStub:
     POST = "POST"
+
+
+class _OnionHeader:
+    def __init__(self, name: str, value: str) -> None:
+        self.name = name
+        self.value = value
+
+
+class _OnionResponse:
+    def __init__(
+        self,
+        *,
+        status_code: int = 200,
+        headers: tuple[_OnionHeader, ...] = (),
+        body: bytes = b"",
+    ) -> None:
+        self.status_code = status_code
+        self.headers = headers
+        self.body = body
+
+
+class _RecordingOnionSession:
+    def __init__(self, **kwargs: Any) -> None:
+        self.options = kwargs
+        self.calls: list[dict[str, Any]] = []
+        self.responses: list[_OnionResponse] = [
+            _OnionResponse(
+                headers=(_OnionHeader("Content-Type", "text/html; charset=utf-8"),),
+                body=b"<html><title>ok</title></html>",
+            )
+        ]
+
+    def request(self, method: str, onion: str, **kwargs: Any) -> _OnionResponse:
+        self.calls.append({"method": method, "onion": onion, **kwargs})
+        if len(self.responses) > 1:
+            return self.responses.pop(0)
+        return self.responses[0]
+
+
+@pytest.fixture
+def onionlink_session(monkeypatch: pytest.MonkeyPatch) -> type[_RecordingOnionSession]:
+    module = types.ModuleType("onionlink")
+    module.Session = _RecordingOnionSession
+    monkeypatch.setitem(sys.modules, "onionlink", module)
+    return _RecordingOnionSession
 
 
 def test_request_replace_creates_new_request_with_updates():
@@ -454,6 +502,108 @@ async def test_httpclient_returns_synthetic_response_from_meta():
     assert response.url == "https://example.com/synthetic"
     assert response.status == 202
     assert response.text == '{"ok": true}'
+
+
+async def test_onionlink_client_fetches_onion_html(
+    onionlink_session: type[_RecordingOnionSession],
+):
+    client = OnionLinkClient(default_headers={"Accept": "text/html"}, timeout=7)
+    request = Request(
+        url="http://exampleexampleexampleexampleexampleexampleexampleexampleexampleexample.onion/search?q=old",
+        params={"q": "new", "page": 2},
+        meta={"onionlink_response_limit": 8 * 1024 * 1024},
+    )
+
+    response = await client.fetch(request)
+    session = client._client
+
+    assert isinstance(session, onionlink_session)
+    assert isinstance(response, HTMLResponse)
+    assert response.status == 200
+    assert response.url.endswith("/search?q=new&page=2")
+    assert session.options["timeout_ms"] == 7000
+    assert session.calls == [
+        {
+            "method": "GET",
+            "onion": "exampleexampleexampleexampleexampleexampleexampleexampleexampleexample.onion",
+            "port": 80,
+            "path": "/search?q=new&page=2",
+            "headers": {"Accept": "text/html"},
+            "data": None,
+            "json": None,
+            "form": None,
+            "response_limit": 8 * 1024 * 1024,
+        }
+    ]
+
+
+async def test_onionlink_client_follows_redirects(onionlink_session):
+    client = OnionLinkClient()
+    session = client._client
+    session.responses = [
+        _OnionResponse(
+            status_code=302,
+            headers=(_OnionHeader("Location", "/next"),),
+        ),
+        _OnionResponse(
+            status_code=200,
+            headers=(_OnionHeader("Content-Type", "text/plain"),),
+            body=b"done",
+        ),
+    ]
+
+    response = await client.fetch(
+        Request(
+            url="http://exampleexampleexampleexampleexampleexampleexampleexampleexampleexample.onion/start",
+        )
+    )
+
+    assert response.status == 200
+    assert response.url.endswith("/next")
+    assert response.body == b"done"
+    assert [call["path"] for call in session.calls] == ["/start", "/next"]
+
+
+async def test_onionlink_client_rejects_non_onion_hosts(onionlink_session):
+    client = OnionLinkClient()
+
+    with pytest.raises(Exception, match="only supports .onion"):
+        await client.fetch(Request(url="https://example.com"))
+
+
+async def test_engine_uses_supplied_http_client():
+    class OneShotSpider(Spider):
+        start_urls = ("http://example.com",)
+
+        async def parse(self, response: Response):
+            yield {"url": response.url}
+
+    class DummyHttp:
+        concurrency = 1
+        html_max_size_bytes = 5_000_000
+
+        def __init__(self) -> None:
+            self.closed = False
+
+        async def fetch(self, request: Request) -> Response:
+            return Response(
+                url=request.url,
+                status=200,
+                headers={"content-type": "text/plain"},
+                body=b"ok",
+                request=request,
+            )
+
+        async def close(self) -> None:
+            self.closed = True
+
+    http = DummyHttp()
+    spider = OneShotSpider()
+    engine = Engine(spider, http_client=http)  # type: ignore[arg-type]
+
+    await engine.run()
+
+    assert http.closed is True
 
 
 async def test_retry_middleware_returns_retry_request(monkeypatch: pytest.MonkeyPatch):

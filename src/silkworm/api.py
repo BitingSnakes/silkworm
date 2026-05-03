@@ -11,7 +11,7 @@ from scraper_rs.asyncio import AsyncDocument, parse  # type: ignore[import]
 async def fetch_html(
     url: str,
     *,
-    emulation: Emulation = Emulation.Firefox139,
+    emulation: Any = Emulation.Firefox139,
     timeout: float | timedelta | None = None,
 ) -> tuple[str, AsyncDocument]:
     """

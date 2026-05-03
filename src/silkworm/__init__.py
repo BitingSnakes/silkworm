@@ -5,6 +5,7 @@ from .response import Response, HTMLResponse
 from .spiders import Spider
 from .exceptions import SilkwormError, HttpError, SpiderError, SelectorError
 from .engine import Engine
+from .onionlink import OnionLinkClient
 from .runner import (
     crawl,
     run_spider,
@@ -27,6 +28,7 @@ __all__ = [
     "Spider",
     "SelectorError",
     "Engine",
+    "OnionLinkClient",
     "crawl",
     "run_spider",
     "run_spider_rsloop",

@@ -61,6 +61,12 @@ pip install "silkworm-rs[rsloop,polars]"
 | `memray` | Memory profiling | [justfile](../justfile) |
 | `cdp` | CDP browser client and rendered HTML fetch | [src/silkworm/cdp.py](../src/silkworm/cdp.py) |
 
+`OnionLinkClient` is also available as an optional integration for `.onion` sites, but onionlink is currently installed directly from GitHub:
+
+```bash
+pip install git+https://github.com/RustedBytes/onionlink.git
+```
+
 ## Your First Spider
 This is a minimal spider that extracts quotes and writes JSON Lines output. For a full version, see [examples/quotes_spider.py](../examples/quotes_spider.py).
 

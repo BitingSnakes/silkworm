@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
 
+    from .http import HttpClient
     from .middlewares import RequestMiddleware, ResponseMiddleware
     from .pipelines import ItemPipeline
     from .spiders import Spider
@@ -64,6 +65,7 @@ def run_spider_trio(
     max_pending_requests: int | None = None,
     html_max_size_bytes: int = 5_000_000,
     keep_alive: bool = False,
+    http_client: HttpClient | None = None,
     **spider_kwargs,
 ) -> None:
     """
@@ -117,6 +119,7 @@ def run_spider_trio(
                 max_pending_requests=max_pending_requests,
                 html_max_size_bytes=html_max_size_bytes,
                 keep_alive=keep_alive,
+                http_client=http_client,
                 **spider_kwargs,
             )
 
@@ -135,6 +138,7 @@ async def crawl(
     max_pending_requests: int | None = None,
     html_max_size_bytes: int = 5_000_000,
     keep_alive: bool = False,
+    http_client: HttpClient | None = None,
     **spider_kwargs,
 ) -> None:
     spider = spider_cls(**spider_kwargs)
@@ -149,6 +153,7 @@ async def crawl(
         max_pending_requests=max_pending_requests,
         html_max_size_bytes=html_max_size_bytes,
         keep_alive=keep_alive,
+        http_client=http_client,
     )
     await engine.run()
 
@@ -166,6 +171,7 @@ def run_spider(
     html_max_size_bytes: int = 5_000_000,
     keep_alive: bool = False,
     loop_factory: Callable[[], asyncio.AbstractEventLoop] | None = None,
+    http_client: HttpClient | None = None,
     **spider_kwargs,
 ) -> None:
     coroutine = crawl(
@@ -179,6 +185,7 @@ def run_spider(
         max_pending_requests=max_pending_requests,
         html_max_size_bytes=html_max_size_bytes,
         keep_alive=keep_alive,
+        http_client=http_client,
         **spider_kwargs,
     )
     if loop_factory is None:
@@ -201,6 +208,7 @@ def run_spider_uvloop(
     max_pending_requests: int | None = None,
     html_max_size_bytes: int = 5_000_000,
     keep_alive: bool = False,
+    http_client: HttpClient | None = None,
     **spider_kwargs,
 ) -> None:
     loop_factory = _install_uvloop()
@@ -215,6 +223,7 @@ def run_spider_uvloop(
         max_pending_requests=max_pending_requests,
         html_max_size_bytes=html_max_size_bytes,
         keep_alive=keep_alive,
+        http_client=http_client,
         loop_factory=loop_factory,
         **spider_kwargs,
     )
@@ -232,6 +241,7 @@ def run_spider_winloop(
     max_pending_requests: int | None = None,
     html_max_size_bytes: int = 5_000_000,
     keep_alive: bool = False,
+    http_client: HttpClient | None = None,
     **spider_kwargs,
 ) -> None:
     """
@@ -269,6 +279,7 @@ def run_spider_winloop(
         max_pending_requests=max_pending_requests,
         html_max_size_bytes=html_max_size_bytes,
         keep_alive=keep_alive,
+        http_client=http_client,
         loop_factory=loop_factory,
         **spider_kwargs,
     )
@@ -286,6 +297,7 @@ def run_spider_rsloop(
     max_pending_requests: int | None = None,
     html_max_size_bytes: int = 5_000_000,
     keep_alive: bool = False,
+    http_client: HttpClient | None = None,
     **spider_kwargs,
 ) -> None:
     """
@@ -323,6 +335,7 @@ def run_spider_rsloop(
         max_pending_requests=max_pending_requests,
         html_max_size_bytes=html_max_size_bytes,
         keep_alive=keep_alive,
+        http_client=http_client,
         loop_factory=loop_factory,
         **spider_kwargs,
     )

@@ -50,14 +50,19 @@ class Engine:
         item_pipelines: Iterable[ItemPipeline] | None = None,
         log_stats_interval: float | None = None,
         keep_alive: bool = False,
+        http_client: HttpClient | None = None,
     ) -> None:
         self.spider = spider
-        self.http = HttpClient(
-            concurrency=concurrency,
-            emulation=emulation,
-            timeout=request_timeout,
-            html_max_size_bytes=html_max_size_bytes,
-            keep_alive=keep_alive,
+        self.http = (
+            http_client
+            if http_client is not None
+            else HttpClient(
+                concurrency=concurrency,
+                emulation=emulation,
+                timeout=request_timeout,
+                html_max_size_bytes=html_max_size_bytes,
+                keep_alive=keep_alive,
+            )
         )
         # Bound the queue to avoid unbounded growth when many requests are scheduled.
         default_queue_size = concurrency * 10

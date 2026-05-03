@@ -1,6 +1,6 @@
 # Engine and HTTP Client
 
-Silkworm's **Engine** orchestrates crawl execution, while **HttpClient** performs HTTP requests using wreq.
+Silkworm's **Engine** orchestrates crawl execution, while **HttpClient** performs HTTP requests using wreq by default.
 
 ## Engine
 Engine runs the request queue, applies middlewares, invokes callbacks, and sends items through pipelines. See [src/silkworm/engine.py](../src/silkworm/engine.py).
@@ -20,6 +20,7 @@ Common Engine options (also exposed by `run_spider` and `crawl` in [src/silkworm
 - **`html_max_size_bytes`**: HTML parsing size limit for selectors.
 - **`log_stats_interval`**: periodic stats logging interval (seconds).
 - **`keep_alive`**: reuse HTTP connections when supported.
+- **`http_client`**: optional client instance to use instead of the default wreq-backed `HttpClient`.
 - **`request_middlewares`**, **`response_middlewares`**, **`item_pipelines`**: plug-ins executed by the engine.
 
 ```python
@@ -79,3 +80,28 @@ if isinstance(response, HTMLResponse):
 ### Text Decoding
 `Response.text` uses BOM, headers, and HTML meta tags before falling back to `charset-normalizer` when available.
 See [src/silkworm/response.py](../src/silkworm/response.py).
+
+## OnionLinkClient
+`OnionLinkClient` is an optional client adapter for scraping Tor v3 onion services through [onionlink](https://github.com/RustedBytes/onionlink) instead of wreq. Install onionlink separately because it is distributed from GitHub:
+
+```bash
+pip install git+https://github.com/RustedBytes/onionlink.git
+```
+
+Then pass an instance to `run_spider`, `crawl`, or `Engine`:
+
+```python
+from silkworm import OnionLinkClient, Spider, run_spider
+
+
+class OnionSpider(Spider):
+    start_urls = ("http://exampleexampleexampleexampleexampleexampleexampleexampleexampleexample.onion/",)
+
+
+run_spider(
+    OnionSpider,
+    http_client=OnionLinkClient(concurrency=4, timeout=30),
+)
+```
+
+`Request.params`, headers, body, JSON payloads, redirects, HTML detection, and `request.meta["redirect_times"]` work the same way as the default client. To override onionlink's per-response byte cap for one request, set `request.meta["onionlink_response_limit"]` to an integer byte limit.
