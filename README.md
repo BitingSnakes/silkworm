@@ -11,6 +11,7 @@ Async-first web scraping framework built on `wreq` (HTTP with browser impersonat
 ## Features
 - Async engine with configurable concurrency, bounded queue backpressure (defaults to `concurrency * 10`), and per-request timeouts.
 - wreq-powered HTTP client: browser impersonation, redirect following with loop detection, query merging, and proxy support via `request.meta["proxy"]`.
+- Optional OnionLink client integration for scraping Tor v3 `.onion` sites without routing through wreq.
 - Typed spiders and callbacks that can return items or `Request` objects; `HTMLResponse` ships helper methods plus `Response.follow` to reuse callbacks.
 - Middlewares: User-Agent rotation/default, proxy rotation, retry with exponential backoff + optional sleep codes, flexible delays (fixed/random/custom), `SkipNonHTMLMiddleware` to drop non-HTML callbacks, and `CloudflareCrawlMiddleware` for Browser Rendering crawl jobs.
 - Pipelines: JSON Lines, SQLite, XML (nested data preserved), and CSV (flattens dicts and lists) out of the box.
@@ -100,6 +101,7 @@ if __name__ == "__main__":
 - `max_pending_requests`: queue bound to avoid unbounded memory use (defaults to `concurrency * 10`).
 - `request_timeout`: per-request timeout (seconds).
 - `keep_alive`: reuse HTTP connections when supported by the underlying client (sends `Connection: keep-alive`).
+- `http_client`: use a custom client instance such as `OnionLinkClient(...)` instead of the default wreq-backed client.
 - `html_max_size_bytes`: limit HTML parsed into `AsyncDocument` to avoid huge payloads.
 - `log_stats_interval`: seconds between periodic stats logs; final stats are always emitted.
 - `request_middlewares` / `response_middlewares` / `item_pipelines`: plug-ins run on every request/response/item.
@@ -445,12 +447,41 @@ See `examples/lightpanda_simple.py` and `examples/lightpanda_spider.py` for comp
 
 **Note:** CDP support is experimental. For production use, consider using dedicated browser automation tools or the standard HTTP client when JavaScript rendering is not required.
 
+## Onion services with OnionLink
+For Tor v3 `.onion` sites, pass `OnionLinkClient` as the spider HTTP client. OnionLink is optional and currently installed from GitHub:
+
+```bash
+pip install git+https://github.com/RustedBytes/onionlink.git
+```
+
+```python
+from silkworm import HTMLResponse, OnionLinkClient, Response, Spider, run_spider
+
+
+class OnionSpider(Spider):
+    name = "onion"
+    start_urls = ("http://exampleexampleexampleexampleexampleexampleexampleexampleexampleexample.onion/",)
+
+    async def parse(self, response: Response):
+        if isinstance(response, HTMLResponse):
+            title = await response.select_first("title")
+            yield {"title": title.text if title else ""}
+
+
+run_spider(
+    OnionSpider,
+    http_client=OnionLinkClient(concurrency=4, timeout=30),
+)
+```
+
+`OnionLinkClient` supports Silkworm `Request` headers, `params`, body/data, JSON payloads, redirects, HTML detection, and `request.meta["redirect_times"]`. Override OnionLink's response byte cap per request with `request.meta["onionlink_response_limit"]`.
+
 ## Logging and crawl statistics
 - Structured logs via `logly`; set `SILKWORM_LOG_LEVEL=DEBUG` for verbose request/response/middleware output.
 - Periodic statistics with `log_stats_interval`; final stats always include elapsed time, queue size, requests/sec, seen URLs, items scraped, errors, and memory MB.
 
 ## Limitations
-- By default, HTTP fetches are wreq-based without JavaScript execution; pages requiring client-side rendering can use the optional CDP integration (see "JavaScript rendering with Lightpanda" section) or external browser automation tools.
+- By default, HTTP fetches are wreq-based without JavaScript execution; pages requiring client-side rendering can use the optional CDP integration (see "JavaScript rendering with Lightpanda" section) or external browser automation tools. Tor v3 `.onion` sites can use the optional OnionLink integration.
 - Request deduplication keys only on `Request.url`; query params, HTTP method, and body are ignored, so same-URL requests with different params/data are dropped unless you set `dont_filter=True` or make the URL unique yourself.
 - HTML parsing auto-detects encoding (BOM, HTTP headers/meta, charset detection fallback) but still enforces a `html_max_size_bytes`/`doc_max_size_bytes` cap (default 5 MB) in `scraper-rs` selectors, so very large pages may need a higher limit or preprocessing.
 - Several pipelines buffer all items in memory until close (PolarsPipeline, ExcelPipeline, YAMLPipeline, AvroPipeline, VortexPipeline, S3JsonLinesPipeline, FTPPipeline, SFTPPipeline), which can bloat RAM on long crawls; prefer streaming pipelines like JsonLines/CSV/SQLite for high-volume runs.
@@ -517,6 +548,7 @@ just fmt && just lint && just typecheck && just test
 Silkworm is built on top of excellent open-source projects:
 
 - `wreq` - HTTP client with browser impersonation capabilities
+- [onionlink](https://github.com/RustedBytes/onionlink) - Tor v3 onion-service client
 - [scraper-rs](https://github.com/RustedBytes/scraper-rs) - Fast HTML parsing library
 - [logly](https://github.com/muhammad-fiaz/logly) - Structured logging
 - [rxml](https://github.com/nephi-dev/rxml) - XML parsing and writing
