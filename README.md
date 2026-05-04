@@ -548,7 +548,7 @@ just fmt && just lint && just typecheck && just test
 Silkworm is built on top of excellent open-source projects:
 
 - [wreq](https://github.com/0x676e67/wreq-python) - HTTP client with browser impersonation capabilities
-- [onionlink](https://github.com/RustedBytes/onionlink) - Tor v3 onion-service client
+- [onionlink](https://github.com/RustedBytes/onionlink-rs) - Tor v3 onion-service client
 - [scraper-rs](https://github.com/RustedBytes/scraper-rs) - Fast HTML parsing library
 - [logly](https://github.com/muhammad-fiaz/logly) - Structured logging
 - [rxml](https://github.com/nephi-dev/rxml) - XML parsing and writing
