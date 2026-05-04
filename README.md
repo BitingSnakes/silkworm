@@ -4,7 +4,7 @@
 [![Tests](https://github.com/BitingSnakes/silkworm/actions/workflows/tests.yml/badge.svg)](https://github.com/BitingSnakes/silkworm/actions/workflows/tests.yml)
 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/silkworm-rs?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/silkworm-rs)
 
-Async-first web scraping framework built on `wreq` (HTTP with browser impersonation) and [scraper-rs](https://github.com/RustedBytes/scraper-rs) (fast HTML parsing). Silkworm gives you a minimal Spider/Request/Response model, middlewares, and pipelines so you can script quick scrapes or build larger crawlers without boilerplate.
+Async-first web scraping framework built on [wreq](https://github.com/0x676e67/wreq-python) (HTTP with browser impersonation) and [scraper-rs](https://github.com/RustedBytes/scraper-rs) (fast HTML parsing). Silkworm gives you a minimal Spider/Request/Response model, middlewares, and pipelines so you can script quick scrapes or build larger crawlers without boilerplate.
 
 > **NEW**: Use [silkworm-mcp](https://github.com/BitingSnakes/silkworm-mcp) to build scrapers.
 
@@ -547,7 +547,7 @@ just fmt && just lint && just typecheck && just test
 ## Acknowledgements
 Silkworm is built on top of excellent open-source projects:
 
-- `wreq` - HTTP client with browser impersonation capabilities
+- [wreq](https://github.com/0x676e67/wreq-python) - HTTP client with browser impersonation capabilities
 - [onionlink](https://github.com/RustedBytes/onionlink) - Tor v3 onion-service client
 - [scraper-rs](https://github.com/RustedBytes/scraper-rs) - Fast HTML parsing library
 - [logly](https://github.com/muhammad-fiaz/logly) - Structured logging
