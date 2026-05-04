@@ -448,10 +448,10 @@ See `examples/lightpanda_simple.py` and `examples/lightpanda_spider.py` for comp
 **Note:** CDP support is experimental. For production use, consider using dedicated browser automation tools or the standard HTTP client when JavaScript rendering is not required.
 
 ## Onion services with OnionLink
-For Tor v3 `.onion` sites, pass `OnionLinkClient` as the spider HTTP client. OnionLink is optional and currently installed from GitHub:
+For Tor v3 `.onion` sites, install the optional OnionLink extra and pass `OnionLinkClient` as the spider HTTP client:
 
 ```bash
-pip install git+https://github.com/RustedBytes/onionlink.git
+pip install "silkworm-rs[onionlink]"
 ```
 
 ```python

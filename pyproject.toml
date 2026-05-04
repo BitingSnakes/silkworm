@@ -125,6 +125,9 @@ memray = [
 cdp = [
   "websockets==16.0",
 ]
+onionlink = [
+  "onionlink==0.1.2",
+]
 
 [project.urls]
 Homepage = "https://github.com/BitingSnakes/silkworm"

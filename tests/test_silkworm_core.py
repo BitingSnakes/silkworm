@@ -86,7 +86,7 @@ class _RecordingOnionSession:
             )
         ]
 
-    def request(self, method: str, onion: str, **kwargs: Any) -> _OnionResponse:
+    async def request(self, method: str, onion: str, **kwargs: Any) -> _OnionResponse:
         self.calls.append({"method": method, "onion": onion, **kwargs})
         if len(self.responses) > 1:
             return self.responses.pop(0)
@@ -96,7 +96,7 @@ class _RecordingOnionSession:
 @pytest.fixture
 def onionlink_session(monkeypatch: pytest.MonkeyPatch) -> type[_RecordingOnionSession]:
     module = types.ModuleType("onionlink")
-    module.Session = _RecordingOnionSession
+    module.AsyncSession = _RecordingOnionSession
     monkeypatch.setitem(sys.modules, "onionlink", module)
     return _RecordingOnionSession
 
@@ -569,6 +569,17 @@ async def test_onionlink_client_rejects_non_onion_hosts(onionlink_session):
 
     with pytest.raises(Exception, match="only supports .onion"):
         await client.fetch(Request(url="https://example.com"))
+
+
+def test_onionlink_client_requires_async_session(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    module = types.ModuleType("onionlink")
+    module.Session = _RecordingOnionSession
+    monkeypatch.setitem(sys.modules, "onionlink", module)
+
+    with pytest.raises(ImportError, match=r"onionlink>=0\.1\.2"):
+        OnionLinkClient()
 
 
 async def test_engine_uses_supplied_http_client():

@@ -60,11 +60,12 @@ pip install "silkworm-rs[rsloop,polars]"
 | `taskiq` | Taskiq queue pipeline | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
 | `memray` | Memory profiling | [justfile](../justfile) |
 | `cdp` | CDP browser client and rendered HTML fetch | [src/silkworm/cdp.py](../src/silkworm/cdp.py) |
+| `onionlink` | Tor v3 onion-service client | [src/silkworm/onionlink.py](../src/silkworm/onionlink.py) |
 
-`OnionLinkClient` is also available as an optional integration for `.onion` sites, but onionlink is currently installed directly from GitHub:
+`OnionLinkClient` is also available as an optional integration for `.onion` sites:
 
 ```bash
-pip install git+https://github.com/RustedBytes/onionlink.git
+pip install "silkworm-rs[onionlink]"
 ```
 
 ## Your First Spider

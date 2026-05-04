@@ -82,10 +82,10 @@ if isinstance(response, HTMLResponse):
 See [src/silkworm/response.py](../src/silkworm/response.py).
 
 ## OnionLinkClient
-`OnionLinkClient` is an optional client adapter for scraping Tor v3 onion services through [onionlink](https://github.com/RustedBytes/onionlink) instead of wreq. Install onionlink separately because it is distributed from GitHub:
+`OnionLinkClient` is an optional client adapter for scraping Tor v3 onion services through [onionlink](https://github.com/RustedBytes/onionlink) instead of wreq. Install the OnionLink extra before using it:
 
 ```bash
-pip install git+https://github.com/RustedBytes/onionlink.git
+pip install "silkworm-rs[onionlink]"
 ```
 
 Then pass an instance to `run_spider`, `crawl`, or `Engine`:

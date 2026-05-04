@@ -1323,6 +1323,25 @@ wheels = [
 ]
 
 [[package]]
+name = "onionlink"
+version = "0.1.2"
+source = { registry = "https://pypi.org/simple" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/62/0e/d4ece5cd05d4960ae7ebdb39e4494247f66fce048d82a70616e6d7e5d26b/onionlink-0.1.2-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:5d2abbbe6c29771c2672be0d784beb2cb3969c98de18c60359f12df61adb3a9b", size = 1060611, upload-time = "2026-05-04T07:41:29.695Z" },
+    { url = "https://files.pythonhosted.org/packages/b4/85/4893d1ec687db803e7db168b5ce2a6816f5aa6f4b5ac553e93375be31f20/onionlink-0.1.2-cp313-cp313-manylinux_2_28_x86_64.whl", hash = "sha256:daaeec3f5fc58cd5174a2806cd0e084f59fd09460135dbc795d00937f5833678", size = 1209958, upload-time = "2026-05-04T07:41:31.127Z" },
+    { url = "https://files.pythonhosted.org/packages/b6/4c/2a4d3c8a0e969673dc621769f20c50c6ce1ca9379eff514c44b0f402d84e/onionlink-0.1.2-cp313-cp313-win_amd64.whl", hash = "sha256:4beaa13f14f5516220b5b891ed71cd1c51d90596f68d3fa92cf0cff0cf01877b", size = 1002974, upload-time = "2026-05-04T07:41:32.826Z" },
+    { url = "https://files.pythonhosted.org/packages/f6/c6/7760717bd038d5682fcf795a00a556813c7bc5a3054d378eea7fdf0fccaa/onionlink-0.1.2-cp313-cp313t-macosx_11_0_arm64.whl", hash = "sha256:663573853161df3a02d2af97739b6a35524069603bcd2d23bcd49ae3a48b96d3", size = 1058283, upload-time = "2026-05-04T07:41:34.448Z" },
+    { url = "https://files.pythonhosted.org/packages/5f/fb/89b29d0966c48191e63c483653a803e155c9f7e02d55b61d51bb33873fc1/onionlink-0.1.2-cp313-cp313t-manylinux_2_28_x86_64.whl", hash = "sha256:3629ea1cc835c14b504f07948ddfe401dc832eae72844564d026f1549c0591e8", size = 1208662, upload-time = "2026-05-04T07:41:36.427Z" },
+    { url = "https://files.pythonhosted.org/packages/54/85/8d5245ec0b176f3c2162803194cc74a217109622b0333bafdf7fffe1d808/onionlink-0.1.2-cp313-cp313t-win_amd64.whl", hash = "sha256:0620dd1ba621850171f26cb4ac242806fab2688ec59c996a016b6b99338f0782", size = 1002192, upload-time = "2026-05-04T07:41:38.402Z" },
+    { url = "https://files.pythonhosted.org/packages/40/27/1c49f113e05289085dc52392d38ca6fc9ab9192eb2683212f1cae11deb35/onionlink-0.1.2-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:de21473fa3bd1bc0e8ddef05ce94f99fdb0b183e933ff24433f3e1ce63b56066", size = 1060559, upload-time = "2026-05-04T07:41:39.911Z" },
+    { url = "https://files.pythonhosted.org/packages/77/d3/98ecf49c199137b5b6af98cf12acd835dc99397c1015503d2bdf8641b4a8/onionlink-0.1.2-cp314-cp314-manylinux_2_28_x86_64.whl", hash = "sha256:c978b480f75c850c0ce598ba36092dd1b2daadf532bc5f6ea6e6e931a7923d89", size = 1210410, upload-time = "2026-05-04T07:41:41.549Z" },
+    { url = "https://files.pythonhosted.org/packages/51/10/11d0965ca631b6c708130f3586ed3319c2de5e85144cc84f6625b27e01de/onionlink-0.1.2-cp314-cp314-win_amd64.whl", hash = "sha256:35d4de323566a3ea54c268fa7375a4133a599f70b1dd79a4bf6d90e4ffe2bc43", size = 1002997, upload-time = "2026-05-04T07:41:43.283Z" },
+    { url = "https://files.pythonhosted.org/packages/f0/53/f638cee930cd91989fa30040a24d4b578004a51a35a6b1c2cac5e85d169c/onionlink-0.1.2-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:429698b156395a8c53309022db6b95113449cc6f5c6df502afc63b8949b08195", size = 1058117, upload-time = "2026-05-04T07:41:45.567Z" },
+    { url = "https://files.pythonhosted.org/packages/a5/39/56e1171f879da8351546805af3c39baa7a2dc1436f7e3f623f3a1a74b009/onionlink-0.1.2-cp314-cp314t-manylinux_2_28_x86_64.whl", hash = "sha256:3c45bb0daf5ea26e49d1a62dc38df21d281912f5105250f71fea6f9aecacef73", size = 1208591, upload-time = "2026-05-04T07:41:47.409Z" },
+    { url = "https://files.pythonhosted.org/packages/9a/f8/d535d99bd876ad95a278deeba3cfa74f5159f849df6b2f24bf576b2152c9/onionlink-0.1.2-cp314-cp314t-win_amd64.whl", hash = "sha256:6ce45bd521be3c9ee667bd8a8aeb91dbe72bf666ec2829f8923c1c4719fd9109", size = 1002109, upload-time = "2026-05-04T07:41:49.142Z" },
+]
+
+[[package]]
 name = "opendal"
 version = "0.46.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2182,6 +2201,9 @@ msgpack = [
 mysql = [
     { name = "aiomysql" },
 ]
+onionlink = [
+    { name = "onionlink" },
+]
 polars = [
     { name = "polars" },
 ]
@@ -2251,6 +2273,7 @@ requires-dist = [
     { name = "logly", specifier = "==0.1.6" },
     { name = "memray", marker = "extra == 'memray'", specifier = "==1.19.2" },
     { name = "motor", marker = "extra == 'mongodb'", specifier = "==3.7.1" },
+    { name = "onionlink", marker = "extra == 'onionlink'", specifier = "==0.1.2" },
     { name = "opendal", marker = "extra == 's3'", specifier = "==0.46.0" },
     { name = "openpyxl", marker = "extra == 'excel'", specifier = "==3.1.5" },
     { name = "ormsgpack", marker = "extra == 'msgpack'", specifier = "==1.12.2" },
@@ -2271,7 +2294,7 @@ requires-dist = [
     { name = "winloop", marker = "extra == 'winloop'", specifier = "==0.6.0" },
     { name = "wreq", specifier = ">=0.10.0" },
 ]
-provides-extras = ["rsloop", "taskiq", "uvloop", "winloop", "trio", "msgpack", "polars", "excel", "yaml", "avro", "elasticsearch", "mongodb", "s3", "vortex", "mysql", "postgresql", "gsheets", "snowflake", "ftp", "sftp", "cassandra", "couchdb", "dynamodb", "duckdb", "memray", "cdp"]
+provides-extras = ["rsloop", "taskiq", "uvloop", "winloop", "trio", "msgpack", "polars", "excel", "yaml", "avro", "elasticsearch", "mongodb", "s3", "vortex", "mysql", "postgresql", "gsheets", "snowflake", "ftp", "sftp", "cassandra", "couchdb", "dynamodb", "duckdb", "memray", "cdp", "onionlink"]
 
 [package.metadata.requires-dev]
 dev = [

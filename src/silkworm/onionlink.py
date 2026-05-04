@@ -4,7 +4,7 @@ import asyncio
 import importlib
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from .exceptions import HttpError
@@ -24,9 +24,8 @@ class OnionLinkClient(HttpClient):
     """
     HTTP client adapter that fetches Tor v3 onion services through onionlink.
 
-    onionlink exposes a synchronous Session API whose request methods release the
-    GIL while doing network work. This adapter runs those calls in worker threads
-    so Silkworm's async engine can continue to schedule other requests.
+    onionlink exposes an AsyncSession API whose request methods use native
+    awaitables when available and fall back to an executor internally.
     """
 
     def __init__(
@@ -44,11 +43,20 @@ class OnionLinkClient(HttpClient):
         response_limit: int = 4 * 1024 * 1024,
     ) -> None:
         try:
-            session_cls = getattr(importlib.import_module("onionlink"), "Session")
+            module = importlib.import_module("onionlink")
         except ImportError as err:
             msg = (
                 "onionlink is not installed. Install it with: "
-                "pip install git+https://github.com/RustedBytes/onionlink.git"
+                'pip install "silkworm-rs[onionlink]"'
+            )
+            raise ImportError(msg) from err
+
+        try:
+            session_cls = getattr(module, "AsyncSession")
+        except AttributeError as err:
+            msg = (
+                "onionlink>=0.1.2 is required for OnionLinkClient. Install it with: "
+                'pip install "silkworm-rs[onionlink]"'
             )
             raise ImportError(msg) from err
 
@@ -107,13 +115,9 @@ class OnionLinkClient(HttpClient):
             try:
                 async with self._sem:
                     async with self._request_timeout(timeout_seconds):
-                        resp = cast(
-                            Any,
-                            await asyncio.to_thread(
-                                self._send_onion_request,
-                                current_req,
-                                onion_request,
-                            ),
+                        resp = await self._send_onion_request(
+                            current_req,
+                            onion_request,
                         )
 
                     status = self._normalize_status(resp.status_code)
@@ -179,14 +183,14 @@ class OnionLinkClient(HttpClient):
             request=current_req,
         )
 
-    def _send_onion_request(
+    async def _send_onion_request(
         self,
         req: Request,
         onion_request: _OnionRequest,
-    ) -> object:
+    ) -> Any:
         headers = {**self._default_headers, **req.headers}
         data, form = self._onion_body_kwargs(req.data)
-        return self._client.request(
+        return await self._client.request(
             req.method.upper(),
             onion_request.onion,
             port=onion_request.port,
