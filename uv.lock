@@ -2144,6 +2144,11 @@ wheels = [
 ]
 
 [[package]]
+name = "servofetch"
+version = "0.1.4"
+source = { git = "https://github.com/RustedBytes/servofetch-py.git?rev=v0.1.4#b2967b5550d4286f6aa7b09c3f6bb1c8d3da3c4a" }
+
+[[package]]
 name = "silkworm-rs"
 version = "0.4.8"
 source = { editable = "." }
@@ -2216,6 +2221,9 @@ rsloop = [
 s3 = [
     { name = "opendal" },
 ]
+servo = [
+    { name = "servofetch" },
+]
 sftp = [
     { name = "asyncssh" },
 ]
@@ -2284,6 +2292,7 @@ requires-dist = [
     { name = "rsloop", marker = "extra == 'rsloop'", specifier = "==0.1.14" },
     { name = "rxml", specifier = "==2.4.1" },
     { name = "scraper-rust", specifier = ">=0.4.3" },
+    { name = "servofetch", marker = "extra == 'servo'", git = "https://github.com/RustedBytes/servofetch-py.git?rev=v0.1.4" },
     { name = "snowflake-connector-python", marker = "extra == 'snowflake'", specifier = "==4.4.0" },
     { name = "taskiq", marker = "extra == 'taskiq'", specifier = "==0.12.1" },
     { name = "trio", marker = "extra == 'trio'", specifier = "==0.33.0" },
@@ -2294,7 +2303,7 @@ requires-dist = [
     { name = "winloop", marker = "extra == 'winloop'", specifier = "==0.6.0" },
     { name = "wreq", specifier = ">=0.10.0" },
 ]
-provides-extras = ["rsloop", "taskiq", "uvloop", "winloop", "trio", "msgpack", "polars", "excel", "yaml", "avro", "elasticsearch", "mongodb", "s3", "vortex", "mysql", "postgresql", "gsheets", "snowflake", "ftp", "sftp", "cassandra", "couchdb", "dynamodb", "duckdb", "memray", "cdp", "onionlink"]
+provides-extras = ["rsloop", "taskiq", "uvloop", "winloop", "trio", "msgpack", "polars", "excel", "yaml", "avro", "elasticsearch", "mongodb", "s3", "vortex", "mysql", "postgresql", "gsheets", "snowflake", "ftp", "sftp", "cassandra", "couchdb", "dynamodb", "duckdb", "memray", "cdp", "servo", "onionlink"]
 
 [package.metadata.requires-dev]
 dev = [

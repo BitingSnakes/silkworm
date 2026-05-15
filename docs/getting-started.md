@@ -60,6 +60,7 @@ pip install "silkworm-rs[rsloop,polars]"
 | `taskiq` | Taskiq queue pipeline | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
 | `memray` | Memory profiling | [justfile](../justfile) |
 | `cdp` | CDP browser client and rendered HTML fetch | [src/silkworm/cdp.py](../src/silkworm/cdp.py) |
+| `servo` | Servo-rendered HTML fetch | [src/silkworm/servo.py](../src/silkworm/servo.py) |
 | `onionlink` | Tor v3 onion-service client | [src/silkworm/onionlink.py](../src/silkworm/onionlink.py) |
 
 `OnionLinkClient` is also available as an optional integration for `.onion` sites:
@@ -126,7 +127,15 @@ python examples/url_titles_spider.py --urls-file data/url_titles.jl --output dat
 See [Examples](examples.md) for a full list and what each one demonstrates.
 
 ## One-off HTML Fetch
-For quick, standalone fetches, use `fetch_html` in [src/silkworm/api.py](../src/silkworm/api.py).
+For quick, standalone fetches, use `fetch_html` in [src/silkworm/api.py](../src/silkworm/api.py). For rendered pages, install `silkworm-rs[servo]` and use `fetch_html_servo`, or pass `ServoFetchClient` as `http_client`:
+
+```python
+from silkworm import ServoFetchClient, run_spider
+
+run_spider(MySpider, http_client=ServoFetchClient(settle_ms=500))
+```
+
+Servo request overrides use `Request.meta`: `servo_javascript`, `servo_settle_ms`, `servo_user_agent`, `servo_screenshot`, and `servo_full_page`.
 
 ```python
 import asyncio

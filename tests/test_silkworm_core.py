@@ -1,3 +1,4 @@
+import asyncio
 from datetime import timedelta
 import json
 import sys
@@ -8,6 +9,7 @@ from typing import Any
 
 import pytest
 
+import silkworm.api as api_module
 import silkworm.response as response_module
 from silkworm.http import HttpClient
 from silkworm.engine import Engine
@@ -21,6 +23,14 @@ from silkworm.middlewares import (
 from silkworm.onionlink import OnionLinkClient
 from silkworm.request import Request
 from silkworm.response import HTMLResponse, Response
+from silkworm.servo import (
+    SERVO_FULL_PAGE_META_KEY,
+    SERVO_JAVASCRIPT_META_KEY,
+    SERVO_SCREENSHOT_META_KEY,
+    SERVO_SETTLE_MS_META_KEY,
+    SERVO_USER_AGENT_META_KEY,
+    ServoFetchClient,
+)
 from silkworm.spiders import Spider
 
 
@@ -101,6 +111,62 @@ def onionlink_session(monkeypatch: pytest.MonkeyPatch) -> type[_RecordingOnionSe
     return _RecordingOnionSession
 
 
+class _FakeServoPage:
+    def __init__(
+        self,
+        *,
+        url: str = "https://example.com/rendered",
+        html: str = "<html><title>Servo</title></html>",
+        title: str | None = "Servo\nTitle",
+        screenshot_len: int = 42,
+    ) -> None:
+        self.url = url
+        self.html = html
+        self.title = title
+        self.screenshot_len = screenshot_len
+
+
+class _FakeServoAsyncBrowser:
+    instances: list["_FakeServoAsyncBrowser"] = []
+    active = 0
+    max_active = 0
+
+    def __init__(self, **kwargs: Any) -> None:
+        self.options = kwargs
+        self.calls: list[dict[str, Any]] = []
+        self.closed = False
+        _FakeServoAsyncBrowser.instances.append(self)
+
+    async def fetch(self, url: str, **kwargs: Any) -> _FakeServoPage:
+        _FakeServoAsyncBrowser.active += 1
+        _FakeServoAsyncBrowser.max_active = max(
+            _FakeServoAsyncBrowser.max_active,
+            _FakeServoAsyncBrowser.active,
+        )
+        self.calls.append({"mode": "fetch", "url": url, **kwargs})
+        await asyncio.sleep(0.01)
+        _FakeServoAsyncBrowser.active -= 1
+        return _FakeServoPage(url=f"{url}/rendered")
+
+    async def screenshot(self, url: str, **kwargs: Any) -> _FakeServoPage:
+        self.calls.append({"mode": "screenshot", "url": url, **kwargs})
+        return _FakeServoPage(url=f"{url}/screenshot")
+
+    async def close(self) -> None:
+        self.closed = True
+
+
+@pytest.fixture
+def servofetch_module(monkeypatch: pytest.MonkeyPatch) -> type[_FakeServoAsyncBrowser]:
+    _FakeServoAsyncBrowser.instances = []
+    _FakeServoAsyncBrowser.active = 0
+    _FakeServoAsyncBrowser.max_active = 0
+    module = types.ModuleType("servofetch")
+    module.AsyncBrowser = _FakeServoAsyncBrowser
+    monkeypatch.setitem(sys.modules, "servofetch", module)
+    return _FakeServoAsyncBrowser
+
+
 def test_request_replace_creates_new_request_with_updates():
     original = Request(
         url="https://example.com",
@@ -116,6 +182,178 @@ def test_request_replace_creates_new_request_with_updates():
     assert updated.meta["foo"] == 2
     assert original.method == "GET"
     assert original.meta["foo"] == 1
+
+
+def test_servo_fetch_client_requires_servofetch(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    import silkworm.servo as servo_module
+
+    def fake_import_module(name: str) -> types.ModuleType:
+        if name == "servofetch":
+            raise ImportError("missing")
+        raise AssertionError(name)
+
+    monkeypatch.setattr(servo_module, "import_module", fake_import_module)
+
+    with pytest.raises(ImportError, match=r"silkworm-rs\[servo\]"):
+        ServoFetchClient()
+
+
+async def test_servo_fetch_client_passes_render_options_and_returns_html(
+    servofetch_module: type[_FakeServoAsyncBrowser],
+):
+    client = ServoFetchClient(
+        concurrency=2,
+        timeout=30.0,
+        settle_ms=100,
+        user_agent="client-agent",
+        allow_private_addresses=True,
+    )
+    req = Request(
+        url="https://example.com",
+        timeout=timedelta(seconds=5),
+        meta={
+            SERVO_JAVASCRIPT_META_KEY: "document.title",
+            SERVO_SETTLE_MS_META_KEY: 250,
+            SERVO_USER_AGENT_META_KEY: "request-agent",
+        },
+    )
+
+    response = await client.fetch(req)
+
+    browser = servofetch_module.instances[0]
+    assert browser.options["timeout"] == 30.0
+    assert browser.options["settle_ms"] == 100
+    assert browser.options["user_agent"] == "client-agent"
+    assert browser.options["allow_private_addresses"] is True
+    assert browser.calls == [
+        {
+            "mode": "fetch",
+            "url": "https://example.com",
+            "timeout": 5.0,
+            "settle_ms": 250,
+            "user_agent": "request-agent",
+            "javascript": "document.title",
+        }
+    ]
+    assert isinstance(response, HTMLResponse)
+    assert response.url == "https://example.com/rendered"
+    assert response.body == b"<html><title>Servo</title></html>"
+    assert response.request is req
+    assert response.headers["content-type"] == "text/html; charset=utf-8"
+    assert response.headers["x-silkworm-render-engine"] == "servofetch"
+    assert response.headers["x-silkworm-servo-title"] == "Servo Title"
+
+    await client.close()
+    assert browser.closed is True
+
+
+async def test_servo_fetch_client_supports_screenshot_mode(
+    servofetch_module: type[_FakeServoAsyncBrowser],
+):
+    client = ServoFetchClient()
+    request = Request(
+        url="https://example.com",
+        meta={
+            SERVO_SCREENSHOT_META_KEY: True,
+            SERVO_FULL_PAGE_META_KEY: False,
+        },
+    )
+
+    response = await client.fetch(request)
+
+    browser = servofetch_module.instances[0]
+    assert browser.calls == [
+        {
+            "mode": "screenshot",
+            "url": "https://example.com",
+            "full_page": False,
+            "timeout": None,
+            "settle_ms": 0,
+            "user_agent": None,
+        }
+    ]
+    assert response.url == "https://example.com/screenshot"
+    assert response.headers["x-silkworm-servo-screenshot"] == "true"
+    assert response.headers["x-silkworm-servo-screenshot-len"] == "42"
+
+
+async def test_servo_fetch_client_enforces_concurrency(
+    servofetch_module: type[_FakeServoAsyncBrowser],
+):
+    client = ServoFetchClient(concurrency=1)
+
+    await asyncio.gather(
+        client.fetch(Request(url="https://example.com/1")),
+        client.fetch(Request(url="https://example.com/2")),
+    )
+
+    assert servofetch_module.max_active == 1
+
+
+async def test_engine_uses_servo_fetch_client(
+    servofetch_module: type[_FakeServoAsyncBrowser],
+):
+    class RenderedSpider(Spider):
+        name = "rendered"
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.seen_html = False
+
+        async def start_requests(self):
+            yield Request(url="https://example.com", callback=self.parse)
+
+        async def parse(self, response: Response):
+            self.seen_html = isinstance(response, HTMLResponse)
+            return None
+
+    spider = RenderedSpider()
+    client = ServoFetchClient()
+    engine = Engine(spider, http_client=client)  # type: ignore[arg-type]
+
+    await engine.run()
+
+    assert spider.seen_html is True
+    assert servofetch_module.instances[0].closed is True
+
+
+async def test_fetch_html_servo_helper(
+    monkeypatch: pytest.MonkeyPatch,
+    servofetch_module: type[_FakeServoAsyncBrowser],
+):
+    parsed: dict[str, str] = {}
+
+    async def fake_parse(html: str):
+        parsed["html"] = html
+        return "document"
+
+    monkeypatch.setattr(api_module, "parse", fake_parse)
+
+    text, doc = await api_module.fetch_html_servo(
+        "https://example.com",
+        timeout=7,
+        settle_ms=300,
+        user_agent="helper-agent",
+        javascript="document.body.innerHTML",
+    )
+
+    browser = servofetch_module.instances[0]
+    assert browser.calls == [
+        {
+            "mode": "fetch",
+            "url": "https://example.com",
+            "timeout": 7.0,
+            "settle_ms": 300,
+            "user_agent": "helper-agent",
+            "javascript": "document.body.innerHTML",
+        }
+    ]
+    assert text == "<html><title>Servo</title></html>"
+    assert parsed["html"] == text
+    assert doc == "document"
+    assert browser.closed is True
 
 
 def test_response_follow_inherits_callback_and_joins_url():

@@ -20,10 +20,14 @@ This page lists the public API exports from [src/silkworm/__init__.py](../src/si
 ## Convenience Helpers
 - **`fetch_html(...)`**: Fetch HTML text and a scraper-rs `AsyncDocument`. [src/silkworm/api.py](../src/silkworm/api.py)
 - **`fetch_html_cdp(...)`**: Fetch rendered HTML text and a scraper-rs `AsyncDocument` via CDP. [src/silkworm/api.py](../src/silkworm/api.py)
+- **`fetch_html_servo(...)`**: Fetch rendered HTML text and a scraper-rs `AsyncDocument` via Servo/servofetch. [src/silkworm/api.py](../src/silkworm/api.py)
 - **`get_logger(...)`**: Configured logly logger. [src/silkworm/logging.py](../src/silkworm/logging.py)
 
 ## Optional CDP Export
 - **`CDPClient`**: CDP client for browser-driven fetches (available when `cdp` extra is installed). [src/silkworm/cdp.py](../src/silkworm/cdp.py)
+
+## Optional Servo Export
+- **`ServoFetchClient`**: Servo/servofetch client for rendered HTML fetches (requires `servo` extra at runtime). [src/silkworm/servo.py](../src/silkworm/servo.py)
 
 ## Exceptions
 - **`SilkwormError`**: Base exception. [src/silkworm/exceptions.py](../src/silkworm/exceptions.py)

@@ -12,6 +12,7 @@ Async-first web scraping framework built on [wreq](https://github.com/0x676e67/w
 - Async engine with configurable concurrency, bounded queue backpressure (defaults to `concurrency * 10`), and per-request timeouts.
 - wreq-powered HTTP client: browser impersonation, redirect following with loop detection, query merging, and proxy support via `request.meta["proxy"]`.
 - Optional OnionLink client integration for scraping Tor v3 `.onion` sites without routing through wreq.
+- Optional Servo rendering via `ServoFetchClient` for JavaScript-rendered pages without changing the default HTTP client.
 - Typed spiders and callbacks that can return items or `Request` objects; `HTMLResponse` ships helper methods plus `Response.follow` to reuse callbacks.
 - Middlewares: User-Agent rotation/default, proxy rotation, retry with exponential backoff + optional sleep codes, flexible delays (fixed/random/custom), `SkipNonHTMLMiddleware` to drop non-HTML callbacks, and `CloudflareCrawlMiddleware` for Browser Rendering crawl jobs.
 - Pipelines: JSON Lines, SQLite, XML (nested data preserved), and CSV (flattens dicts and lists) out of the box.
@@ -101,7 +102,7 @@ if __name__ == "__main__":
 - `max_pending_requests`: queue bound to avoid unbounded memory use (defaults to `concurrency * 10`).
 - `request_timeout`: per-request timeout (seconds).
 - `keep_alive`: reuse HTTP connections when supported by the underlying client (sends `Connection: keep-alive`).
-- `http_client`: use a custom client instance such as `OnionLinkClient(...)` instead of the default wreq-backed client.
+- `http_client`: use a custom client instance such as `OnionLinkClient(...)` or `ServoFetchClient(...)` instead of the default wreq-backed client.
 - `html_max_size_bytes`: limit HTML parsed into `AsyncDocument` to avoid huge payloads.
 - `log_stats_interval`: seconds between periodic stats logs; final stats are always emitted.
 - `request_middlewares` / `response_middlewares` / `item_pipelines`: plug-ins run on every request/response/item.
@@ -360,6 +361,34 @@ run_spider_trio(
 ```
 
 This runs your spider using trio as the async backend via trio-asyncio compatibility layer.
+
+## JavaScript rendering with Servo
+For pages that need JavaScript execution but do not require driving an external browser process, install the optional Servo renderer and pass `ServoFetchClient` as the spider HTTP client.
+
+```bash
+pip install "silkworm-rs[servo]"
+```
+
+```python
+from silkworm import HTMLResponse, Response, ServoFetchClient, Spider, run_spider
+
+
+class RenderedSpider(Spider):
+    name = "rendered"
+    start_urls = ("https://example.com/",)
+
+    async def parse(self, response: Response):
+        if isinstance(response, HTMLResponse):
+            title = await response.select_first("title")
+            yield {"title": title.text if title else ""}
+
+
+run_spider(RenderedSpider, http_client=ServoFetchClient(settle_ms=500))
+```
+
+Per-request render options live in `Request.meta`: `servo_javascript`, `servo_settle_ms`, `servo_user_agent`, `servo_screenshot`, and `servo_full_page`. `Request.timeout` overrides the client timeout for that request.
+
+`ServoFetchClient` embeds Servo through `servofetch`; the existing CDP client connects to an external Lightpanda/Chrome-compatible browser over WebSocket. Use the default wreq client when pages do not need client-side rendering.
 
 ## JavaScript rendering with Lightpanda (CDP)
 For pages that require JavaScript execution, you can use Lightpanda (or any CDP-compatible browser) instead of the standard HTTP client. This uses the Chrome DevTools Protocol (CDP) to control a browser.

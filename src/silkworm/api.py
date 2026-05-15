@@ -88,3 +88,38 @@ async def fetch_html_cdp(
         return text, await parse(text)
     finally:
         await client.close()
+
+
+async def fetch_html_servo(
+    url: str,
+    *,
+    timeout: float | timedelta | None = None,
+    settle_ms: int = 0,
+    user_agent: str | None = None,
+    javascript: str | None = None,
+    allow_private_addresses: bool = False,
+) -> tuple[str, AsyncDocument]:
+    """
+    Fetch rendered HTML from a URL using servofetch/Servo.
+
+    Returns a tuple of (text, AsyncDocument) with awaitable selector helpers.
+    """
+    from .request import Request
+    from ._types import MetaData
+    from .servo import SERVO_JAVASCRIPT_META_KEY, ServoFetchClient
+
+    client = ServoFetchClient(
+        timeout=timeout,
+        settle_ms=settle_ms,
+        user_agent=user_agent,
+        allow_private_addresses=allow_private_addresses,
+    )
+    try:
+        meta: MetaData = (
+            {SERVO_JAVASCRIPT_META_KEY: javascript} if javascript is not None else {}
+        )
+        response = await client.fetch(Request(url=url, meta=meta))
+        text = response.text
+        return text, await parse(text)
+    finally:
+        await client.close()
