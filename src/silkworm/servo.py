@@ -49,7 +49,8 @@ class ServoFetchClient:
             servofetch = import_module("servofetch")
         except ImportError as err:
             msg = (
-                "servofetch is not installed. Install a wheel from this page: "
+                "servofetch is not installed. Install silkworm-rs[servo] "
+                "or a wheel from this page: "
                 "https://github.com/RustedBytes/servofetch-py/releases"
             )
             raise ImportError(msg) from err
