@@ -21,6 +21,7 @@ class Request:
     meta: MetaData = field(default_factory=dict)
     timeout: float | timedelta | None = None
     callback: Callback | None = None
+    errback: Errback | None = None
     dont_filter: bool = False
     priority: int = 0
 
@@ -41,5 +42,6 @@ type CallbackOutput = (
 )
 type CallbackResult = CallbackOutput | Awaitable[CallbackOutput]
 type Callback = Callable[["Response"], CallbackResult]
+type Errback = Callable[[Request, Exception], CallbackResult]
 
-__all__ = ["Callback", "CallbackOutput", "CallbackResult", "Request"]
+__all__ = ["Callback", "CallbackOutput", "CallbackResult", "Errback", "Request"]

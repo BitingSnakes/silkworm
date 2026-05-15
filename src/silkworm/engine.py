@@ -21,7 +21,11 @@ from .request import CallbackOutput, CallbackResult, Request
 from .response import HTMLResponse, Response
 
 if TYPE_CHECKING:
-    from .middlewares import RequestMiddleware, ResponseMiddleware
+    from .middlewares import (
+        ExceptionMiddleware,
+        RequestMiddleware,
+        ResponseMiddleware,
+    )
     from .pipelines import ItemPipeline
     from .spiders import Spider
 
@@ -117,6 +121,12 @@ class Engine:
             seen_ids.add(middleware_id)
             yield middleware
 
+    def _iter_exception_middlewares(self) -> Iterable[ExceptionMiddleware]:
+        for middleware in self._iter_middlewares():
+            process_exception = getattr(middleware, "process_exception", None)
+            if callable(process_exception):
+                yield cast("ExceptionMiddleware", middleware)
+
     async def _open_middlewares(self) -> None:
         for middleware in self._iter_middlewares():
             open_hook = getattr(middleware, "open", None)
@@ -139,17 +149,35 @@ class Engine:
         req: Request,
         exc: Exception,
     ) -> bool:
-        for mw in self.request_middlewares:
-            process_exception = getattr(mw, "process_exception", None)
-            if process_exception is None:
+        for mw in self._iter_exception_middlewares():
+            self.logger.debug(
+                "Calling exception middleware",
+                url=req.url,
+                middleware=mw.__class__.__name__,
+                error=str(exc),
+                error_type=exc.__class__.__name__,
+            )
+            retry_request = await mw.process_exception(req, exc, self.spider)
+            if retry_request is None:
+                self.logger.debug(
+                    "Exception middleware did not retry request",
+                    url=req.url,
+                    middleware=mw.__class__.__name__,
+                    error_type=exc.__class__.__name__,
+                )
                 continue
-
-            retry_request = await process_exception(req, exc, self.spider)
             if not isinstance(retry_request, Request):
+                self.logger.warning(
+                    "Ignoring invalid exception middleware result",
+                    url=req.url,
+                    middleware=mw.__class__.__name__,
+                    result_type=retry_request.__class__.__name__,
+                    error_type=exc.__class__.__name__,
+                )
                 continue
 
             self.logger.debug(
-                "Retrying request from request middleware",
+                "Retrying request from exception middleware",
                 url=retry_request.url,
                 middleware=mw.__class__.__name__,
             )
@@ -157,6 +185,27 @@ class Engine:
             return True
 
         return False
+
+    async def _handle_request_errback(
+        self,
+        req: Request,
+        exc: Exception,
+    ) -> bool:
+        errback = req.errback
+        if errback is None:
+            return False
+
+        name = getattr(errback, "__name__", errback.__class__.__name__)
+        self.logger.debug(
+            "Calling request errback",
+            url=req.url,
+            errback=name,
+            error=str(exc),
+            error_type=exc.__class__.__name__,
+        )
+        produced = errback(req, exc)
+        await self._handle_callback_results(produced, callback_name=name, url=req.url)
+        return True
 
     async def _enqueue(self, req: Request) -> None:
         if not req.dont_filter:
@@ -202,6 +251,25 @@ class Engine:
                     continue
 
                 self._stats["errors"] += 1
+                try:
+                    if await self._handle_request_errback(req, exc):
+                        continue
+                except Exception as errback_exc:
+                    cause = errback_exc.__cause__ or errback_exc.__context__
+                    error_context = {
+                        "url": req.url,
+                        "error": str(errback_exc),
+                        "error_type": errback_exc.__class__.__name__,
+                        "original_error": str(exc),
+                        "original_error_type": exc.__class__.__name__,
+                        "spider": self.spider.name,
+                    }
+                    if cause is not None:
+                        error_context["cause"] = self._safe_repr(cause)
+                        error_context["cause_type"] = cause.__class__.__name__
+                    self.logger.error("Request errback failed", **error_context)
+                    continue
+
                 cause = exc.__cause__ or exc.__context__
                 error_context = {
                     "url": req.url,
@@ -246,6 +314,7 @@ class Engine:
         callback = resp.request.callback
 
         produced: CallbackResult
+        name = getattr(callback, "__name__", "parse") if callback else "parse"
         try:
             effective_callback = callback or self.spider.parse
             if self._expects_html(callback):
@@ -254,11 +323,26 @@ class Engine:
             else:
                 produced = effective_callback(resp)
         except Exception as exc:
-            name = getattr(callback, "__name__", "parse") if callback else "parse"
             raise SpiderError(
                 f"Spider callback '{name}' failed for {self.spider.name}",
             ) from exc
 
+        try:
+            await self._handle_callback_results(
+                produced, callback_name=name, url=resp.url
+            )
+        finally:
+            resp.close()
+            if resp is not original_resp:
+                original_resp.close()
+
+    async def _handle_callback_results(
+        self,
+        produced: CallbackResult,
+        *,
+        callback_name: str,
+        url: str,
+    ) -> None:
         last_yielded_type: str | None = None
         last_yielded_repr: str | None = None
 
@@ -276,26 +360,21 @@ class Engine:
                     )
                     await self._process_item(x)
         except Exception as exc:
-            name = getattr(callback, "__name__", "parse") if callback else "parse"
             self.logger.error(
                 "Callback yielded invalid results",
-                callback=name,
+                callback=callback_name,
                 produced_type=type(produced).__name__,
                 last_yielded_type=last_yielded_type,
                 last_yielded_repr=last_yielded_repr,
                 spider=self.spider.name,
-                url=resp.url,
+                url=url,
                 error=str(exc),
                 error_type=exc.__class__.__name__,
                 exc_info=True,
             )
             raise SpiderError(
-                f"Spider callback '{name}' yielded invalid results",
+                f"Spider callback '{callback_name}' yielded invalid results",
             ) from exc
-        finally:
-            resp.close()
-            if resp is not original_resp:
-                original_resp.close()
 
     async def _iterate_callback_results(
         self,

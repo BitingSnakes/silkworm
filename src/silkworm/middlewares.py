@@ -38,6 +38,15 @@ class ResponseMiddleware(Protocol):
     ) -> Response | Request: ...
 
 
+class ExceptionMiddleware(Protocol):
+    async def process_exception(
+        self,
+        request: Request,
+        exception: Exception,
+        spider: Spider,
+    ) -> Request | None: ...
+
+
 def _utc_timestamp() -> str:
     return datetime.now(timezone.utc).isoformat()
 

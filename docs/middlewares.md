@@ -11,12 +11,20 @@ class RequestMiddleware:
 
 class ResponseMiddleware:
     async def process_response(self, response, spider) -> Response | Request: ...
+
+class ExceptionMiddleware:
+    async def process_exception(self, request, exception, spider) -> Request | None: ...
 ```
 
 Order of execution:
 1. **Request middlewares** (before HTTP fetch)
 2. **Response middlewares** (after HTTP fetch)
 3. **Callback** (`parse` or custom callback)
+
+If request processing fails, the engine calls `process_exception` on middleware
+instances from both middleware lists, deduplicating shared instances. Returning a
+`Request` schedules a retry; returning `None` leaves the exception for the next
+exception middleware or the request's `errback`.
 
 ```python
 run_spider(
@@ -91,4 +99,22 @@ class AddHeaderMiddleware:
         headers = {**request.headers}
         headers.setdefault("x-trace", "1")
         return request.replace(headers=headers)
+```
+
+```python
+from silkworm.request import Request
+
+class RetryOnceMiddleware:
+    async def process_request(self, request: Request, spider):
+        return request
+
+    async def process_exception(
+        self,
+        request: Request,
+        exception: Exception,
+        spider,
+    ) -> Request | None:
+        if request.meta.get("retried"):
+            return None
+        return request.replace(meta={**request.meta, "retried": True}, dont_filter=True)
 ```
