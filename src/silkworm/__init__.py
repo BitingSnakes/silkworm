@@ -14,9 +14,10 @@ from .runner import (
     run_spider_winloop,
     run_spider_trio,
 )
-from .api import fetch_html, fetch_html_cdp
+from .api import fetch_html, fetch_html_cdp, fetch_html_servo
 from .logging import get_logger
 from .middlewares import RequestResponseStreamMiddleware
+from .servo import ServoFetchClient
 
 __all__ = [
     "Request",
@@ -37,8 +38,10 @@ __all__ = [
     "run_spider_trio",
     "fetch_html",
     "fetch_html_cdp",
+    "fetch_html_servo",
     "get_logger",
     "RequestResponseStreamMiddleware",
+    "ServoFetchClient",
 ]
 
 # Optional CDP support

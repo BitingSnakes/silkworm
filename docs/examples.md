@@ -19,5 +19,6 @@ All examples live under [examples/](../examples). This page lists each example, 
 | [examples/hybrid_logger_demo.py](../examples/hybrid_logger_demo.py) | Hybrid console + JSON logs | `python examples/hybrid_logger_demo.py` |
 | [examples/lightpanda_simple.py](../examples/lightpanda_simple.py) | CDP one-off rendered HTML fetch | `python examples/lightpanda_simple.py` |
 | [examples/lightpanda_spider.py](../examples/lightpanda_spider.py) | CDP spider flow with Lightpanda/Chrome endpoint | `python examples/lightpanda_spider.py` |
+| [examples/servo_spider.py](../examples/servo_spider.py) | Servo-rendered spider using `ServoFetchClient` | `python examples/servo_spider.py` |
 
-> **Tip:** Some examples require optional extras (rsloop, trio, winloop, taskiq, cdp). Install them via `pip install "silkworm-rs[rsloop]"` or similar.
+> **Tip:** Some examples require optional extras (rsloop, trio, winloop, taskiq, cdp, servo). Install them via `pip install "silkworm-rs[rsloop]"` or similar.

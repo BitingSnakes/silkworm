@@ -125,6 +125,9 @@ memray = [
 cdp = [
   "websockets==16.0",
 ]
+servo = [
+  "servofetch @ git+https://github.com/RustedBytes/servofetch-py.git@v0.1.4",
+]
 onionlink = [
   "onionlink==0.1.2",
 ]
