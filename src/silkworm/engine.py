@@ -4,8 +4,9 @@ import inspect
 import reprlib
 import sys
 import time
-from datetime import timedelta
 from collections.abc import AsyncIterable, AsyncIterator, Callable, Iterable
+from dataclasses import dataclass
+from datetime import timedelta
 from typing import TYPE_CHECKING, cast
 
 try:  # resource is POSIX-only
@@ -16,7 +17,7 @@ except ImportError:  # pragma: no cover - platform dependent
 from ._types import JSONValue
 from .exceptions import SpiderError
 from .http import HttpClient
-from .logging import complete_logs, get_logger
+from .logging import LogLevel, complete_logs, get_logger, log_at_level
 from .request import CallbackOutput, CallbackResult, Request
 from .response import HTMLResponse, Response
 
@@ -28,6 +29,85 @@ if TYPE_CHECKING:
     )
     from .pipelines import ItemPipeline
     from .spiders import Spider
+
+
+@dataclass(slots=True)
+class EngineLogger:
+    """
+    Customizable engine event logger.
+
+    Subclass this when you need to redact or reshape selected engine log events.
+    Set an event level to ``None`` to suppress that event.
+    """
+
+    fetched_response_level: LogLevel = "INFO"
+    fetching_request_level: LogLevel = "DEBUG"
+    item_pipeline_level: LogLevel = "DEBUG"
+    retry_request_level: LogLevel = "DEBUG"
+    include_request_url: bool = True
+
+    def fetching_request(
+        self,
+        logger,
+        request: Request,
+        spider: Spider,
+    ) -> None:
+        context: dict[str, object] = {
+            "method": request.method,
+            "callback": getattr(request.callback, "__name__", None),
+            "spider": spider.name,
+        }
+        if self.include_request_url:
+            context["url"] = request.url
+        log_at_level(logger, self.fetching_request_level, "Fetching request", **context)
+
+    def fetched_response(
+        self,
+        logger,
+        request: Request,
+        response: Response,
+        spider: Spider,
+    ) -> None:
+        context: dict[str, object] = {
+            "status": response.status,
+            "spider": spider.name,
+        }
+        if self.include_request_url:
+            context["url"] = request.url
+        log_at_level(logger, self.fetched_response_level, "Fetched response", **context)
+
+    def retrying_request(
+        self,
+        logger,
+        request: Request,
+        spider: Spider,
+        *,
+        source: str,
+    ) -> None:
+        context: dict[str, object] = {"source": source, "spider": spider.name}
+        if self.include_request_url:
+            context["url"] = request.url
+        log_at_level(
+            logger,
+            self.retry_request_level,
+            "Retrying request",
+            **context,
+        )
+
+    def running_item_pipeline(
+        self,
+        logger,
+        pipeline: ItemPipeline,
+        spider: Spider,
+    ) -> None:
+        log_level = getattr(pipeline, "log_level", self.item_pipeline_level)
+        log_at_level(
+            logger,
+            log_level,
+            "Running item pipeline",
+            pipeline=pipeline.__class__.__name__,
+            spider=spider.name,
+        )
 
 
 _SAFE_REPR = reprlib.Repr()
@@ -55,6 +135,7 @@ class Engine:
         log_stats_interval: float | None = None,
         keep_alive: bool = False,
         http_client: HttpClient | None = None,
+        engine_logger: EngineLogger | None = None,
     ) -> None:
         self.spider = spider
         self.http = (
@@ -79,6 +160,7 @@ class Engine:
         self._seen: set[str] = set()
         self._stop_event = asyncio.Event()
         self.logger = get_logger(component="engine", spider=self.spider.name)
+        self.engine_logger = engine_logger or EngineLogger()
 
         self.request_middlewares = list(request_middlewares or [])
         self.response_middlewares = list(response_middlewares or [])
@@ -176,10 +258,11 @@ class Engine:
                 )
                 continue
 
-            self.logger.debug(
-                "Retrying request from exception middleware",
-                url=retry_request.url,
-                middleware=mw.__class__.__name__,
+            self.engine_logger.retrying_request(
+                self.logger,
+                retry_request,
+                self.spider,
+                source=f"exception middleware {mw.__class__.__name__}",
             )
             await self._enqueue(retry_request)
             return True
@@ -230,20 +313,15 @@ class Engine:
 
             try:
                 req = await self._apply_request_mw(req)
-                self.logger.debug(
-                    "Fetching request",
-                    url=req.url,
-                    method=req.method,
-                    callback=getattr(req.callback, "__name__", None),
-                )
+                self.engine_logger.fetching_request(self.logger, req, self.spider)
                 self._stats["requests_sent"] += 1
                 resp = await self.http.fetch(req)
                 self._stats["responses_received"] += 1
-                self.logger.info(
-                    "Fetched response",
-                    url=req.url,
-                    status=resp.status,
-                    spider=self.spider.name,
+                self.engine_logger.fetched_response(
+                    self.logger,
+                    req,
+                    resp,
+                    self.spider,
                 )
                 await self._handle_response(resp)
             except Exception as exc:
@@ -305,7 +383,12 @@ class Engine:
 
         if isinstance(processed, Request):
             # e.g. RetryMiddleware wants a retry
-            self.logger.debug("Retrying request from middleware", url=processed.url)
+            self.engine_logger.retrying_request(
+                self.logger,
+                processed,
+                self.spider,
+                source="response middleware",
+            )
             original_resp.close()
             await self._enqueue(processed)
             return
@@ -414,10 +497,10 @@ class Engine:
     async def _process_item(self, item: JSONValue) -> None:
         self._stats["items_scraped"] += 1
         for pipe in self.item_pipelines:
-            self.logger.debug(
-                "Running item pipeline",
-                pipeline=pipe.__class__.__name__,
-                spider=self.spider.name,
+            self.engine_logger.running_item_pipeline(
+                self.logger,
+                pipe,
+                self.spider,
             )
             item = await pipe.process_item(item, self.spider)
 

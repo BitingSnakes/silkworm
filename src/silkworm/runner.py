@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterable
 
+    from .engine import EngineLogger
     from .http import HttpClient
     from .middlewares import RequestMiddleware, ResponseMiddleware
     from .pipelines import ItemPipeline
@@ -66,6 +67,7 @@ def run_spider_trio(
     html_max_size_bytes: int = 5_000_000,
     keep_alive: bool = False,
     http_client: HttpClient | None = None,
+    engine_logger: EngineLogger | None = None,
     **spider_kwargs,
 ) -> None:
     """
@@ -120,6 +122,7 @@ def run_spider_trio(
                 html_max_size_bytes=html_max_size_bytes,
                 keep_alive=keep_alive,
                 http_client=http_client,
+                engine_logger=engine_logger,
                 **spider_kwargs,
             )
 
@@ -139,6 +142,7 @@ async def crawl(
     html_max_size_bytes: int = 5_000_000,
     keep_alive: bool = False,
     http_client: HttpClient | None = None,
+    engine_logger: EngineLogger | None = None,
     **spider_kwargs,
 ) -> None:
     spider = spider_cls(**spider_kwargs)
@@ -154,6 +158,7 @@ async def crawl(
         html_max_size_bytes=html_max_size_bytes,
         keep_alive=keep_alive,
         http_client=http_client,
+        engine_logger=engine_logger,
     )
     await engine.run()
 
@@ -172,6 +177,7 @@ def run_spider(
     keep_alive: bool = False,
     loop_factory: Callable[[], asyncio.AbstractEventLoop] | None = None,
     http_client: HttpClient | None = None,
+    engine_logger: EngineLogger | None = None,
     **spider_kwargs,
 ) -> None:
     coroutine = crawl(
@@ -186,6 +192,7 @@ def run_spider(
         html_max_size_bytes=html_max_size_bytes,
         keep_alive=keep_alive,
         http_client=http_client,
+        engine_logger=engine_logger,
         **spider_kwargs,
     )
     if loop_factory is None:
@@ -209,6 +216,7 @@ def run_spider_uvloop(
     html_max_size_bytes: int = 5_000_000,
     keep_alive: bool = False,
     http_client: HttpClient | None = None,
+    engine_logger: EngineLogger | None = None,
     **spider_kwargs,
 ) -> None:
     loop_factory = _install_uvloop()
@@ -224,6 +232,7 @@ def run_spider_uvloop(
         html_max_size_bytes=html_max_size_bytes,
         keep_alive=keep_alive,
         http_client=http_client,
+        engine_logger=engine_logger,
         loop_factory=loop_factory,
         **spider_kwargs,
     )
@@ -242,6 +251,7 @@ def run_spider_winloop(
     html_max_size_bytes: int = 5_000_000,
     keep_alive: bool = False,
     http_client: HttpClient | None = None,
+    engine_logger: EngineLogger | None = None,
     **spider_kwargs,
 ) -> None:
     """
@@ -280,6 +290,7 @@ def run_spider_winloop(
         html_max_size_bytes=html_max_size_bytes,
         keep_alive=keep_alive,
         http_client=http_client,
+        engine_logger=engine_logger,
         loop_factory=loop_factory,
         **spider_kwargs,
     )
@@ -298,6 +309,7 @@ def run_spider_rsloop(
     html_max_size_bytes: int = 5_000_000,
     keep_alive: bool = False,
     http_client: HttpClient | None = None,
+    engine_logger: EngineLogger | None = None,
     **spider_kwargs,
 ) -> None:
     """
@@ -336,6 +348,7 @@ def run_spider_rsloop(
         html_max_size_bytes=html_max_size_bytes,
         keep_alive=keep_alive,
         http_client=http_client,
+        engine_logger=engine_logger,
         loop_factory=loop_factory,
         **spider_kwargs,
     )
