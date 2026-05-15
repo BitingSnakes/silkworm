@@ -13,7 +13,7 @@ import xml.etree.ElementTree as ET
 import rxml
 from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Protocol, TYPE_CHECKING, runtime_checkable
+from typing import Any, Protocol, TYPE_CHECKING, cast, runtime_checkable
 
 try:
     from taskiq import AsyncBroker  # type: ignore[import-not-found]
@@ -181,7 +181,17 @@ if TYPE_CHECKING:
     from ._types import JSONValue
     from .spiders import Spider
 
-from .logging import get_logger
+from .logging import LogLevel, get_logger, log_at_level
+
+
+def _log_pipeline_item(
+    pipeline: object,
+    message: str,
+    **context: object,
+) -> None:
+    logger = getattr(pipeline, "logger")
+    log_level = cast("LogLevel", getattr(pipeline, "log_level", "DEBUG"))
+    log_at_level(logger, log_level, message, **context)
 
 
 def _validate_table_name(table: str) -> str:
@@ -198,6 +208,31 @@ class ItemPipeline(Protocol):
     async def open(self, spider: Spider) -> None: ...
     async def close(self, spider: Spider) -> None: ...
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue: ...
+
+
+class LoggedPipeline:
+    """
+    Wrap any item pipeline and control its per-item log level.
+
+    Use ``log_level=None`` to suppress noisy per-item pipeline messages.
+    """
+
+    def __init__(
+        self, pipeline: ItemPipeline, *, log_level: LogLevel = "DEBUG"
+    ) -> None:
+        self.pipeline = pipeline
+        self.log_level = log_level
+        setattr(self.pipeline, "log_level", log_level)
+
+    async def open(self, spider: Spider) -> None:
+        await self.pipeline.open(spider)
+
+    async def close(self, spider: Spider) -> None:
+        await self.pipeline.close(spider)
+
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        setattr(self.pipeline, "log_level", self.log_level)
+        return await self.pipeline.process_item(item, spider)
 
 
 class CallbackPipeline:
@@ -229,7 +264,7 @@ class CallbackPipeline:
         pipeline = CallbackPipeline(callback=async_process_item)
     """
 
-    def __init__(self, callback) -> None:
+    def __init__(self, callback, *, log_level: LogLevel = "DEBUG") -> None:
         """
         Initialize CallbackPipeline.
 
@@ -242,6 +277,7 @@ class CallbackPipeline:
             raise TypeError(msg)
 
         self.callback = callback
+        self.log_level = log_level
         self.logger = get_logger(component="CallbackPipeline")
 
     async def open(self, spider: Spider) -> None:
@@ -266,7 +302,8 @@ class CallbackPipeline:
         if result is None:
             return item
 
-        self.logger.debug(
+        _log_pipeline_item(
+            self,
             "Processed item with callback",
             spider=spider.name,
         )
@@ -298,8 +335,10 @@ class JsonLinesPipeline:
         path: str | Path = "items.jl",
         *,
         use_opendal: bool | None = None,
+        log_level: LogLevel = "DEBUG",
     ) -> None:
         self.path = Path(path)
+        self.log_level = log_level
         self._fp: io.TextIOWrapper | None = None
         self._operator: opendal.AsyncOperator | None = None
         self._object_path: str | None = None
@@ -354,7 +393,8 @@ class JsonLinesPipeline:
                 self._object_path = None
                 self._fp = self.path.open("a", encoding="utf-8")
             else:
-                self.logger.debug(
+                _log_pipeline_item(
+                    self,
                     "Wrote item to JSONL",
                     path=str(self.path),
                     spider=spider.name,
@@ -366,7 +406,8 @@ class JsonLinesPipeline:
             raise RuntimeError("JsonLinesPipeline not opened")
         self._fp.write(line + "\n")
         self._fp.flush()
-        self.logger.debug(
+        _log_pipeline_item(
+            self,
             "Wrote item to JSONL",
             path=str(self.path),
             spider=spider.name,
@@ -457,7 +498,8 @@ class MsgPackPipeline:
         packed = ormsgpack.packb(item)
         self._fp.write(packed)
         self._fp.flush()
-        self.logger.debug(
+        _log_pipeline_item(
+            self,
             "Wrote item to MsgPack",
             path=str(self.path),
             spider=spider.name,
@@ -507,7 +549,9 @@ class SQLitePipeline:
             (spider.name, json.dumps(item, ensure_ascii=False)),
         )
         self._conn.commit()
-        self.logger.debug("Stored item in SQLite", table=self.table, spider=spider.name)
+        _log_pipeline_item(
+            self, "Stored item in SQLite", table=self.table, spider=spider.name
+        )
         return item
 
 
@@ -551,7 +595,9 @@ class XMLPipeline:
 
         self._fp.write(indented_xml + "\n")
         self._fp.flush()
-        self.logger.debug("Wrote item to XML", path=str(self.path), spider=spider.name)
+        _log_pipeline_item(
+            self, "Wrote item to XML", path=str(self.path), spider=spider.name
+        )
         return item
 
     def _to_node(self, key: str, data: JSONValue) -> rxml.Node:
@@ -704,7 +750,8 @@ class RssPipeline:
                 rss_item["author"] = author
 
         self._items.append(rss_item)
-        self.logger.debug(
+        _log_pipeline_item(
+            self,
             "Buffered item for RSS",
             path=str(self.path),
             spider=spider.name,
@@ -786,7 +833,9 @@ class CSVPipeline:
 
         self._writer.writerow(flat_item)
         self._fp.flush()
-        self.logger.debug("Wrote item to CSV", path=str(self.path), spider=spider.name)
+        _log_pipeline_item(
+            self, "Wrote item to CSV", path=str(self.path), spider=spider.name
+        )
         return item
 
     def _flatten_dict(
@@ -908,7 +957,8 @@ class TaskiqPipeline:
         task_id: str | int | None = None
         if isinstance(task_result, _TaskiqResult):
             task_id = task_result.task_id
-        self.logger.debug(
+        _log_pipeline_item(
+            self,
             "Sent item to Taskiq queue",
             task_name=task_name,
             task_id=task_id or "unknown",
@@ -985,7 +1035,8 @@ class PolarsPipeline:
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         self._items.append(item)
-        self.logger.debug(
+        _log_pipeline_item(
+            self,
             "Buffered item for Parquet",
             path=str(self.path),
             spider=spider.name,
@@ -1064,7 +1115,8 @@ class ExcelPipeline:
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         self._items.append(item)
-        self.logger.debug(
+        _log_pipeline_item(
+            self,
             "Buffered item for Excel",
             path=str(self.path),
             spider=spider.name,
@@ -1133,7 +1185,8 @@ class YAMLPipeline:
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         self._items.append(item)
-        self.logger.debug(
+        _log_pipeline_item(
+            self,
             "Buffered item for YAML",
             path=str(self.path),
             spider=spider.name,
@@ -1203,7 +1256,8 @@ class AvroPipeline:
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         self._items.append(item)
-        self.logger.debug(
+        _log_pipeline_item(
+            self,
             "Buffered item for Avro",
             path=str(self.path),
             spider=spider.name,
@@ -1304,7 +1358,8 @@ class ElasticsearchPipeline:
             raise RuntimeError("ElasticsearchPipeline not opened")
 
         await self._client.index(index=self.index, document=item)
-        self.logger.debug(
+        _log_pipeline_item(
+            self,
             "Indexed item in Elasticsearch",
             index=self.index,
             spider=spider.name,
@@ -1380,7 +1435,8 @@ class MongoDBPipeline:
         # Shallow copy is sufficient since MongoDB only adds _id at the root level.
         item_copy = dict(item) if isinstance(item, dict) else item
         await self._coll.insert_one(item_copy)
-        self.logger.debug(
+        _log_pipeline_item(
+            self,
             "Inserted item in MongoDB",
             collection=self.collection,
             spider=spider.name,
@@ -1471,7 +1527,9 @@ class S3JsonLinesPipeline:
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         line = json.dumps(item, ensure_ascii=False)
         self._items.append(line)
-        self.logger.debug("Buffered item for S3", key=self.key, spider=spider.name)
+        _log_pipeline_item(
+            self, "Buffered item for S3", key=self.key, spider=spider.name
+        )
         return item
 
 
@@ -1546,7 +1604,8 @@ class VortexPipeline:
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         self._items.append(item)
-        self.logger.debug(
+        _log_pipeline_item(
+            self,
             "Buffered item for Vortex",
             path=str(self.path),
             spider=spider.name,
@@ -1656,7 +1715,8 @@ class MySQLPipeline:
                 )
                 await conn.commit()
 
-        self.logger.debug(
+        _log_pipeline_item(
+            self,
             "Inserted item in MySQL",
             table=self.table,
             spider=spider.name,
@@ -1762,7 +1822,8 @@ class PostgreSQLPipeline:
                 json.dumps(item, ensure_ascii=False),
             )
 
-        self.logger.debug(
+        _log_pipeline_item(
+            self,
             "Inserted item in PostgreSQL",
             table=self.table,
             spider=spider.name,
@@ -1927,7 +1988,8 @@ class WebhookPipeline:
                 except Exception:
                     pass
 
-            self.logger.debug(
+            _log_pipeline_item(
+                self,
                 "Sent items to webhook",
                 url=self.url,
                 count=len(self._batch),
@@ -2080,7 +2142,8 @@ class GoogleSheetsPipeline:
                     body=body,
                 ).execute()
 
-            self.logger.debug(
+            _log_pipeline_item(
+                self,
                 "Wrote items to Google Sheets",
                 spreadsheet_id=self.spreadsheet_id,
                 sheet_name=self.sheet_name,
@@ -2240,7 +2303,8 @@ class SnowflakePipeline:
         )
         self._conn.commit()
 
-        self.logger.debug(
+        _log_pipeline_item(
+            self,
             "Inserted item in Snowflake",
             table=self.table,
             spider=spider.name,
@@ -2336,7 +2400,8 @@ class FTPPipeline:
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         line = json.dumps(item, ensure_ascii=False)
         self._items.append(line)
-        self.logger.debug(
+        _log_pipeline_item(
+            self,
             "Buffered item for FTP",
             remote_path=self.remote_path,
             spider=spider.name,
@@ -2458,7 +2523,8 @@ class SFTPPipeline:
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         line = json.dumps(item, ensure_ascii=False)
         self._items.append(line)
-        self.logger.debug(
+        _log_pipeline_item(
+            self,
             "Buffered item for SFTP",
             remote_path=self.remote_path,
             spider=spider.name,
@@ -2596,7 +2662,8 @@ class CassandraPipeline:
             ),
         )
 
-        self.logger.debug(
+        _log_pipeline_item(
+            self,
             "Inserted item in Cassandra",
             table=self.table,
             spider=spider.name,
@@ -2694,7 +2761,8 @@ class CouchDBPipeline:
         # Create document in CouchDB
         await self._db.create(doc_data)  # type: ignore[union-attr]
 
-        self.logger.debug(
+        _log_pipeline_item(
+            self,
             "Inserted item in CouchDB",
             database=self.database,
             spider=spider.name,
@@ -2827,7 +2895,8 @@ class DynamoDBPipeline:
         # Put item in DynamoDB
         await self._table.put_item(Item=dynamo_item)  # type: ignore[union-attr]
 
-        self.logger.debug(
+        _log_pipeline_item(
+            self,
             "Inserted item in DynamoDB",
             table_name=self.table_name,
             spider=spider.name,
@@ -2921,7 +2990,8 @@ class DuckDBPipeline:
             (spider.name, json.dumps(item, ensure_ascii=False)),
         )
 
-        self.logger.debug(
+        _log_pipeline_item(
+            self,
             "Inserted item in DuckDB",
             table=self.table,
             spider=spider.name,

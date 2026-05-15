@@ -4,7 +4,7 @@ from .request import Request
 from .response import Response, HTMLResponse
 from .spiders import Spider
 from .exceptions import SilkwormError, HttpError, SpiderError, SelectorError
-from .engine import Engine
+from .engine import Engine, EngineLogger
 from .onionlink import OnionLinkClient
 from .runner import (
     crawl,
@@ -29,6 +29,7 @@ __all__ = [
     "Spider",
     "SelectorError",
     "Engine",
+    "EngineLogger",
     "OnionLinkClient",
     "crawl",
     "run_spider",
