@@ -50,7 +50,7 @@ class ServoFetchClient:
         except ImportError as err:
             msg = (
                 "servofetch is not installed. Install a wheel from this page: "
-                'https://github.com/RustedBytes/servofetch-py/releases'
+                "https://github.com/RustedBytes/servofetch-py/releases"
             )
             raise ImportError(msg) from err
 
@@ -59,7 +59,7 @@ class ServoFetchClient:
         except AttributeError as err:
             msg = (
                 "servofetch>=0.1.4 is required for ServoFetchClient. Install a wheel from this page: "
-                'https://github.com/RustedBytes/servofetch-py/releases'
+                "https://github.com/RustedBytes/servofetch-py/releases"
             )
             raise ImportError(msg) from err
 
