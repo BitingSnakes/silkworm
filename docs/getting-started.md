@@ -127,7 +127,7 @@ python examples/url_titles_spider.py --urls-file data/url_titles.jl --output dat
 See [Examples](examples.md) for a full list and what each one demonstrates.
 
 ## One-off HTML Fetch
-For quick, standalone fetches, use `fetch_html` in [src/silkworm/api.py](../src/silkworm/api.py). For rendered pages, install `silkworm-rs[servo]` and use `fetch_html_servo`, or pass `ServoFetchClient` as `http_client`:
+For quick, standalone fetches, use `fetch_html` in [src/silkworm/api.py](../src/silkworm/api.py). For rendered pages, install `servofetch` and use `fetch_html_servo`, or pass `ServoFetchClient` as `http_client`:
 
 ```python
 from silkworm import ServoFetchClient, run_spider

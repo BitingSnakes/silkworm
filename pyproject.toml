@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "silkworm-rs"
-version = "0.5.0"
+version = "0.5.1"
 description = "Async-first web scraping framework built on wreq and scraper-rs"
 authors = [
   { name = "Yehor Smoliakov", email = "egorsmkv@gmail.com" }
@@ -124,9 +124,6 @@ memray = [
 ]
 cdp = [
   "websockets==16.0",
-]
-servo = [
-  "servofetch @ git+https://github.com/RustedBytes/servofetch-py.git@v0.1.4",
 ]
 onionlink = [
   "onionlink==0.1.2",

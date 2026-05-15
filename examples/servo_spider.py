@@ -4,8 +4,7 @@ Example spider using Servo rendering through servofetch.
 ServoFetchClient embeds Servo via the optional servofetch package, so it does not
 require a separate browser process like the CDP/Lightpanda examples.
 
-Prerequisites:
-   pip install "silkworm-rs[servo]"
+Prerequisites: servofetch
 
 Usage:
    python examples/servo_spider.py

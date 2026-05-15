@@ -365,9 +365,7 @@ This runs your spider using trio as the async backend via trio-asyncio compatibi
 ## JavaScript rendering with Servo
 For pages that need JavaScript execution but do not require driving an external browser process, install the optional Servo renderer and pass `ServoFetchClient` as the spider HTTP client.
 
-```bash
-pip install "silkworm-rs[servo]"
-```
+Install a wheel from this page: https://github.com/RustedBytes/servofetch-py/releases
 
 ```python
 from silkworm import HTMLResponse, Response, ServoFetchClient, Spider, run_spider

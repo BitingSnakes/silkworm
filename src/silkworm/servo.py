@@ -49,8 +49,8 @@ class ServoFetchClient:
             servofetch = import_module("servofetch")
         except ImportError as err:
             msg = (
-                "servofetch is not installed. Install it with: "
-                'pip install "silkworm-rs[servo]"'
+                "servofetch is not installed. Install a wheel from this page: "
+                'https://github.com/RustedBytes/servofetch-py/releases'
             )
             raise ImportError(msg) from err
 
@@ -58,8 +58,8 @@ class ServoFetchClient:
             browser_cls = getattr(servofetch, "AsyncBrowser")
         except AttributeError as err:
             msg = (
-                "servofetch>=0.1.4 is required for ServoFetchClient. Install it with: "
-                'pip install "silkworm-rs[servo]"'
+                "servofetch>=0.1.4 is required for ServoFetchClient. Install a wheel from this page: "
+                'https://github.com/RustedBytes/servofetch-py/releases'
             )
             raise ImportError(msg) from err
 
