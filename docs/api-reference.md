@@ -3,7 +3,7 @@
 This page lists the public API exports from [src/silkworm/__init__.py](../src/silkworm/__init__.py) with links to their implementation.
 
 ## Core Types
-- **`Request`**: Slotted request dataclass with URL/method/headers/body/meta/callback fields. [src/silkworm/request.py](../src/silkworm/request.py)
+- **`Request`**: Slotted request dataclass with URL/method/headers/body/meta/callback/errback fields. [src/silkworm/request.py](../src/silkworm/request.py)
 - **`Response`**: Base response with `text`, `encoding`, `url_join`, `follow`, `follow_all`, `close`. [src/silkworm/response.py](../src/silkworm/response.py)
 - **`HTMLResponse`**: Response with async selectors. [src/silkworm/response.py](../src/silkworm/response.py)
 - **`Spider`**: Base spider class. [src/silkworm/spiders.py](../src/silkworm/spiders.py)

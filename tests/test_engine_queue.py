@@ -70,3 +70,105 @@ async def test_engine_does_not_track_dont_filter_requests(
     await engine.run()
 
     assert engine._seen == set()
+
+
+async def test_engine_calls_exception_middleware_from_response_middlewares(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    class RetryFromExceptionMiddleware:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def process_exception(
+            self,
+            request: Request,
+            exception: Exception,
+            spider: Spider,
+        ) -> Request | None:
+            self.calls += 1
+            return request.replace(dont_filter=True, meta={"retried": True})
+
+        async def process_response(
+            self,
+            response: Response,
+            spider: Spider,
+        ) -> Response | Request:
+            return response
+
+    class OneRequestSpider(Spider):
+        name = "exception-middleware"
+
+        async def start_requests(self):
+            yield Request(url="http://example.com", callback=self.parse)
+
+        async def parse(self, response):
+            return None
+
+    middleware = RetryFromExceptionMiddleware()
+    engine = Engine(
+        OneRequestSpider(),
+        concurrency=1,
+        response_middlewares=[middleware],
+    )
+    attempts = 0
+
+    async def fake_fetch(req: Request) -> Response:
+        nonlocal attempts
+        attempts += 1
+        if not req.meta.get("retried"):
+            raise RuntimeError("temporary fetch failure")
+        return Response(url=req.url, status=200, headers={}, body=b"", request=req)
+
+    monkeypatch.setattr(engine.http, "fetch", fake_fetch)
+
+    await engine.run()
+
+    assert attempts == 2
+    assert middleware.calls == 1
+
+
+async def test_engine_runs_request_errback_for_unhandled_exception(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    scraped_items: list[dict[str, str]] = []
+
+    class ErrbackSpider(Spider):
+        name = "errback"
+
+        async def start_requests(self):
+            yield Request(
+                url="http://example.com",
+                callback=self.parse,
+                errback=self.handle_error,
+            )
+
+        async def parse(self, response):
+            return None
+
+        async def handle_error(self, request: Request, exception: Exception):
+            yield {
+                "url": request.url,
+                "error_type": exception.__class__.__name__,
+            }
+
+    engine = Engine(ErrbackSpider(), concurrency=1)
+
+    async def fake_fetch(req: Request) -> Response:
+        raise RuntimeError("fetch failed")
+
+    async def fake_process_item(item):
+        assert isinstance(item, dict)
+        scraped_items.append(item)
+
+    monkeypatch.setattr(engine.http, "fetch", fake_fetch)
+    monkeypatch.setattr(engine, "_process_item", fake_process_item)
+
+    await engine.run()
+
+    assert scraped_items == [
+        {
+            "url": "http://example.com",
+            "error_type": "RuntimeError",
+        }
+    ]
+    assert engine._stats["errors"] == 1

@@ -32,6 +32,7 @@ Important fields:
 - **`url`**, **`method`**, **`headers`**, **`params`**, **`data`**, **`json`**
 - **`timeout`**: Per-request timeout (seconds or `timedelta`).
 - **`callback`**: Callback to run with the response.
+- **`errback`**: Callback to run when the request fails and no middleware retries it.
 - **`meta`**: Free-form dict for middlewares and custom logic.
 - **`dont_filter`**: Bypass URL deduplication.
 - **`priority`**: Reserved for future queueing (not used by the engine yet).
@@ -49,6 +50,29 @@ request = Request(
     headers={"accept": "text/html"},
     timeout=5,
 )
+```
+
+### Request Error Handling
+Use `Request.errback` for per-request recovery from fetch, middleware, or callback
+exceptions that were not handled by exception middlewares. The errback receives the
+failed `Request` and the raised exception, and it can return or yield the same shapes
+as a normal callback: items, follow-up requests, iterables, async iterables, or `None`.
+
+```python
+from silkworm import Request
+
+async def start_requests(self):
+    yield Request(
+        url="https://example.com/maybe-down",
+        callback=self.parse,
+        errback=self.handle_error,
+    )
+
+async def handle_error(self, request: Request, exception: Exception):
+    yield {
+        "url": request.url,
+        "error_type": exception.__class__.__name__,
+    }
 ```
 
 ### Built-in `meta` Keys
