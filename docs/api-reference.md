@@ -23,6 +23,10 @@ This page lists the public API exports from [src/silkworm/__init__.py](../src/si
 - **`fetch_html_servo(...)`**: Fetch rendered HTML text and a scraper-rs `AsyncDocument` via Servo/servofetch. [src/silkworm/api.py](../src/silkworm/api.py)
 - **`get_logger(...)`**: Configured logly logger. [src/silkworm/logging.py](../src/silkworm/logging.py)
 
+## Public Middlewares
+- **`CookiesMiddleware`**: Stateful cookie jar middleware with per-request controls and Netscape/Mozilla cookie file `save(...)`/`load(...)`. [src/silkworm/middlewares.py](../src/silkworm/middlewares.py)
+- **`RequestResponseStreamMiddleware`**: Streams request/response telemetry to an HTTP collector. [src/silkworm/middlewares.py](../src/silkworm/middlewares.py)
+
 ## Optional CDP Export
 - **`CDPClient`**: CDP client for browser-driven fetches (available when `cdp` extra is installed). [src/silkworm/cdp.py](../src/silkworm/cdp.py)
 

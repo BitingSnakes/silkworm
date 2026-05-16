@@ -55,6 +55,73 @@ ProxyMiddleware(proxies=["http://proxy1:8080", "http://proxy2:8080"])
 ProxyMiddleware(proxy_file="proxies.txt", random_selection=True)
 ```
 
+### CookiesMiddleware
+- Stores `Set-Cookie` response headers and applies matching `Cookie` headers to later requests.
+- Uses Python's standard `CookieJar`, so domain, path, secure, expiry, and session-cookie rules are handled by the jar.
+- Use the same middleware instance in `request_middlewares` and `response_middlewares`.
+- Saves and loads Netscape/Mozilla cookie files for reuse across spider runs.
+- Code: [src/silkworm/middlewares.py](../src/silkworm/middlewares.py)
+- Example: [examples/cookie_reuse_spiders.py](../examples/cookie_reuse_spiders.py)
+
+```python
+from pathlib import Path
+
+from silkworm import CookiesMiddleware, run_spider
+
+cookies = CookiesMiddleware()
+
+run_spider(
+    LoginSpider,
+    request_middlewares=[cookies],
+    response_middlewares=[cookies],
+)
+cookies.save("data/cookies.txt")
+
+reuse_cookies = CookiesMiddleware()
+reuse_cookies.load("data/cookies.txt")
+
+run_spider(
+    AuthenticatedSpider,
+    request_middlewares=[reuse_cookies],
+    response_middlewares=[reuse_cookies],
+)
+```
+
+Per-request controls:
+
+```python
+from silkworm import Request
+
+# Add cookies only for this request, then let the jar manage them.
+yield Request(
+    url="https://example.com/account",
+    meta={"cookies": {"session": "abc"}},
+)
+
+# Use isolated cookie sessions within one crawl.
+yield Request(
+    url="https://example.com/account",
+    meta={"cookiejar": "account-a"},
+)
+
+# Bypass cookie storage and cookie header merging for this exchange.
+yield Request(
+    url="https://example.com/public",
+    meta={"dont_merge_cookies": True},
+)
+```
+
+Useful constructor and helper options:
+
+- `CookiesMiddleware(cookies={"name": "value"})`: seed the default jar with cookies.
+- `CookiesMiddleware(allow_domains=["example.com"])`: accept/send cookies only for allowed domains.
+- `CookiesMiddleware(block_domains=["tracking.example"])`: reject blocked domains.
+- `CookiesMiddleware(hide_cookie_header=False)`: preserve a manually supplied `Cookie` header instead of replacing it with the jar-managed header.
+- `cookies.set_cookie("sid", "abc", domain="example.com")`: add one cookie programmatically.
+- `cookies.clear()`: clear all jars.
+- `cookies.clear("account-a")`: clear a named jar.
+- `cookies.clear_session_cookies()`: discard session cookies while keeping persistent cookies.
+
 ### DelayMiddleware
 - Fixed, random range, or custom delay function.
 - Uses `asyncio.sleep` (non-blocking).
