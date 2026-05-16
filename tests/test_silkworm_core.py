@@ -15,6 +15,7 @@ from silkworm.http import HttpClient
 from silkworm.engine import Engine
 from silkworm.middlewares import (
     CloudflareCrawlMiddleware,
+    CookiesMiddleware,
     DelayMiddleware,
     ProxyMiddleware,
     RequestResponseStreamMiddleware,
@@ -1237,6 +1238,160 @@ def test_proxy_middleware_validation_errors(tmp_path):
     # Empty proxies list should raise error
     with pytest.raises(ValueError, match="requires at least one proxy"):
         ProxyMiddleware(proxies=[])
+
+
+async def test_cookies_middleware_stores_and_applies_response_cookies():
+    middleware = CookiesMiddleware()
+    spider = Spider()
+    request = Request(url="https://example.com/login")
+    response = Response(
+        url=request.url,
+        status=200,
+        headers={"set-cookie": "sid=abc; Path=/; HttpOnly"},
+        body=b"",
+        request=request,
+    )
+
+    result = await middleware.process_response(response, spider)
+    next_request = await middleware.process_request(
+        Request(url="https://example.com/account"),
+        spider,
+    )
+
+    assert result is response
+    assert next_request.headers["Cookie"] == "sid=abc"
+
+
+async def test_cookies_middleware_respects_domain_path_and_secure_flags():
+    middleware = CookiesMiddleware()
+    spider = Spider()
+    request = Request(url="https://example.com/login")
+    response = Response(
+        url=request.url,
+        status=200,
+        headers={
+            "set-cookie": (
+                "sid=abc; Domain=example.com; Path=/account; Secure, "
+                "wide=ok; Domain=example.com; Path=/"
+            ),
+        },
+        body=b"",
+        request=request,
+    )
+
+    await middleware.process_response(response, spider)
+    secure_account = await middleware.process_request(
+        Request(url="https://example.com/account/settings"),
+        spider,
+    )
+    insecure_account = await middleware.process_request(
+        Request(url="http://example.com/account/settings"),
+        spider,
+    )
+    secure_other_path = await middleware.process_request(
+        Request(url="https://example.com/help"),
+        spider,
+    )
+
+    assert secure_account.headers["Cookie"] == "sid=abc; wide=ok"
+    assert insecure_account.headers["Cookie"] == "wide=ok"
+    assert secure_other_path.headers["Cookie"] == "wide=ok"
+
+
+async def test_cookies_middleware_supports_named_cookie_jars():
+    middleware = CookiesMiddleware()
+    spider = Spider()
+
+    await middleware.process_response(
+        Response(
+            url="https://example.com/",
+            status=200,
+            headers={"set-cookie": "sid=one; Path=/"},
+            body=b"",
+            request=Request(url="https://example.com/", meta={"cookiejar": "one"}),
+        ),
+        spider,
+    )
+    await middleware.process_response(
+        Response(
+            url="https://example.com/",
+            status=200,
+            headers={"set-cookie": "sid=two; Path=/"},
+            body=b"",
+            request=Request(url="https://example.com/", meta={"cookiejar": "two"}),
+        ),
+        spider,
+    )
+
+    jar_one_request = await middleware.process_request(
+        Request(url="https://example.com/", meta={"cookiejar": "one"}),
+        spider,
+    )
+    jar_two_request = await middleware.process_request(
+        Request(url="https://example.com/", meta={"cookiejar": "two"}),
+        spider,
+    )
+
+    assert jar_one_request.headers["Cookie"] == "sid=one"
+    assert jar_two_request.headers["Cookie"] == "sid=two"
+
+
+async def test_cookies_middleware_honors_dont_merge_cookies():
+    middleware = CookiesMiddleware(cookies={"global": "1"})
+    spider = Spider()
+    request = Request(
+        url="https://example.com/",
+        meta={"dont_merge_cookies": True, "cookies": {"local": "2"}},
+    )
+
+    processed = await middleware.process_request(request, spider)
+    await middleware.process_response(
+        Response(
+            url=request.url,
+            status=200,
+            headers={"set-cookie": "sid=abc; Path=/"},
+            body=b"",
+            request=request,
+        ),
+        spider,
+    )
+    followup = await middleware.process_request(
+        Request(url="https://example.com/"),
+        spider,
+    )
+
+    assert processed.headers == {}
+    assert followup.headers["Cookie"] == "global=1"
+
+
+async def test_cookies_middleware_adds_per_request_cookies():
+    middleware = CookiesMiddleware()
+    request = Request(
+        url="https://example.com/account/profile",
+        meta={"cookies": {"token": "abc", "enabled": True}},
+    )
+
+    processed = await middleware.process_request(request, Spider())
+
+    assert processed.headers["Cookie"] == "token=abc; enabled=True"
+
+
+async def test_cookies_middleware_can_preserve_existing_cookie_header():
+    spider = Spider()
+    replacing = CookiesMiddleware(cookies={"managed": "1"})
+    preserving = CookiesMiddleware(cookies={"managed": "1"}, hide_cookie_header=False)
+
+    replaced = await replacing.process_request(
+        Request(url="https://example.com/", headers={"cookie": "manual=1"}),
+        spider,
+    )
+    preserved = await preserving.process_request(
+        Request(url="https://example.com/", headers={"cookie": "manual=1"}),
+        spider,
+    )
+
+    assert replaced.headers["Cookie"] == "managed=1"
+    assert preserved.headers["Cookie"] == "manual=1"
 
 
 async def test_proxy_middleware_rotates_proxy_after_exception():
