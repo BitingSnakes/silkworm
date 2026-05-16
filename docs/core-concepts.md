@@ -84,6 +84,9 @@ These are used by built-in components (you can add your own as well):
 - **`cookies`**: Used by `CookiesMiddleware` to add cookies for one request.
 - **`dont_merge_cookies`**: Used by `CookiesMiddleware` to bypass cookie storage and header merging for one exchange.
 - **`redirect_times`**: Set by [HttpClient](../src/silkworm/http.py) when following redirects.
+- **`cloudflare_crawl`**: Used by `CloudflareCrawlMiddleware`; set to `True` or a dict of crawl options.
+- **`servo_javascript`**, **`servo_settle_ms`**, **`servo_user_agent`**, **`servo_screenshot`**, **`servo_full_page`**: Used by `ServoFetchClient`.
+- **`onionlink_response_limit`**: Used by `OnionLinkClient` to override the per-response byte cap.
 
 ## Response and HTMLResponse
 `Response` contains the response payload; `HTMLResponse` adds selector helpers. See [src/silkworm/response.py](../src/silkworm/response.py).

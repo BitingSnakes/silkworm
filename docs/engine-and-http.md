@@ -105,3 +105,29 @@ run_spider(
 ```
 
 `Request.params`, headers, body, JSON payloads, redirects, HTML detection, and `request.meta["redirect_times"]` work the same way as the default client. To override onionlink's per-response byte cap for one request, set `request.meta["onionlink_response_limit"]` to an integer byte limit.
+
+## ServoFetchClient
+`ServoFetchClient` is a client adapter for JavaScript-rendered pages through `servofetch`. The adapter is exported from `silkworm`, but `servofetch` is distributed as external wheels rather than a `pyproject.toml` extra.
+
+```python
+from silkworm import ServoFetchClient, Spider, run_spider
+
+
+class RenderedSpider(Spider):
+    start_urls = ("https://example.com",)
+
+
+run_spider(
+    RenderedSpider,
+    http_client=ServoFetchClient(settle_ms=500),
+)
+```
+
+Per-request render options are passed through `Request.meta`: `servo_javascript`, `servo_settle_ms`, `servo_user_agent`, `servo_screenshot`, and `servo_full_page`.
+
+## CDP Rendering
+For one-off rendered fetches through a CDP-compatible browser such as Lightpanda, Chrome, or Chromium, use `fetch_html_cdp` from [src/silkworm/api.py](../src/silkworm/api.py). For lower-level browser control, `CDPClient` is available when the `cdp` extra is installed.
+
+```bash
+pip install "silkworm-rs[cdp]"
+```

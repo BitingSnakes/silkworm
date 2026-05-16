@@ -118,6 +118,7 @@ from silkworm.middlewares import (
     CookiesMiddleware,
     DelayMiddleware,
     ProxyMiddleware,
+    RequestResponseStreamMiddleware,
     RetryMiddleware,
     SkipNonHTMLMiddleware,
     UserAgentMiddleware,
@@ -127,6 +128,7 @@ from silkworm.pipelines import (
     CSVPipeline,
     JsonLinesPipeline,
     MsgPackPipeline,  # requires: pip install silkworm-rs[msgpack]
+    RssPipeline,
     SQLitePipeline,
     XMLPipeline,
     TaskiqPipeline,  # requires: pip install silkworm-rs[taskiq]
@@ -186,8 +188,10 @@ run_spider(
 - `RetryMiddleware` backs off with `asyncio.sleep`; any status in `sleep_http_codes` is retried even if not in `retry_http_codes`.
 - `SkipNonHTMLMiddleware` checks `Content-Type` and optionally sniffs the body (`sniff_bytes`) to avoid running HTML callbacks on binary/API responses.
 - `CloudflareCrawlMiddleware` is opt-in per request via `request.meta["cloudflare_crawl"]`; it submits a Cloudflare Browser Rendering crawl job, polls until completion, and hands your callback a synthetic JSON `Response` with the final API payload.
+- `RequestResponseStreamMiddleware` streams paired request/response telemetry events to a collector endpoint; use the same instance in both middleware lists.
 - `JsonLinesPipeline` writes items to a local JSON Lines file and, when `opendal` is installed, appends asynchronously via the filesystem backend (`use_opendal=False` to stick to a regular file handle).
 - `CSVPipeline` flattens nested dicts (e.g., `{"user": {"name": "Alice"}}` -> `user_name`) and joins lists with commas; `XMLPipeline` preserves nesting.
+- `RssPipeline` writes buffered RSS 2.0 feeds from items with configurable title/link/description fields.
 - `MsgPackPipeline` writes items in binary MessagePack format using [ormsgpack](https://github.com/aviramha/ormsgpack) for fast and compact serialization (requires `pip install silkworm-rs[msgpack]`).
 - `TaskiqPipeline` sends items to a [Taskiq](https://taskiq-python.github.io/) queue for distributed processing (requires `pip install silkworm-rs[taskiq]`).
 - `PolarsPipeline` writes items to a Parquet file using Polars for efficient columnar storage (requires `pip install silkworm-rs[polars]`).
@@ -427,7 +431,7 @@ async def main():
     )
     
     # Extract data from rendered page
-    title = doc.select_first("title")
+    title = await doc.select_first("title")
     print(title.text if title else "No title")
 
 asyncio.run(main())
@@ -529,8 +533,11 @@ run_spider(
 - `python examples/export_formats_demo.py --pages 2` → JSONL, XML, and CSV outputs in `data/`
 - `python examples/taskiq_quotes_spider.py --pages 2` → demonstrates TaskiqPipeline for queue-based processing
 - `python examples/sitemap_spider.py --sitemap-url https://example.com/sitemap.xml --pages 50` → `data/sitemap_meta.jl` (extracts meta tags and Open Graph data from sitemap URLs)
+- `python examples/request_response_stream_spider.py --collector-url https://collector.example.com/events` → streams request/response telemetry while writing quotes output
+- `CLOUDFLARE_ACCOUNT_ID=... CLOUDFLARE_API_TOKEN=... python examples/cloudflare_crawl_spider.py https://example.com --limit 10` → submits a Cloudflare Browser Rendering crawl job
 - `python examples/lightpanda_simple.py` → demonstrates CDP/Lightpanda for JavaScript rendering (requires `pip install silkworm-rs[cdp]` and running Lightpanda)
 - `python examples/lightpanda_spider.py` → full spider example using CDP/Lightpanda
+- `python examples/servo_spider.py` → full spider example using `ServoFetchClient` and a `servofetch` wheel
 
 ## Convenience API
 For one-off fetches without a full spider:
@@ -556,6 +563,20 @@ from silkworm import fetch_html_cdp
 async def main():
     # Requires Lightpanda/Chrome running with CDP enabled
     text, doc = await fetch_html_cdp("https://example.com")
+    title = await doc.select_first("title")
+    print(title.text if title else "No title")
+
+asyncio.run(main())
+```
+
+### Servo-based fetch
+```python
+import asyncio
+from silkworm import fetch_html_servo
+
+async def main():
+    # Requires a compatible servofetch wheel.
+    text, doc = await fetch_html_servo("https://example.com", settle_ms=500)
     title = await doc.select_first("title")
     print(title.text if title else "No title")
 
