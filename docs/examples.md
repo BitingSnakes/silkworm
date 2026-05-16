@@ -17,10 +17,14 @@ All examples live under [examples/](../examples). This page lists each example, 
 | [examples/callback_pipeline_demo.py](../examples/callback_pipeline_demo.py) | CallbackPipeline chaining | `python examples/callback_pipeline_demo.py` |
 | [examples/taskiq_quotes_spider.py](../examples/taskiq_quotes_spider.py) | TaskiqPipeline queue output | `python examples/taskiq_quotes_spider.py --pages 2` |
 | [examples/sitemap_spider.py](../examples/sitemap_spider.py) | XML sitemap parsing, meta tags | `python examples/sitemap_spider.py --sitemap-url https://example.com/sitemap.xml --pages 50` |
+| [examples/runtime_stats_quotes_spider.py](../examples/runtime_stats_quotes_spider.py) | Runtime stats payload updates | `python examples/runtime_stats_quotes_spider.py` |
+| [examples/logging_controls_demo.py](../examples/logging_controls_demo.py) | Engine and pipeline logging controls | `python examples/logging_controls_demo.py --mode quiet` |
 | [examples/logger_configuration_demo.py](../examples/logger_configuration_demo.py) | Logger injection patterns | `python examples/logger_configuration_demo.py` |
 | [examples/hybrid_logger_demo.py](../examples/hybrid_logger_demo.py) | Hybrid console + JSON logs | `python examples/hybrid_logger_demo.py` |
+| [examples/request_response_stream_spider.py](../examples/request_response_stream_spider.py) | Request/response telemetry streaming | `python examples/request_response_stream_spider.py --collector-url https://collector.example.com/events` |
+| [examples/cloudflare_crawl_spider.py](../examples/cloudflare_crawl_spider.py) | Cloudflare Browser Rendering crawl jobs | `CLOUDFLARE_ACCOUNT_ID=... CLOUDFLARE_API_TOKEN=... python examples/cloudflare_crawl_spider.py https://example.com --limit 10` |
 | [examples/lightpanda_simple.py](../examples/lightpanda_simple.py) | CDP one-off rendered HTML fetch | `python examples/lightpanda_simple.py` |
 | [examples/lightpanda_spider.py](../examples/lightpanda_spider.py) | CDP spider flow with Lightpanda/Chrome endpoint | `python examples/lightpanda_spider.py` |
 | [examples/servo_spider.py](../examples/servo_spider.py) | Servo-rendered spider using `ServoFetchClient` | `python examples/servo_spider.py` |
 
-> **Tip:** Some examples require optional extras (rsloop, trio, winloop, taskiq, cdp, servo). Install them via `pip install "silkworm-rs[rsloop]"` or similar.
+> **Tip:** Some examples require optional extras (rsloop, trio, winloop, taskiq, cdp). Servo examples require a compatible `servofetch` wheel from the servofetch releases rather than a package extra.

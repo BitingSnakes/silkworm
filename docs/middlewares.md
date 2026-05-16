@@ -48,6 +48,7 @@ UserAgentMiddleware(user_agents=["UA1", "UA2"], default="silkworm/0.1")
 - Rotates proxies (round-robin or random).
 - Reads from a list or file.
 - Writes `request.meta["proxy"]` for the HTTP client.
+- Retries fetch exceptions with another proxy when one is available, preserving failed proxies in request metadata.
 - Code: [src/silkworm/middlewares.py](../src/silkworm/middlewares.py)
 
 ```python
@@ -154,6 +155,61 @@ RetryMiddleware(max_times=3, backoff_base=0.5, sleep_http_codes=[429, 503])
 
 ```python
 SkipNonHTMLMiddleware(allowed_types=["html"], sniff_bytes=2048)
+```
+
+### RequestResponseStreamMiddleware
+- Streams paired `request` and `response` telemetry events to a collector endpoint.
+- Use the same instance in `request_middlewares` and `response_middlewares`.
+- Adds internal exchange IDs to request metadata so downstream systems can join events.
+- Supports authorization headers, bounded sender queue, body truncation, batching, and `open`/`close` lifecycle flushing.
+- Code: [src/silkworm/middlewares.py](../src/silkworm/middlewares.py)
+- Example: [examples/request_response_stream_spider.py](../examples/request_response_stream_spider.py)
+
+```python
+from silkworm import RequestResponseStreamMiddleware
+
+stream = RequestResponseStreamMiddleware(
+    "https://collector.example.com/events",
+    auth_token="secret-token",
+    batch_size=50,
+    max_body_bytes=8_192,
+)
+
+run_spider(
+    MySpider,
+    request_middlewares=[stream],
+    response_middlewares=[stream],
+)
+```
+
+### CloudflareCrawlMiddleware
+- Routes opt-in requests through Cloudflare Browser Rendering's crawl API.
+- Enable per request with `request.meta["cloudflare_crawl"] = True` or pass a dict of per-request crawl options.
+- The callback receives a synthetic JSON `Response` containing the final Cloudflare API payload.
+- Requires Cloudflare account credentials; there is no package extra for this middleware.
+- Code: [src/silkworm/middlewares.py](../src/silkworm/middlewares.py)
+- Example: [examples/cloudflare_crawl_spider.py](../examples/cloudflare_crawl_spider.py)
+
+```python
+from silkworm import Request
+from silkworm.middlewares import CloudflareCrawlMiddleware
+
+yield Request(
+    url="https://example.com/",
+    callback=self.parse,
+    meta={"cloudflare_crawl": {"limit": 25, "render": True}},
+)
+
+run_spider(
+    MySpider,
+    request_middlewares=[
+        CloudflareCrawlMiddleware(
+            account_id="...",
+            api_token="...",
+            timeout=300,
+        )
+    ],
+)
 ```
 
 ## Custom Middleware Example

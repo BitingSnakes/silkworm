@@ -60,7 +60,6 @@ pip install "silkworm-rs[rsloop,polars]"
 | `taskiq` | Taskiq queue pipeline | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
 | `memray` | Memory profiling | [justfile](../justfile) |
 | `cdp` | CDP browser client and rendered HTML fetch | [src/silkworm/cdp.py](../src/silkworm/cdp.py) |
-| `servo` | Servo-rendered HTML fetch | [src/silkworm/servo.py](../src/silkworm/servo.py) |
 | `onionlink` | Tor v3 onion-service client | [src/silkworm/onionlink.py](../src/silkworm/onionlink.py) |
 
 `OnionLinkClient` is also available as an optional integration for `.onion` sites:
@@ -68,6 +67,8 @@ pip install "silkworm-rs[rsloop,polars]"
 ```bash
 pip install "silkworm-rs[onionlink]"
 ```
+
+`ServoFetchClient` is available from `silkworm`, but `servofetch` is distributed separately from the package extras. Install a compatible wheel from the [servofetch releases](https://github.com/RustedBytes/servofetch-py/releases) before using `fetch_html_servo` or `ServoFetchClient`.
 
 ## Your First Spider
 This is a minimal spider that extracts quotes and writes JSON Lines output. For a full version, see [examples/quotes_spider.py](../examples/quotes_spider.py).
