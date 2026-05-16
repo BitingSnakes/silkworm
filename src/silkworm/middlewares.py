@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from datetime import datetime, timedelta, timezone
 from email.message import Message
 from enum import Enum, auto
-from http.cookiejar import Cookie, CookieJar, DefaultCookiePolicy
+from http.cookiejar import Cookie, CookieJar, DefaultCookiePolicy, MozillaCookieJar
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Protocol, cast, assert_never
 from urllib.parse import urlsplit
@@ -796,6 +796,53 @@ class CookiesMiddleware:
                 expires=expires,
             ),
         )
+
+    def save(
+        self,
+        path: str | Path,
+        *,
+        cookiejar: str | int | None = None,
+        ignore_discard: bool = True,
+        ignore_expires: bool = True,
+    ) -> None:
+        """Save cookies from one jar to a Netscape/Mozilla cookie file."""
+        output_path = Path(path)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        file_jar = MozillaCookieJar(str(output_path))
+        file_jar.set_policy(self._policy)
+        for cookie in self._jar_for(cookiejar or self._DEFAULT_JAR_KEY):
+            file_jar.set_cookie(cookie)
+        file_jar.save(
+            str(output_path),
+            ignore_discard=ignore_discard,
+            ignore_expires=ignore_expires,
+        )
+
+    def load(
+        self,
+        path: str | Path,
+        *,
+        cookiejar: str | int | None = None,
+        ignore_discard: bool = True,
+        ignore_expires: bool = True,
+        clear_existing: bool = False,
+    ) -> None:
+        """Load cookies from a Netscape/Mozilla cookie file into one jar."""
+        input_path = Path(path)
+        file_jar = MozillaCookieJar(str(input_path))
+        file_jar.set_policy(self._policy)
+        file_jar.load(
+            str(input_path),
+            ignore_discard=ignore_discard,
+            ignore_expires=ignore_expires,
+        )
+
+        target = self._jar_for(cookiejar or self._DEFAULT_JAR_KEY)
+        if clear_existing:
+            target.clear()
+        for cookie in file_jar:
+            target.set_cookie(cookie)
 
     def _jar_for_request(self, request: Request) -> CookieJar:
         raw_key = request.meta.get(self._COOKIEJAR_META_KEY, self._DEFAULT_JAR_KEY)

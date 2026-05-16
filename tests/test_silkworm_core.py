@@ -1394,6 +1394,22 @@ async def test_cookies_middleware_can_preserve_existing_cookie_header():
     assert preserved.headers["Cookie"] == "manual=1"
 
 
+async def test_cookies_middleware_saves_and_loads_cookie_file(tmp_path):
+    cookie_file = tmp_path / "cookies.txt"
+    source = CookiesMiddleware()
+    source.set_cookie("sid", "abc", domain="example.com")
+    source.save(cookie_file)
+
+    target = CookiesMiddleware()
+    target.load(cookie_file)
+    request = await target.process_request(
+        Request(url="https://example.com/"), Spider()
+    )
+
+    assert cookie_file.exists()
+    assert request.headers["Cookie"] == "sid=abc"
+
+
 async def test_proxy_middleware_rotates_proxy_after_exception():
     middleware = ProxyMiddleware(
         proxies=["http://proxy1:8080", "http://proxy2:8080", "http://proxy3:8080"]
