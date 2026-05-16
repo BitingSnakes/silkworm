@@ -14,7 +14,7 @@ Async-first web scraping framework built on [wreq](https://github.com/0x676e67/w
 - Optional OnionLink client integration for scraping Tor v3 `.onion` sites without routing through wreq.
 - Optional Servo rendering via `ServoFetchClient` for JavaScript-rendered pages without changing the default HTTP client.
 - Typed spiders and callbacks that can return items or `Request` objects; `HTMLResponse` ships helper methods plus `Response.follow` to reuse callbacks.
-- Middlewares: User-Agent rotation/default, proxy rotation, retry with exponential backoff + optional sleep codes, flexible delays (fixed/random/custom), `SkipNonHTMLMiddleware` to drop non-HTML callbacks, and `CloudflareCrawlMiddleware` for Browser Rendering crawl jobs.
+- Middlewares: User-Agent rotation/default, proxy rotation, cookie jars with save/load, retry with exponential backoff + optional sleep codes, flexible delays (fixed/random/custom), `SkipNonHTMLMiddleware` to drop non-HTML callbacks, and `CloudflareCrawlMiddleware` for Browser Rendering crawl jobs.
 - Pipelines: JSON Lines, SQLite, XML (nested data preserved), and CSV (flattens dicts and lists) out of the box.
 - Structured logging via `logly` (`SILKWORM_LOG_LEVEL=DEBUG`), plus periodic/final crawl statistics (requests/sec, queue size, memory, seen URLs).
 
@@ -115,6 +115,7 @@ if __name__ == "__main__":
 ```python
 from silkworm.middlewares import (
     CloudflareCrawlMiddleware,
+    CookiesMiddleware,
     DelayMiddleware,
     ProxyMiddleware,
     RetryMiddleware,
@@ -181,6 +182,7 @@ run_spider(
   - **Round-robin (default)**: `ProxyMiddleware(proxies=["http://proxy1:8080", "http://proxy2:8080"])` cycles through proxies in order.
   - **Random selection**: `ProxyMiddleware(proxies=["http://proxy1:8080", "http://proxy2:8080"], random_selection=True)` randomly selects a proxy for each request.
   - **From file**: `ProxyMiddleware(proxy_file="proxies.txt")` loads proxies from a file (one proxy per line, blank lines ignored). Combine with `random_selection=True` for random selection from the file.
+- `CookiesMiddleware` stores `Set-Cookie` response headers, applies matching `Cookie` request headers, supports named jars via `request.meta["cookiejar"]`, per-request cookies via `request.meta["cookies"]`, opt-out via `request.meta["dont_merge_cookies"]`, and Netscape/Mozilla cookie file `save(...)`/`load(...)`. Use the same instance in `request_middlewares` and `response_middlewares`.
 - `RetryMiddleware` backs off with `asyncio.sleep`; any status in `sleep_http_codes` is retried even if not in `retry_http_codes`.
 - `SkipNonHTMLMiddleware` checks `Content-Type` and optionally sniffs the body (`sniff_bytes`) to avoid running HTML callbacks on binary/API responses.
 - `CloudflareCrawlMiddleware` is opt-in per request via `request.meta["cloudflare_crawl"]`; it submits a Cloudflare Browser Rendering crawl job, polls until completion, and hands your callback a synthetic JSON `Response` with the final API payload.
@@ -522,6 +524,7 @@ run_spider(
 - `python examples/lobsters_spider.py --pages 2` → `data/lobsters.jl`
 - `python examples/url_titles_spider.py --urls-file data/url_titles.jl --output data/titles.jl` (includes `SkipNonHTMLMiddleware` and stricter HTML size limits)
 - `python examples/exception_handling_spider.py` → `data/exception_handling.jl` (demonstrates `process_exception` and request `errback`)
+- `python examples/cookie_reuse_spiders.py` → `data/cookie_reuse.jl` and `data/cookies.txt` (captures cookies in one run, saves them, then loads them for a second run)
 - `SILKWORM_LOG_LEVEL=DEBUG python examples/logging_controls_demo.py --mode noisy` then `--mode quiet` → demonstrates noisy pipeline/URL logging and the quieter `EngineLogger` + pipeline `log_level=None` setup
 - `python examples/export_formats_demo.py --pages 2` → JSONL, XML, and CSV outputs in `data/`
 - `python examples/taskiq_quotes_spider.py --pages 2` → demonstrates TaskiqPipeline for queue-based processing

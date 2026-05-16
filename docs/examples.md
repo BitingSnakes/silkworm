@@ -12,6 +12,7 @@ All examples live under [examples/](../examples). This page lists each example, 
 | [examples/lobsters_spider.py](../examples/lobsters_spider.py) | uvloop runner, pagination | `python examples/lobsters_spider.py --pages 2` |
 | [examples/url_titles_spider.py](../examples/url_titles_spider.py) | JSONL input, custom start_requests | `python examples/url_titles_spider.py --urls-file data/url_titles.jl --output data/titles.jl` |
 | [examples/exception_handling_spider.py](../examples/exception_handling_spider.py) | Exception middleware and request errbacks | `python examples/exception_handling_spider.py` |
+| [examples/cookie_reuse_spiders.py](../examples/cookie_reuse_spiders.py) | Cookie capture, save/load, and reuse across two spider runs | `python examples/cookie_reuse_spiders.py` |
 | [examples/export_formats_demo.py](../examples/export_formats_demo.py) | JSONL, XML, CSV (and MsgPack if available) | `python examples/export_formats_demo.py --pages 2` |
 | [examples/callback_pipeline_demo.py](../examples/callback_pipeline_demo.py) | CallbackPipeline chaining | `python examples/callback_pipeline_demo.py` |
 | [examples/taskiq_quotes_spider.py](../examples/taskiq_quotes_spider.py) | TaskiqPipeline queue output | `python examples/taskiq_quotes_spider.py --pages 2` |

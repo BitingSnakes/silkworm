@@ -80,6 +80,9 @@ These are used by built-in components (you can add your own as well):
 - **`proxy`**: Used by `ProxyMiddleware` and [HttpClient](../src/silkworm/http.py) for proxy routing.
 - **`retry_times`**: Used by `RetryMiddleware` to track attempts.
 - **`allow_non_html`**: Used by `SkipNonHTMLMiddleware` to bypass filtering.
+- **`cookiejar`**: Used by `CookiesMiddleware` to isolate named cookie sessions.
+- **`cookies`**: Used by `CookiesMiddleware` to add cookies for one request.
+- **`dont_merge_cookies`**: Used by `CookiesMiddleware` to bypass cookie storage and header merging for one exchange.
 - **`redirect_times`**: Set by [HttpClient](../src/silkworm/http.py) when following redirects.
 
 ## Response and HTMLResponse
