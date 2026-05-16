@@ -393,6 +393,10 @@ class HttpClient:
                 for k, v in raw_headers.items()
             }
 
+        header_map = self._normalize_header_map(raw_headers)
+        if header_map:
+            return header_map
+
         headers: Headers = {}
         if isinstance(raw_headers, Sequence) and not isinstance(
             raw_headers,
@@ -423,6 +427,46 @@ class HttpClient:
             }
         except Exception:
             return {}
+
+    def _normalize_header_map(self, raw_headers: object) -> dict[str, str]:
+        keys = getattr(raw_headers, "keys", None)
+        getter = getattr(raw_headers, "get_all", None) or getattr(
+            raw_headers, "get", None
+        )
+        if not callable(keys) or not callable(getter):
+            return {}
+
+        headers: Headers = {}
+        try:
+            raw_keys = keys()
+        except Exception:
+            return {}
+
+        for key in raw_keys:
+            name = self._textify(key).strip().lower()
+            if not name:
+                continue
+
+            try:
+                raw_values = getter(key)
+            except Exception:
+                try:
+                    raw_values = getter(name)
+                except Exception:
+                    continue
+
+            if isinstance(raw_values, Sequence) and not isinstance(
+                raw_values,
+                (str, bytes, bytearray),
+            ):
+                value = ", ".join(
+                    self._textify(raw_value).strip() for raw_value in raw_values
+                )
+            else:
+                value = self._textify(raw_values).strip()
+            headers[name] = value
+
+        return headers
 
     def _normalize_status(self, raw_status: Any) -> int:
         """

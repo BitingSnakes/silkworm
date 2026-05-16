@@ -560,6 +560,28 @@ def test_httpclient_normalize_headers_handles_multiple_shapes():
     assert normalized["x-ratelimit"] == "10"
 
 
+def test_httpclient_normalize_headers_handles_wreq_header_map_shape():
+    class HeaderMapLike:
+        def __init__(self) -> None:
+            self._headers = {
+                b"set-cookie": [b"sid=abc; Path=/"],
+                b"x-test": [b"yes"],
+            }
+
+        def keys(self) -> list[bytes]:
+            return list(self._headers)
+
+        def get_all(self, key: bytes) -> list[bytes]:
+            return self._headers[key]
+
+    client = HttpClient()
+
+    normalized = client._normalize_headers(HeaderMapLike())
+
+    assert normalized["set-cookie"] == "sid=abc; Path=/"
+    assert normalized["x-test"] == "yes"
+
+
 async def test_httpclient_follows_redirects():
     class RedirectClient(_RecordingClient):
         async def request(self, method: Any, url: str, **kwargs: Any) -> _StubResponse:  # type: ignore[override]
