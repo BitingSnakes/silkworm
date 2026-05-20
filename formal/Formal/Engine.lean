@@ -88,6 +88,23 @@ theorem enqueueByPriority_preserves_prioritySorted
           ⟨allPriorityLe_enqueueByPriority queued.priority req (Int.le_of_not_gt hBefore) hSorted.1,
             enqueueByPriority_preserves_prioritySorted req hSorted.2⟩
 
+theorem enqueueByPriority_stays_after_higher_or_equal
+    (req queued : Request)
+    (rest : List Request)
+    (hNotBefore : ¬ req.priority > queued.priority) :
+    enqueueByPriority req (queued :: rest) =
+      queued :: enqueueByPriority req rest := by
+  simp [enqueueByPriority, hNotBefore]
+
+theorem enqueueByPriority_equal_priority_fifo
+    (req queued : Request)
+    (rest : List Request)
+    (hPriority : req.priority = queued.priority) :
+    enqueueByPriority req (queued :: rest) =
+      queued :: enqueueByPriority req rest := by
+  apply enqueueByPriority_stays_after_higher_or_equal
+  simp [hPriority]
+
 /-!
   Enqueue semantics:
   - `dontFilter = true` always appends the request;
@@ -189,6 +206,59 @@ theorem scrapeItem_preserves_queue
     (st : EngineState) :
     (scrapeItem item st).queue = st.queue := by
   simp [scrapeItem]
+
+def fetchSuccess (_response : Response) (st : EngineState) : EngineState :=
+  { st with
+    stats := {
+      st.stats with
+      requestsSent := st.stats.requestsSent + 1
+      responsesReceived := st.stats.responsesReceived + 1
+    } }
+
+def fetchError (_req : Request) (st : EngineState) : EngineState :=
+  { st with
+    stats := {
+      st.stats with
+      requestsSent := st.stats.requestsSent + 1
+      errors := st.stats.errors + 1
+    } }
+
+theorem fetchSuccess_increments_requestsSent
+    (response : Response)
+    (st : EngineState) :
+    (fetchSuccess response st).stats.requestsSent = st.stats.requestsSent + 1 := by
+  simp [fetchSuccess]
+
+theorem fetchSuccess_increments_responsesReceived
+    (response : Response)
+    (st : EngineState) :
+    (fetchSuccess response st).stats.responsesReceived =
+      st.stats.responsesReceived + 1 := by
+  simp [fetchSuccess]
+
+theorem fetchSuccess_preserves_queue
+    (response : Response)
+    (st : EngineState) :
+    (fetchSuccess response st).queue = st.queue := by
+  simp [fetchSuccess]
+
+theorem fetchError_increments_requestsSent
+    (req : Request)
+    (st : EngineState) :
+    (fetchError req st).stats.requestsSent = st.stats.requestsSent + 1 := by
+  simp [fetchError]
+
+theorem fetchError_increments_errors
+    (req : Request)
+    (st : EngineState) :
+    (fetchError req st).stats.errors = st.stats.errors + 1 := by
+  simp [fetchError]
+
+theorem fetchError_preserves_queue
+    (req : Request)
+    (st : EngineState) :
+    (fetchError req st).queue = st.queue := by
+  simp [fetchError]
 
 def handleEventWith (key : DedupKey) (event : Event) (st : EngineState) : EngineState :=
   match event with

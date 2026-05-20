@@ -1,3 +1,4 @@
+import Cslib.Foundations.Data.RelatesInSteps
 import Formal.Engine
 
 namespace Silkworm
@@ -14,6 +15,19 @@ theorem retry_bypasses_dedup (req : Request) :
 theorem retry_increments_retryTimes (req : Request) :
     (retryRequest req).retryTimes = req.retryTimes + 1 := by
   simp [retryRequest]
+
+inductive RetryStep : Request -> Request -> Prop where
+  | retry (req : Request) : RetryStep req (retryRequest req)
+
+theorem retryRequest_relatesInSteps (req : Request) :
+    Relation.RelatesInSteps RetryStep req (retryRequest req) 1 :=
+  Relation.RelatesInSteps.single (RetryStep.retry req)
+
+theorem zero_retry_steps_eq
+    {req req' : Request}
+    (hSteps : Relation.RelatesInSteps RetryStep req req' 0) :
+    req = req' :=
+  Relation.RelatesInSteps.zero hSteps
 
 structure RetryConfig where
   maxTimes : Nat := 3

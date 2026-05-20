@@ -6,6 +6,8 @@ namespace Silkworm
 
 inductive EngineLabel where
   | enqueue (req : Request)
+  | fetchSuccess (response : Response)
+  | fetchError (req : Request)
   | callbackEvent (event : Event)
   | retry (req : Request)
   | scrape (item : Item)
@@ -21,6 +23,10 @@ deriving Repr, DecidableEq
 inductive EngineStep (key : DedupKey) : EngineState -> EngineLabel -> EngineState -> Prop where
   | enqueue :
       EngineStep key st (.enqueue req) (enqueueWith key req st)
+  | fetchSuccess :
+      EngineStep key st (.fetchSuccess response) (fetchSuccess response st)
+  | fetchError :
+      EngineStep key st (.fetchError req) (fetchError req st)
   | callbackEvent :
       EngineStep key st (.callbackEvent event) (handleEventWith key event st)
   | retry :
@@ -104,6 +110,10 @@ theorem engineStep_preserves_prioritySorted
   cases hStep with
   | enqueue =>
       exact enqueueWith_preserves_prioritySorted key _ _ hSorted
+  | fetchSuccess =>
+      simpa [fetchSuccess] using hSorted
+  | fetchError =>
+      simpa [fetchError] using hSorted
   | callbackEvent =>
       exact handleEventWith_preserves_prioritySorted key _ _ hSorted
   | retry =>

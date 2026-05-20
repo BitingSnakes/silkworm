@@ -1,3 +1,4 @@
+import Cslib.Foundations.Data.RelatesInSteps
 import Formal.Request
 
 namespace Silkworm
@@ -57,6 +58,47 @@ theorem redirect_always_drops_params
     (target : Url)
     (status : Nat) :
     (redirectRequest req target status).hasParams = false := by
+  by_cases h : redirectChangesMethodToGet status req.method
+  · simp [redirectRequest, h]
+  · simp [redirectRequest, h]
+
+structure RedirectConfig where
+  maxRedirects : Nat := 10
+deriving Repr, DecidableEq
+
+def redirectAllowed (cfg : RedirectConfig) (req : Request) : Prop :=
+  req.redirects < cfg.maxRedirects
+
+inductive RedirectStep : Request -> Request -> Prop where
+  | follow
+      (req : Request)
+      (target : Url)
+      (status : Nat)
+      (hStatus : isRedirectStatus status = true) :
+      RedirectStep req (redirectRequest req target status)
+
+theorem redirectRequest_relatesInSteps
+    (req : Request)
+    (target : Url)
+    (status : Nat)
+    (hStatus : isRedirectStatus status = true) :
+    Relation.RelatesInSteps RedirectStep
+      req
+      (redirectRequest req target status)
+      1 :=
+  Relation.RelatesInSteps.single (RedirectStep.follow req target status hStatus)
+
+theorem zero_redirect_steps_eq
+    {req req' : Request}
+    (hSteps : Relation.RelatesInSteps RedirectStep req req' 0) :
+    req = req' :=
+  Relation.RelatesInSteps.zero hSteps
+
+theorem redirectRequest_increments_redirects
+    (req : Request)
+    (target : Url)
+    (status : Nat) :
+    (redirectRequest req target status).redirects = req.redirects + 1 := by
   by_cases h : redirectChangesMethodToGet status req.method
   · simp [redirectRequest, h]
   · simp [redirectRequest, h]
