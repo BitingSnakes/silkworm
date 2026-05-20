@@ -59,8 +59,9 @@ theorem callbackOutput_mtr
     (engineLTS key).MTr
       st
       (callbackEventLabels (normalizeCallbackOutput out))
-      (handleEventsWith key (normalizeCallbackOutput out) st) :=
-  callbackEvents_mtr key (normalizeCallbackOutput out) st
+      (handleCallbackOutputWith key out st) := by
+  simpa [handleCallbackOutputWith] using
+    callbackEvents_mtr key (normalizeCallbackOutput out) st
 
 theorem callbackEvents_default_mtr
     (events : List Event)
@@ -70,5 +71,74 @@ theorem callbackEvents_default_mtr
       (callbackEventLabels events)
       (handleEvents events st) := by
   simpa [handleEvents] using callbackEvents_mtr defaultDedupKey events st
+
+theorem callbackOutput_default_mtr
+    (out : CallbackOutput)
+    (st : EngineState) :
+    (engineLTS defaultDedupKey).MTr
+      st
+      (callbackEventLabels (normalizeCallbackOutput out))
+      (handleCallbackOutput out st) := by
+  simpa [handleCallbackOutput] using callbackOutput_mtr defaultDedupKey out st
+
+theorem callbackEvents_execution
+    (key : DedupKey)
+    (events : List Event)
+    (st : EngineState) :
+    ∃ states : List EngineState,
+      (engineLTS key).Execution
+        st
+        (callbackEventLabels events)
+        (handleEventsWith key events st)
+        states :=
+  Cslib.LTS.Execution.of_mTr (callbackEvents_mtr key events st)
+
+theorem engineStep_preserves_prioritySorted
+    {key : DedupKey}
+    {st st' : EngineState}
+    {label : EngineLabel}
+    (hStep : EngineStep key st label st') :
+    PrioritySorted st.queue ->
+    PrioritySorted st'.queue := by
+  intro hSorted
+  cases hStep with
+  | enqueue =>
+      exact enqueueWith_preserves_prioritySorted key _ _ hSorted
+  | callbackEvent =>
+      exact handleEventWith_preserves_prioritySorted key _ _ hSorted
+  | retry =>
+      exact enqueueWith_preserves_prioritySorted key _ _ hSorted
+  | scrape =>
+      simpa [scrapeItem] using hSorted
+
+theorem engineMTr_preserves_prioritySorted
+    {key : DedupKey}
+    {st st' : EngineState}
+    {labels : List EngineLabel}
+    (hTrace : (engineLTS key).MTr st labels st') :
+    PrioritySorted st.queue ->
+    PrioritySorted st'.queue := by
+  intro hSorted
+  induction hTrace with
+  | refl =>
+      exact hSorted
+  | stepL hStep _ ih =>
+      exact ih (engineStep_preserves_prioritySorted hStep hSorted)
+
+theorem callbackEvents_preserve_prioritySorted
+    (key : DedupKey)
+    (events : List Event)
+    (st : EngineState)
+    (hSorted : PrioritySorted st.queue) :
+    PrioritySorted (handleEventsWith key events st).queue :=
+  engineMTr_preserves_prioritySorted (callbackEvents_mtr key events st) hSorted
+
+theorem callbackOutput_preserve_prioritySorted
+    (key : DedupKey)
+    (out : CallbackOutput)
+    (st : EngineState)
+    (hSorted : PrioritySorted st.queue) :
+    PrioritySorted (handleCallbackOutputWith key out st).queue :=
+  engineMTr_preserves_prioritySorted (callbackOutput_mtr key out st) hSorted
 
 end Silkworm
