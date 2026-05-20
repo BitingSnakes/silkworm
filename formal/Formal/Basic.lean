@@ -1,5 +1,6 @@
 import Formal.Callback
 import Formal.Engine
+import Formal.EngineLTS
 import Formal.Invariants
 import Formal.Pipeline
 import Formal.Redirect

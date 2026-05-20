@@ -109,13 +109,19 @@ def scrapeItem (item : Item) (st : EngineState) : EngineState :=
     scraped := st.scraped ++ [item]
     stats := { st.stats with itemsScraped := st.stats.itemsScraped + 1 } }
 
-def handleEvent (event : Event) (st : EngineState) : EngineState :=
+def handleEventWith (key : DedupKey) (event : Event) (st : EngineState) : EngineState :=
   match event with
-  | Event.request req => enqueue req st
+  | Event.request req => enqueueWith key req st
   | Event.item item => scrapeItem item st
 
+def handleEvent (event : Event) (st : EngineState) : EngineState :=
+  handleEventWith defaultDedupKey event st
+
+def handleEventsWith (key : DedupKey) (events : List Event) (st : EngineState) : EngineState :=
+  events.foldl (fun acc event => handleEventWith key event acc) st
+
 def handleEvents (events : List Event) (st : EngineState) : EngineState :=
-  events.foldl (fun acc event => handleEvent event acc) st
+  handleEventsWith defaultDedupKey events st
 
 def handleCallbackOutput
     (out : CallbackOutput)
