@@ -1039,8 +1039,10 @@ class RetryMiddleware:
             raise ValueError(msg)
 
         self.max_times = max_times
-        base_retry_codes = set(
-            retry_http_codes or {500, 502, 503, 504, 522, 524, 408, 429},
+        base_retry_codes = (
+            set(retry_http_codes)
+            if retry_http_codes is not None
+            else {500, 502, 503, 504, 522, 524, 408, 429}
         )
         sleep_codes = (
             set(sleep_http_codes)

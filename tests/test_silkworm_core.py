@@ -1000,6 +1000,29 @@ async def test_retry_middleware_retry_without_sleep(monkeypatch: pytest.MonkeyPa
     assert sleep_calls == []
 
 
+async def test_retry_middleware_empty_retry_codes_disable_retry(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    async def fake_sleep(_: float) -> None:
+        return None
+
+    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+
+    middleware = RetryMiddleware(
+        max_times=1,
+        retry_http_codes=[],
+        sleep_http_codes=[],
+    )
+    request = Request(url="http://example.com")
+    response = Response(
+        url=request.url, status=500, headers={}, body=b"", request=request
+    )
+
+    result = await middleware.process_response(response, Spider())
+
+    assert result is response
+
+
 async def test_engine_closes_responses(monkeypatch: pytest.MonkeyPatch):
     class DummySpider(Spider):
         name = "closer"

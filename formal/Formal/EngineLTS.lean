@@ -10,7 +10,7 @@ inductive EngineLabel where
   | responseReceived (response : Response)
   | unhandledError (req : Request)
   | callbackEvent (event : Event)
-  | retry (req : Request)
+  | retry (cfg : RetryConfig) (status : Nat) (req : Request)
   | scrape (item : Item)
 deriving Repr, DecidableEq
 
@@ -32,8 +32,10 @@ inductive EngineStep (key : DedupKey) : EngineState -> EngineLabel -> EngineStat
       EngineStep key st (.unhandledError req) (unhandledError req st)
   | callbackEvent :
       EngineStep key st (.callbackEvent event) (handleEventWith key event st)
-  | retry :
-      EngineStep key st (.retry req) (enqueueWith key (retryRequest req) st)
+  | retry
+      (hStatus : shouldRetryStatus cfg status)
+      (hBelow : req.retryTimes < cfg.maxTimes) :
+      EngineStep key st (.retry cfg status req) (enqueueWith key (retryRequest req) st)
   | scrape :
       EngineStep key st (.scrape item) (scrapeItem item st)
 
