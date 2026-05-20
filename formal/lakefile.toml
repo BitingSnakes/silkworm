@@ -1,6 +1,6 @@
-name = "formal"
+name = "silkworm-formal"
 version = "0.1.0"
-defaultTargets = ["formal"]
+defaultTargets = ["silkworm-formal"]
 
 [[require]]
 name = "cslib"
@@ -8,8 +8,8 @@ scope = "leanprover"
 rev = "v4.29.0"
 
 [[lean_lib]]
-name = "Formal"
+name = "Silkworm"
 
 [[lean_exe]]
-name = "formal"
+name = "silkworm-formal"
 root = "Main"

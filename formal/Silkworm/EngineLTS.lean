@@ -1,6 +1,6 @@
 import Cslib.Foundations.Semantics.LTS.Basic
 import Cslib.Foundations.Semantics.LTS.Execution
-import Formal.Retry
+import Silkworm.Retry
 
 namespace Silkworm
 
