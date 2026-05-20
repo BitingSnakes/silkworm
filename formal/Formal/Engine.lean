@@ -207,58 +207,106 @@ theorem scrapeItem_preserves_queue
     (scrapeItem item st).queue = st.queue := by
   simp [scrapeItem]
 
-def fetchSuccess (_response : Response) (st : EngineState) : EngineState :=
+def requestSent (_req : Request) (st : EngineState) : EngineState :=
   { st with
     stats := {
       st.stats with
       requestsSent := st.stats.requestsSent + 1
+    } }
+
+def responseReceived (_response : Response) (st : EngineState) : EngineState :=
+  { st with
+    stats := {
+      st.stats with
       responsesReceived := st.stats.responsesReceived + 1
     } }
 
-def fetchError (_req : Request) (st : EngineState) : EngineState :=
+def unhandledError (_req : Request) (st : EngineState) : EngineState :=
   { st with
     stats := {
       st.stats with
-      requestsSent := st.stats.requestsSent + 1
       errors := st.stats.errors + 1
     } }
+
+def fetchSuccess (response : Response) (st : EngineState) : EngineState :=
+  responseReceived response (requestSent response.request st)
+
+def fetchError (req : Request) (st : EngineState) : EngineState :=
+  unhandledError req (requestSent req st)
+
+theorem requestSent_increments_requestsSent
+    (req : Request)
+    (st : EngineState) :
+    (requestSent req st).stats.requestsSent = st.stats.requestsSent + 1 := by
+  simp [requestSent]
+
+theorem requestSent_preserves_queue
+    (req : Request)
+    (st : EngineState) :
+    (requestSent req st).queue = st.queue := by
+  simp [requestSent]
+
+theorem responseReceived_increments_responsesReceived
+    (response : Response)
+    (st : EngineState) :
+    (responseReceived response st).stats.responsesReceived =
+      st.stats.responsesReceived + 1 := by
+  simp [responseReceived]
+
+theorem responseReceived_preserves_queue
+    (response : Response)
+    (st : EngineState) :
+    (responseReceived response st).queue = st.queue := by
+  simp [responseReceived]
+
+theorem unhandledError_increments_errors
+    (req : Request)
+    (st : EngineState) :
+    (unhandledError req st).stats.errors = st.stats.errors + 1 := by
+  simp [unhandledError]
+
+theorem unhandledError_preserves_queue
+    (req : Request)
+    (st : EngineState) :
+    (unhandledError req st).queue = st.queue := by
+  simp [unhandledError]
 
 theorem fetchSuccess_increments_requestsSent
     (response : Response)
     (st : EngineState) :
     (fetchSuccess response st).stats.requestsSent = st.stats.requestsSent + 1 := by
-  simp [fetchSuccess]
+  simp [fetchSuccess, responseReceived, requestSent]
 
 theorem fetchSuccess_increments_responsesReceived
     (response : Response)
     (st : EngineState) :
     (fetchSuccess response st).stats.responsesReceived =
       st.stats.responsesReceived + 1 := by
-  simp [fetchSuccess]
+  simp [fetchSuccess, responseReceived, requestSent]
 
 theorem fetchSuccess_preserves_queue
     (response : Response)
     (st : EngineState) :
     (fetchSuccess response st).queue = st.queue := by
-  simp [fetchSuccess]
+  simp [fetchSuccess, responseReceived, requestSent]
 
 theorem fetchError_increments_requestsSent
     (req : Request)
     (st : EngineState) :
     (fetchError req st).stats.requestsSent = st.stats.requestsSent + 1 := by
-  simp [fetchError]
+  simp [fetchError, unhandledError, requestSent]
 
 theorem fetchError_increments_errors
     (req : Request)
     (st : EngineState) :
     (fetchError req st).stats.errors = st.stats.errors + 1 := by
-  simp [fetchError]
+  simp [fetchError, unhandledError, requestSent]
 
 theorem fetchError_preserves_queue
     (req : Request)
     (st : EngineState) :
     (fetchError req st).queue = st.queue := by
-  simp [fetchError]
+  simp [fetchError, unhandledError, requestSent]
 
 def handleEventWith (key : DedupKey) (event : Event) (st : EngineState) : EngineState :=
   match event with

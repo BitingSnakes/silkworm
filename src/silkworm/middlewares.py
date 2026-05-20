@@ -1031,6 +1031,13 @@ class RetryMiddleware:
         backoff_base: float = 0.5,
         sleep_http_codes: Iterable[int] | None = None,
     ) -> None:
+        if max_times < 0:
+            msg = "max_times must be non-negative"
+            raise ValueError(msg)
+        if backoff_base < 0:
+            msg = "backoff_base must be non-negative"
+            raise ValueError(msg)
+
         self.max_times = max_times
         base_retry_codes = set(
             retry_http_codes or {500, 502, 503, 504, 522, 524, 408, 429},
@@ -1062,7 +1069,7 @@ class RetryMiddleware:
             return response  # give up
 
         retry_times += 1
-        request = request.replace(dont_filter=True)
+        request = request.replace(dont_filter=True, meta={**request.meta})
         request.meta["retry_times"] = retry_times
 
         delay = self.backoff_base * (2 ** (retry_times - 1))

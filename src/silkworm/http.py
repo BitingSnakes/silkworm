@@ -562,6 +562,7 @@ class HttpClient:
             method=new_method,
             data=new_data,
             json=new_json,
+            meta={**req.meta},
             params={},  # don't re-append original query params to redirect targets
         )
 

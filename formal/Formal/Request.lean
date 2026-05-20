@@ -22,7 +22,9 @@ structure Request where
   hasParams : Bool := false
   dontFilter : Bool := false
   priority : Int := 0
+  /-- Abstracts Python `Request.meta["retry_times"]` when present. -/
   retryTimes : Nat := 0
+  /-- Abstracts Python `Request.meta["redirect_times"]` when present. -/
   redirects : Nat := 0
 deriving Repr, DecidableEq
 

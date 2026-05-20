@@ -16,19 +16,6 @@ theorem retry_increments_retryTimes (req : Request) :
     (retryRequest req).retryTimes = req.retryTimes + 1 := by
   simp [retryRequest]
 
-inductive RetryStep : Request -> Request -> Prop where
-  | retry (req : Request) : RetryStep req (retryRequest req)
-
-theorem retryRequest_relatesInSteps (req : Request) :
-    Relation.RelatesInSteps RetryStep req (retryRequest req) 1 :=
-  Relation.RelatesInSteps.single (RetryStep.retry req)
-
-theorem zero_retry_steps_eq
-    {req req' : Request}
-    (hSteps : Relation.RelatesInSteps RetryStep req req' 0) :
-    req = req' :=
-  Relation.RelatesInSteps.zero hSteps
-
 structure RetryConfig where
   maxTimes : Nat := 3
   retryStatuses : List Nat := [500, 502, 503, 504, 522, 524, 408, 429]
@@ -41,6 +28,30 @@ def shouldRetryStatus (cfg : RetryConfig) (status : Nat) : Prop :=
 instance (cfg : RetryConfig) (status : Nat) : Decidable (shouldRetryStatus cfg status) := by
   unfold shouldRetryStatus
   infer_instance
+
+inductive RetryStep (cfg : RetryConfig) (status : Nat) : Request -> Request -> Prop where
+  | retry
+      (req : Request)
+      (hStatus : shouldRetryStatus cfg status)
+      (hBelow : req.retryTimes < cfg.maxTimes) :
+      RetryStep cfg status req (retryRequest req)
+
+theorem retryRequest_relatesInSteps
+    (cfg : RetryConfig)
+    (status : Nat)
+    (req : Request)
+    (hStatus : shouldRetryStatus cfg status)
+    (hBelow : req.retryTimes < cfg.maxTimes) :
+    Relation.RelatesInSteps (RetryStep cfg status) req (retryRequest req) 1 :=
+  Relation.RelatesInSteps.single (RetryStep.retry req hStatus hBelow)
+
+theorem zero_retry_steps_eq
+    (cfg : RetryConfig)
+    (status : Nat)
+    {req req' : Request}
+    (hSteps : Relation.RelatesInSteps (RetryStep cfg status) req req' 0) :
+    req = req' :=
+  Relation.RelatesInSteps.zero hSteps
 
 inductive ResponseMwResult where
   | keep (resp : Response)

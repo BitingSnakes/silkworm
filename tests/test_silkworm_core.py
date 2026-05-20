@@ -610,6 +610,32 @@ async def test_httpclient_follows_redirects():
     assert client._client.calls[1][1] == "http://example.com/next"
 
 
+async def test_httpclient_redirect_does_not_mutate_original_request_meta():
+    class RedirectClient(_RecordingClient):
+        async def request(self, method: Any, url: str, **kwargs: Any) -> _StubResponse:  # type: ignore[override]
+            self.calls.append((method, url, kwargs))
+            if len(self.calls) == 1:
+                return _StubResponse(
+                    status=302,
+                    headers={"Location": "/next", "Content-Type": "text/plain"},
+                )
+            return _StubResponse(
+                status=200,
+                headers={"Content-Type": "text/plain"},
+                body=b"ok",
+            )
+
+    client = HttpClient()
+    client._client = RedirectClient()  # type: ignore[assignment]
+    request = Request(url="http://example.com/start", meta={"trace": "root"})
+
+    resp = await client.fetch(request)
+
+    assert "redirect_times" not in request.meta
+    assert resp.request.meta["trace"] == "root"
+    assert resp.request.meta["redirect_times"] == 1
+
+
 async def test_httpclient_converts_string_proxy_to_wreq_proxy():
     client = HttpClient()
     client._client = _RecordingClient()  # type: ignore[assignment]
@@ -906,6 +932,28 @@ async def test_retry_middleware_returns_retry_request(monkeypatch: pytest.Monkey
     assert sleep_calls == [0.1]
 
 
+async def test_retry_middleware_does_not_mutate_original_request_meta(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    async def fake_sleep(_: float) -> None:
+        return None
+
+    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+
+    middleware = RetryMiddleware(max_times=2, backoff_base=0.0)
+    request = Request(url="http://example.com", meta={"trace": "root"})
+    response = Response(
+        url=request.url, status=500, headers={}, body=b"", request=request
+    )
+
+    result = await middleware.process_response(response, Spider())
+
+    assert isinstance(result, Request)
+    assert "retry_times" not in request.meta
+    assert result.meta["trace"] == "root"
+    assert result.meta["retry_times"] == 1
+
+
 async def test_retry_middleware_sleep_codes_extend_retry(
     monkeypatch: pytest.MonkeyPatch,
 ):
@@ -1137,6 +1185,14 @@ def test_delay_middleware_validation_errors():
     # min_delay must be <= max_delay
     with pytest.raises(ValueError, match="must be less than or equal to"):
         DelayMiddleware(min_delay=2.0, max_delay=0.5)
+
+
+def test_retry_middleware_validation_errors():
+    with pytest.raises(ValueError, match="max_times must be non-negative"):
+        RetryMiddleware(max_times=-1)
+
+    with pytest.raises(ValueError, match="backoff_base must be non-negative"):
+        RetryMiddleware(backoff_base=-0.1)
 
 
 async def test_delay_middleware_zero_delay(monkeypatch: pytest.MonkeyPatch):

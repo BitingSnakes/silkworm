@@ -69,28 +69,33 @@ deriving Repr, DecidableEq
 def redirectAllowed (cfg : RedirectConfig) (req : Request) : Prop :=
   req.redirects < cfg.maxRedirects
 
-inductive RedirectStep : Request -> Request -> Prop where
+inductive RedirectStep (cfg : RedirectConfig) : Request -> Request -> Prop where
   | follow
       (req : Request)
       (target : Url)
       (status : Nat)
+      (hAllowed : redirectAllowed cfg req)
       (hStatus : isRedirectStatus status = true) :
-      RedirectStep req (redirectRequest req target status)
+      RedirectStep cfg req (redirectRequest req target status)
 
 theorem redirectRequest_relatesInSteps
+    (cfg : RedirectConfig)
     (req : Request)
     (target : Url)
     (status : Nat)
+    (hAllowed : redirectAllowed cfg req)
     (hStatus : isRedirectStatus status = true) :
-    Relation.RelatesInSteps RedirectStep
+    Relation.RelatesInSteps (RedirectStep cfg)
       req
       (redirectRequest req target status)
       1 :=
-  Relation.RelatesInSteps.single (RedirectStep.follow req target status hStatus)
+  Relation.RelatesInSteps.single
+    (RedirectStep.follow req target status hAllowed hStatus)
 
 theorem zero_redirect_steps_eq
+    (cfg : RedirectConfig)
     {req req' : Request}
-    (hSteps : Relation.RelatesInSteps RedirectStep req req' 0) :
+    (hSteps : Relation.RelatesInSteps (RedirectStep cfg) req req' 0) :
     req = req' :=
   Relation.RelatesInSteps.zero hSteps
 
