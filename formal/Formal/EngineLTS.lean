@@ -50,7 +50,7 @@ theorem callbackEvents_mtr
       simp [callbackEventLabels, handleEventsWith]
       apply Cslib.LTS.MTr.stepL
       · exact EngineStep.callbackEvent
-      · exact ih key events (handleEventWith key event st)
+      · exact ih (handleEventWith key event st)
 
 theorem callbackOutput_mtr
     (key : DedupKey)

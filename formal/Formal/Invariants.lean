@@ -5,6 +5,6 @@ namespace Silkworm
 
 theorem handle_no_callback_output_noop (st : EngineState) :
     handleCallbackOutput CallbackOutput.none st = st := by
-  simp [handleCallbackOutput, normalizeCallbackOutput, handleEvents]
+  simp [handleCallbackOutput, normalizeCallbackOutput, handleEvents, handleEventsWith]
 
 end Silkworm
