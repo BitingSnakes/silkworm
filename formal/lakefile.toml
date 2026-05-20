@@ -1,0 +1,10 @@
+name = "formal"
+version = "0.1.0"
+defaultTargets = ["formal"]
+
+[[lean_lib]]
+name = "Formal"
+
+[[lean_exe]]
+name = "formal"
+root = "Main"
