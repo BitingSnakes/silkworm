@@ -6,21 +6,23 @@ Silkworm's **Engine** orchestrates crawl execution, while **HttpClient** perform
 Engine runs the request queue, applies middlewares, invokes callbacks, and sends items through pipelines. See [src/silkworm/engine.py](../src/silkworm/engine.py).
 
 Key behaviors:
-- **Concurrency**: worker pool sized by `concurrency`.
-- **Backpressure**: queue size defaults to `concurrency * 10` (override with `max_pending_requests`).
-- **Deduplication**: request URLs are cached unless `dont_filter=True`.
+- **Concurrency**: worker pool sized by positive `concurrency`.
+- **Backpressure**: queue size defaults to `concurrency * 10` (override with positive `max_pending_requests`).
+- **Priority**: higher `Request.priority` values are dequeued first; equal priorities keep FIFO order.
+- **Deduplication**: request keys are cached unless `dont_filter=True`; the default key is `Request.url`.
 - **Middleware flow**: request middlewares -> HTTP fetch -> response middlewares -> callbacks.
 - **Pipeline flow**: each item passes through all pipelines in order.
 - **Stats**: requests sent, responses received, items scraped, errors, queue size, memory, throughput.
 
 Common Engine options (also exposed by `run_spider` and `crawl` in [src/silkworm/runner.py](../src/silkworm/runner.py)):
-- **`concurrency`**: max concurrent requests.
-- **`max_pending_requests`**: queue bound for backpressure.
+- **`concurrency`**: max concurrent requests; must be positive.
+- **`max_pending_requests`**: queue bound for backpressure; must be positive when provided.
 - **`request_timeout`**: per-request timeout (seconds or `timedelta`).
 - **`html_max_size_bytes`**: HTML parsing size limit for selectors.
 - **`log_stats_interval`**: periodic stats logging interval (seconds).
 - **`keep_alive`**: reuse HTTP connections when supported.
 - **`http_client`**: optional client instance to use instead of the default wreq-backed `HttpClient`.
+- **`dedup_key`**: optional `Callable[[Request], str]` for request deduplication; defaults to `Request.url`.
 - **`request_middlewares`**, **`response_middlewares`**, **`item_pipelines`**: plug-ins executed by the engine.
 
 ```python
@@ -36,6 +38,21 @@ class DemoSpider(Spider):
 spider = DemoSpider(name="demo")
 engine = Engine(spider, concurrency=8, log_stats_interval=10)
 # await engine.run()
+```
+
+Use a custom deduplication key when URL-only deduplication is too coarse:
+
+```python
+from urllib.parse import urlencode
+
+from silkworm import Request, run_spider
+
+
+def dedup_with_params(req: Request) -> str:
+    return f"{req.url}?{urlencode(req.params, doseq=True)}"
+
+
+run_spider(MySpider, dedup_key=dedup_with_params)
 ```
 
 ### Callback Normalization

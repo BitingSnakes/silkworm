@@ -7,6 +7,7 @@ from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
+from ._validation import require_positive_int
 from .exceptions import HttpError
 from .http import HttpClient
 from .logging import get_logger
@@ -42,6 +43,7 @@ class OnionLinkClient(HttpClient):
         verbose: bool = False,
         response_limit: int = 4 * 1024 * 1024,
     ) -> None:
+        require_positive_int(concurrency, "concurrency")
         try:
             module = importlib.import_module("onionlink")
         except ImportError as err:

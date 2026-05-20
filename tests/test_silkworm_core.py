@@ -832,6 +832,11 @@ async def test_onionlink_client_rejects_non_onion_hosts(onionlink_session):
         await client.fetch(Request(url="https://example.com"))
 
 
+def test_http_client_rejects_non_positive_concurrency() -> None:
+    with pytest.raises(ValueError, match="concurrency must be positive"):
+        HttpClient(concurrency=0)
+
+
 def test_onionlink_client_requires_async_session(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

@@ -4,7 +4,7 @@ from .request import Request
 from .response import Response, HTMLResponse
 from .spiders import Spider
 from .exceptions import SilkwormError, HttpError, SpiderError, SelectorError
-from .engine import Engine, EngineLogger
+from .engine import DedupKey, Engine, EngineLogger, default_dedup_key
 from .onionlink import OnionLinkClient
 from .runner import (
     crawl,
@@ -30,6 +30,8 @@ __all__ = [
     "SelectorError",
     "Engine",
     "EngineLogger",
+    "DedupKey",
+    "default_dedup_key",
     "OnionLinkClient",
     "crawl",
     "run_spider",

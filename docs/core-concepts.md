@@ -34,8 +34,8 @@ Important fields:
 - **`callback`**: Callback to run with the response.
 - **`errback`**: Callback to run when the request fails and no middleware retries it.
 - **`meta`**: Free-form dict for middlewares and custom logic.
-- **`dont_filter`**: Bypass URL deduplication.
-- **`priority`**: Reserved for future queueing (not used by the engine yet).
+- **`dont_filter`**: Bypass request deduplication.
+- **`priority`**: Higher values are dequeued first; requests with the same priority keep FIFO order.
 
 `Request.replace(**kwargs)` is the safest way to create updated requests, while
 `headers` and `meta` are mutable dicts that middlewares may update in-place.
@@ -156,12 +156,27 @@ async def parse(self, response: Response):
 > **Note:** The engine auto-wraps **only** the spider's `parse` callback to `HTMLResponse`. Other callbacks receive the `Response` produced by the HTTP client, which may already be an `HTMLResponse` for HTML content.
 
 ## Deduplication
-The engine keeps a set of seen URLs. If a request has the same URL and `dont_filter` is **False**, it is skipped. See [src/silkworm/engine.py](../src/silkworm/engine.py).
+The engine keeps a set of seen request keys. The default key is `Request.url`; pass `dedup_key` to `Engine`, `crawl`, or `run_spider` if params, method, or body should be part of the key.
 
 ```python
 from silkworm import Request
 
 yield Request(url=same_url, dont_filter=True)
+```
+
+Or customize the key globally for a run:
+
+```python
+from urllib.parse import urlencode
+
+from silkworm import Request, run_spider
+
+
+def dedup_with_params(req: Request) -> str:
+    return f"{req.url}?{urlencode(req.params, doseq=True)}"
+
+
+run_spider(MySpider, dedup_key=dedup_with_params)
 ```
 
 ## Data Types

@@ -7,6 +7,7 @@ from datetime import timedelta
 from importlib import import_module
 from typing import TYPE_CHECKING, Any, AsyncIterator
 
+from ._validation import require_positive_int
 from .exceptions import HttpError
 from .logging import get_logger
 from .response import HTMLResponse, Response
@@ -45,6 +46,7 @@ class CDPClient:
         timeout: float | None = None,
         html_max_size_bytes: int = 5_000_000,
     ) -> None:
+        require_positive_int(concurrency, "concurrency")
         if not HAS_WEBSOCKETS:
             msg = "websockets package required for CDP support. Install with: pip install silkworm-rs[cdp]"
             raise ImportError(msg)

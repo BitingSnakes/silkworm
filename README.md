@@ -9,7 +9,7 @@ Async-first web scraping framework built on [wreq](https://github.com/0x676e67/w
 > **NEW**: Use [silkworm-mcp](https://github.com/BitingSnakes/silkworm-mcp) to build scrapers.
 
 ## Features
-- Async engine with configurable concurrency, bounded queue backpressure (defaults to `concurrency * 10`), and per-request timeouts.
+- Async engine with configurable concurrency, priority-aware queueing, bounded backpressure (defaults to `concurrency * 10`), and per-request timeouts.
 - wreq-powered HTTP client: browser impersonation, redirect following with loop detection, query merging, and proxy support via `request.meta["proxy"]`.
 - Optional OnionLink client integration for scraping Tor v3 `.onion` sites without routing through wreq.
 - Optional Servo rendering via `ServoFetchClient` for JavaScript-rendered pages without changing the default HTTP client.
@@ -98,11 +98,12 @@ if __name__ == "__main__":
 ```
 
 `run_spider`/`crawl` knobs:
-- `concurrency`: number of concurrent HTTP requests; default 16.
-- `max_pending_requests`: queue bound to avoid unbounded memory use (defaults to `concurrency * 10`).
+- `concurrency`: number of concurrent HTTP requests; default 16; must be positive.
+- `max_pending_requests`: queue bound to avoid unbounded memory use (defaults to `concurrency * 10`); if provided, must be positive.
 - `request_timeout`: per-request timeout (seconds).
 - `keep_alive`: reuse HTTP connections when supported by the underlying client (sends `Connection: keep-alive`).
 - `http_client`: use a custom client instance such as `OnionLinkClient(...)` or `ServoFetchClient(...)` instead of the default wreq-backed client.
+- `dedup_key`: optional `Callable[[Request], str]` used for request deduplication; defaults to `lambda req: req.url`.
 - `html_max_size_bytes`: limit HTML parsed into `AsyncDocument` to avoid huge payloads.
 - `log_stats_interval`: seconds between periodic stats logs; final stats are always emitted.
 - `request_middlewares` / `response_middlewares` / `item_pipelines`: plug-ins run on every request/response/item.
@@ -515,7 +516,7 @@ run_spider(
 
 ## Limitations
 - By default, HTTP fetches are wreq-based without JavaScript execution; pages requiring client-side rendering can use the optional CDP integration (see "JavaScript rendering with Lightpanda" section) or external browser automation tools. Tor v3 `.onion` sites can use the optional OnionLink integration.
-- Request deduplication keys only on `Request.url`; query params, HTTP method, and body are ignored, so same-URL requests with different params/data are dropped unless you set `dont_filter=True` or make the URL unique yourself.
+- Request deduplication keys on `Request.url` by default; query params, HTTP method, and body are ignored unless you pass a custom `dedup_key` to `Engine`, `crawl`, or `run_spider`. Same-URL requests with different params/data are dropped unless you set `dont_filter=True`, make the URL unique yourself, or customize the key.
 - HTML parsing auto-detects encoding (BOM, HTTP headers/meta, charset detection fallback) but still enforces a `html_max_size_bytes`/`doc_max_size_bytes` cap (default 5 MB) in `scraper-rs` selectors, so very large pages may need a higher limit or preprocessing.
 - Several pipelines buffer all items in memory until close (PolarsPipeline, ExcelPipeline, YAMLPipeline, AvroPipeline, VortexPipeline, S3JsonLinesPipeline, FTPPipeline, SFTPPipeline), which can bloat RAM on long crawls; prefer streaming pipelines like JsonLines/CSV/SQLite for high-volume runs.
 - Many destination pipelines rely on optional extras; CassandraPipeline is disabled on Windows because `cassandra-driver` depends on libev there.

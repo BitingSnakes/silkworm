@@ -153,7 +153,7 @@ async def test_final_log_includes_event_loop() -> None:
         ) -> CallbackOutput:  # pragma: no cover - not invoked
             return None
 
-    engine = Engine(NoopSpider(), concurrency=0)
+    engine = Engine(NoopSpider(), concurrency=1)
     spy_logger = _SpyLogger()
     engine.logger = spy_logger
 

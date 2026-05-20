@@ -7,6 +7,7 @@ from datetime import timedelta
 from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
+from ._validation import require_positive_int
 from .exceptions import HttpError
 from .logging import get_logger
 from .response import HTMLResponse
@@ -45,6 +46,7 @@ class ServoFetchClient:
         onion_verbose: bool = False,
         onion_response_limit: int = 4 * 1024 * 1024,
     ) -> None:
+        require_positive_int(concurrency, "concurrency")
         try:
             servofetch = import_module("servofetch")
         except ImportError as err:

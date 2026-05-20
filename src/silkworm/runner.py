@@ -1,18 +1,16 @@
 from __future__ import annotations
 import asyncio
+from collections.abc import Callable, Iterable
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
-
-    from .engine import EngineLogger
     from .http import HttpClient
     from .middlewares import RequestMiddleware, ResponseMiddleware
     from .pipelines import ItemPipeline
     from .spiders import Spider
 
-from .engine import Engine
+from .engine import DedupKey, Engine, EngineLogger
 
 
 def _install_uvloop() -> Callable[[], asyncio.AbstractEventLoop]:
@@ -68,6 +66,7 @@ def run_spider_trio(
     keep_alive: bool = False,
     http_client: HttpClient | None = None,
     engine_logger: EngineLogger | None = None,
+    dedup_key: DedupKey | None = None,
     **spider_kwargs,
 ) -> None:
     """
@@ -123,6 +122,7 @@ def run_spider_trio(
                 keep_alive=keep_alive,
                 http_client=http_client,
                 engine_logger=engine_logger,
+                dedup_key=dedup_key,
                 **spider_kwargs,
             )
 
@@ -143,6 +143,7 @@ async def crawl(
     keep_alive: bool = False,
     http_client: HttpClient | None = None,
     engine_logger: EngineLogger | None = None,
+    dedup_key: DedupKey | None = None,
     **spider_kwargs,
 ) -> None:
     spider = spider_cls(**spider_kwargs)
@@ -159,6 +160,7 @@ async def crawl(
         keep_alive=keep_alive,
         http_client=http_client,
         engine_logger=engine_logger,
+        dedup_key=dedup_key,
     )
     await engine.run()
 
@@ -178,6 +180,7 @@ def run_spider(
     loop_factory: Callable[[], asyncio.AbstractEventLoop] | None = None,
     http_client: HttpClient | None = None,
     engine_logger: EngineLogger | None = None,
+    dedup_key: DedupKey | None = None,
     **spider_kwargs,
 ) -> None:
     coroutine = crawl(
@@ -193,6 +196,7 @@ def run_spider(
         keep_alive=keep_alive,
         http_client=http_client,
         engine_logger=engine_logger,
+        dedup_key=dedup_key,
         **spider_kwargs,
     )
     if loop_factory is None:
@@ -217,6 +221,7 @@ def run_spider_uvloop(
     keep_alive: bool = False,
     http_client: HttpClient | None = None,
     engine_logger: EngineLogger | None = None,
+    dedup_key: DedupKey | None = None,
     **spider_kwargs,
 ) -> None:
     loop_factory = _install_uvloop()
@@ -233,6 +238,7 @@ def run_spider_uvloop(
         keep_alive=keep_alive,
         http_client=http_client,
         engine_logger=engine_logger,
+        dedup_key=dedup_key,
         loop_factory=loop_factory,
         **spider_kwargs,
     )
@@ -252,6 +258,7 @@ def run_spider_winloop(
     keep_alive: bool = False,
     http_client: HttpClient | None = None,
     engine_logger: EngineLogger | None = None,
+    dedup_key: DedupKey | None = None,
     **spider_kwargs,
 ) -> None:
     """
@@ -291,6 +298,7 @@ def run_spider_winloop(
         keep_alive=keep_alive,
         http_client=http_client,
         engine_logger=engine_logger,
+        dedup_key=dedup_key,
         loop_factory=loop_factory,
         **spider_kwargs,
     )
@@ -310,6 +318,7 @@ def run_spider_rsloop(
     keep_alive: bool = False,
     http_client: HttpClient | None = None,
     engine_logger: EngineLogger | None = None,
+    dedup_key: DedupKey | None = None,
     **spider_kwargs,
 ) -> None:
     """
@@ -349,6 +358,7 @@ def run_spider_rsloop(
         keep_alive=keep_alive,
         http_client=http_client,
         engine_logger=engine_logger,
+        dedup_key=dedup_key,
         loop_factory=loop_factory,
         **spider_kwargs,
     )

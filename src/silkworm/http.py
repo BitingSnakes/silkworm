@@ -10,6 +10,7 @@ from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit
 
 from wreq import Client, Emulation, Method, Proxy  # type: ignore[import]
 
+from ._validation import require_positive_int
 from .exceptions import HttpError
 from .logging import get_logger
 from .response import HTMLResponse, Response
@@ -36,6 +37,7 @@ class HttpClient:
         keep_alive: bool = False,
         **client_kwargs: object,
     ) -> None:
+        require_positive_int(concurrency, "concurrency")
         client_options: dict[str, object] = {"emulation": emulation}
         if keep_alive and self._supports_kwarg(Client, "keep_alive"):
             client_options["keep_alive"] = True

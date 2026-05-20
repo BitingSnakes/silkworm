@@ -21,6 +21,37 @@ def test_engine_defaults_to_bounded_queue():
     assert engine._queue.maxsize == 30  # concurrency * 10
 
 
+def test_engine_rejects_non_positive_concurrency():
+    with pytest.raises(ValueError, match="concurrency must be positive"):
+        Engine(SmallSpider(), concurrency=0)
+
+
+def test_engine_rejects_non_positive_max_pending_requests():
+    with pytest.raises(ValueError, match="max_pending_requests must be positive"):
+        Engine(SmallSpider(), max_pending_requests=0)
+
+
+def test_engine_rejects_non_positive_http_client_concurrency():
+    class BadHttpClient:
+        concurrency = 0
+        html_max_size_bytes = 5_000_000
+
+        async def fetch(self, request: Request) -> Response:
+            return Response(
+                url=request.url,
+                status=200,
+                headers={},
+                body=b"",
+                request=request,
+            )
+
+        async def close(self) -> None:
+            return None
+
+    with pytest.raises(ValueError, match=r"http_client\.concurrency must be positive"):
+        Engine(SmallSpider(), http_client=BadHttpClient())  # type: ignore[arg-type]
+
+
 async def test_engine_runs_with_limited_queue(monkeypatch: pytest.MonkeyPatch):
     spider = SmallSpider()
     engine = Engine(spider, concurrency=2, max_pending_requests=2)
@@ -40,6 +71,104 @@ async def test_engine_runs_with_limited_queue(monkeypatch: pytest.MonkeyPatch):
 
     assert engine._queue.maxsize == 2
     assert engine._queue.empty()
+
+
+async def test_engine_uses_custom_dedup_key(monkeypatch: pytest.MonkeyPatch):
+    class ParamsSpider(Spider):
+        name = "params"
+
+        async def start_requests(self):
+            yield Request(
+                url="http://example.com/search",
+                params={"page": 1},
+                callback=self.parse,
+            )
+            yield Request(
+                url="http://example.com/search",
+                params={"page": 2},
+                callback=self.parse,
+            )
+
+        async def parse(self, response):
+            return None
+
+    spider = ParamsSpider()
+    fetched_urls: list[str] = []
+    engine = Engine(
+        spider,
+        concurrency=1,
+        dedup_key=lambda req: f"{req.url}:{req.params.get('page')}",
+    )
+
+    async def fake_fetch(req: Request) -> Response:
+        fetched_urls.append(req.url)
+        return Response(url=req.url, status=200, headers={}, body=b"", request=req)
+
+    monkeypatch.setattr(engine.http, "fetch", fake_fetch)
+
+    await engine.run()
+
+    assert fetched_urls == [
+        "http://example.com/search",
+        "http://example.com/search",
+    ]
+    assert engine._seen == {
+        "http://example.com/search:1",
+        "http://example.com/search:2",
+    }
+
+
+async def test_engine_dequeues_higher_priority_requests_first(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    class PrioritySpider(Spider):
+        name = "priority"
+
+        async def start_requests(self):
+            yield Request("http://example.com/seed", callback=self.parse)
+
+        async def parse(self, response):
+            if response.url != "http://example.com/seed":
+                return
+
+            yield Request(
+                "http://example.com/low",
+                callback=self.parse,
+                priority=-10,
+            )
+            yield Request(
+                "http://example.com/high-a",
+                callback=self.parse,
+                priority=10,
+            )
+            yield Request(
+                "http://example.com/high-b",
+                callback=self.parse,
+                priority=10,
+            )
+            yield Request(
+                "http://example.com/default",
+                callback=self.parse,
+            )
+
+    fetched_urls: list[str] = []
+    engine = Engine(PrioritySpider(), concurrency=1)
+
+    async def fake_fetch(req: Request) -> Response:
+        fetched_urls.append(req.url)
+        return Response(url=req.url, status=200, headers={}, body=b"", request=req)
+
+    monkeypatch.setattr(engine.http, "fetch", fake_fetch)
+
+    await engine.run()
+
+    assert fetched_urls == [
+        "http://example.com/seed",
+        "http://example.com/high-a",
+        "http://example.com/high-b",
+        "http://example.com/default",
+        "http://example.com/low",
+    ]
 
 
 async def test_engine_does_not_track_dont_filter_requests(

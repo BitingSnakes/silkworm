@@ -7,6 +7,7 @@ import time
 from collections.abc import AsyncIterable, AsyncIterator, Callable, Iterable
 from dataclasses import dataclass
 from datetime import timedelta
+from itertools import count
 from typing import TYPE_CHECKING, cast
 
 try:  # resource is POSIX-only
@@ -15,6 +16,7 @@ except ImportError:  # pragma: no cover - platform dependent
     resource = None  # type: ignore[assignment]
 
 from ._types import JSONValue
+from ._validation import require_positive_int
 from .exceptions import SpiderError
 from .http import HttpClient
 from .logging import LogLevel, complete_logs, get_logger, log_at_level
@@ -118,6 +120,13 @@ _SAFE_REPR.maxdict = 8
 _SAFE_REPR.maxset = 8
 _SAFE_REPR.maxtuple = 8
 
+type DedupKey = Callable[[Request], str]
+type PrioritizedRequest = tuple[int, int, Request]
+
+
+def default_dedup_key(req: Request) -> str:
+    return req.url
+
 
 class Engine:
     def __init__(
@@ -136,7 +145,9 @@ class Engine:
         keep_alive: bool = False,
         http_client: HttpClient | None = None,
         engine_logger: EngineLogger | None = None,
+        dedup_key: DedupKey | None = None,
     ) -> None:
+        require_positive_int(concurrency, "concurrency")
         self.spider = spider
         self.http = (
             http_client
@@ -149,15 +160,22 @@ class Engine:
                 keep_alive=keep_alive,
             )
         )
+        require_positive_int(self.http.concurrency, "http_client.concurrency")
         # Bound the queue to avoid unbounded growth when many requests are scheduled.
-        default_queue_size = concurrency * 10
+        default_queue_size = self.http.concurrency * 10
+        if max_pending_requests is not None:
+            require_positive_int(max_pending_requests, "max_pending_requests")
         queue_size = (
             max_pending_requests
             if max_pending_requests is not None
             else default_queue_size
         )
-        self._queue: asyncio.Queue[Request] = asyncio.Queue(maxsize=queue_size)
+        self._request_order = count()
+        self._queue: asyncio.PriorityQueue[PrioritizedRequest] = asyncio.PriorityQueue(
+            maxsize=queue_size,
+        )
         self._seen: set[str] = set()
+        self.dedup_key = dedup_key or default_dedup_key
         self._stop_event = asyncio.Event()
         self.logger = get_logger(component="engine", spider=self.spider.name)
         self.engine_logger = engine_logger or EngineLogger()
@@ -292,18 +310,31 @@ class Engine:
 
     async def _enqueue(self, req: Request) -> None:
         if not req.dont_filter:
-            if req.url in self._seen:
-                self.logger.debug("Skipping already seen request", url=req.url)
+            key = self.dedup_key(req)
+            if key in self._seen:
+                self.logger.debug(
+                    "Skipping already seen request",
+                    url=req.url,
+                    dedup_key=key,
+                )
                 return
-            self._seen.add(req.url)
-        self.logger.debug("Enqueued request", url=req.url, dont_filter=req.dont_filter)
-        await self._queue.put(req)
+            self._seen.add(key)
+        self.logger.debug(
+            "Enqueued request",
+            url=req.url,
+            dont_filter=req.dont_filter,
+            priority=req.priority,
+        )
+        await self._queue.put(self._priority_entry(req))
+
+    def _priority_entry(self, req: Request) -> PrioritizedRequest:
+        return (-req.priority, next(self._request_order), req)
 
     async def _worker(self) -> None:
         while not self._stop_event.is_set():
             try:
                 async with asyncio.timeout(1.0):
-                    req = await self._queue.get()
+                    _, _, req = await self._queue.get()
             except TimeoutError:
                 if self._stop_event.is_set():
                     break
