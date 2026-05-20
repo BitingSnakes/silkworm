@@ -10,6 +10,7 @@ All examples live under [examples/](../examples). This page lists each example, 
 | [examples/quotes_spider_winloop.py](../examples/quotes_spider_winloop.py) | winloop runner | `python examples/quotes_spider_winloop.py` |
 | [examples/hackernews_spider.py](../examples/hackernews_spider.py) | Pagination, delays, retries | `python examples/hackernews_spider.py --pages 5` |
 | [examples/lobsters_spider.py](../examples/lobsters_spider.py) | uvloop runner, pagination | `python examples/lobsters_spider.py --pages 2` |
+| [examples/start_urls_from_file_spider.py](../examples/start_urls_from_file_spider.py) | Text file input, custom start_requests | `python examples/start_urls_from_file_spider.py --urls-file data/start_urls.txt --output data/start_urls_from_file.jl` |
 | [examples/url_titles_spider.py](../examples/url_titles_spider.py) | JSONL input, custom start_requests | `python examples/url_titles_spider.py --urls-file data/url_titles.jl --output data/titles.jl` |
 | [examples/exception_handling_spider.py](../examples/exception_handling_spider.py) | Exception middleware and request errbacks | `python examples/exception_handling_spider.py` |
 | [examples/cookie_reuse_spiders.py](../examples/cookie_reuse_spiders.py) | Cookie capture, save/load, and reuse across two spider runs | `python examples/cookie_reuse_spiders.py` |

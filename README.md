@@ -531,6 +531,7 @@ run_spider(
 - `python examples/quotes_spider_winloop.py` → `data/quotes_winloop.jl` (demonstrates winloop backend for Windows)
 - `python examples/hackernews_spider.py --pages 5` → `data/hackernews.jl`
 - `python examples/lobsters_spider.py --pages 2` → `data/lobsters.jl`
+- `python examples/start_urls_from_file_spider.py --urls-file data/start_urls.txt --output data/start_urls_from_file.jl` (reads one URL per line and initializes custom `Request` objects in `start_requests`)
 - `python examples/url_titles_spider.py --urls-file data/url_titles.jl --output data/titles.jl` (includes `SkipNonHTMLMiddleware` and stricter HTML size limits)
 - `python examples/exception_handling_spider.py` → `data/exception_handling.jl` (demonstrates `process_exception` and request `errback`)
 - `python examples/cookie_reuse_spiders.py` → `data/cookie_reuse.jl` and `data/cookies.txt` (captures cookies in one run, saves them, then loads them for a second run)
