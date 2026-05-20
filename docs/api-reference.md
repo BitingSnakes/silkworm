@@ -31,6 +31,7 @@ This page lists the public API exports from [src/silkworm/__init__.py](../src/si
 ## Public Middlewares
 - **`CookiesMiddleware`**: Stateful cookie jar middleware with per-request controls and Netscape/Mozilla cookie file `save(...)`/`load(...)`. [src/silkworm/middlewares.py](../src/silkworm/middlewares.py)
 - **`RequestResponseStreamMiddleware`**: Streams request/response telemetry to an HTTP collector. [src/silkworm/middlewares.py](../src/silkworm/middlewares.py)
+- **`RobotsTxtDelayMiddleware`**: Downloads robots.txt for a site origin and applies `Crawl-delay` or `Request-rate` to matching-origin requests. [src/silkworm/middlewares.py](../src/silkworm/middlewares.py)
 
 ## Optional CDP Export
 - **`CDPClient`**: CDP client for browser-driven fetches (available when `cdp` extra is installed). [src/silkworm/cdp.py](../src/silkworm/cdp.py)

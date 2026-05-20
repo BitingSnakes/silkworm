@@ -16,7 +16,11 @@ from .runner import (
 )
 from .api import fetch_html, fetch_html_cdp, fetch_html_servo
 from .logging import get_logger
-from .middlewares import CookiesMiddleware, RequestResponseStreamMiddleware
+from .middlewares import (
+    CookiesMiddleware,
+    RequestResponseStreamMiddleware,
+    RobotsTxtDelayMiddleware,
+)
 from .servo import ServoFetchClient
 
 __all__ = [
@@ -45,6 +49,7 @@ __all__ = [
     "get_logger",
     "CookiesMiddleware",
     "RequestResponseStreamMiddleware",
+    "RobotsTxtDelayMiddleware",
     "ServoFetchClient",
 ]
 

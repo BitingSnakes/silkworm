@@ -20,6 +20,7 @@ from silkworm.middlewares import (
     ProxyMiddleware,
     RequestResponseStreamMiddleware,
     RetryMiddleware,
+    RobotsTxtDelayMiddleware,
 )
 from silkworm.onionlink import OnionLinkClient
 from silkworm.request import Request
@@ -1234,6 +1235,139 @@ async def test_delay_middleware_zero_delay(monkeypatch: pytest.MonkeyPatch):
     assert result is request
     # Zero delay should not call sleep
     assert sleep_calls == []
+
+
+async def test_robots_txt_delay_middleware_uses_crawl_delay(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    sleep_calls: list[float] = []
+    fetch_calls: list[str] = []
+
+    async def fake_sleep(delay: float) -> None:
+        sleep_calls.append(delay)
+
+    async def fetcher(url: str) -> str:
+        fetch_calls.append(url)
+        return """
+User-agent: *
+Crawl-delay: 2
+"""
+
+    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+
+    middleware = RobotsTxtDelayMiddleware(
+        "https://example.com/articles",
+        fetcher=fetcher,
+    )
+    spider = Spider()
+    await middleware.open(spider)
+
+    first = Request(url="https://example.com/one")
+    second = Request(url="https://example.com/two")
+
+    assert await middleware.process_request(first, spider) is first
+    assert await middleware.process_request(second, spider) is second
+    assert fetch_calls == ["https://example.com/robots.txt"]
+    assert sleep_calls == [pytest.approx(2.0, abs=0.01)]
+
+
+async def test_robots_txt_delay_middleware_uses_request_rate(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    sleep_calls: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        sleep_calls.append(delay)
+
+    async def fetcher(url: str) -> str:
+        assert url == "http://example.com/robots.txt"
+        return """
+User-agent: silkworm
+Request-rate: 3/12
+"""
+
+    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+
+    middleware = RobotsTxtDelayMiddleware(
+        "http://example.com",
+        user_agent="silkworm",
+        fetcher=fetcher,
+    )
+    spider = Spider()
+
+    await middleware.process_request(Request(url="http://example.com/one"), spider)
+    await middleware.process_request(Request(url="http://example.com/two"), spider)
+
+    assert sleep_calls == [pytest.approx(4.0, abs=0.01)]
+
+
+async def test_robots_txt_delay_middleware_scopes_delay_to_origin(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    sleep_calls: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        sleep_calls.append(delay)
+
+    async def fetcher(url: str) -> str:
+        assert url == "https://example.com/robots.txt"
+        return """
+User-agent: *
+Crawl-delay: 1
+"""
+
+    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+
+    middleware = RobotsTxtDelayMiddleware("https://example.com", fetcher=fetcher)
+    spider = Spider()
+
+    await middleware.process_request(Request(url="https://other.example/one"), spider)
+    await middleware.process_request(Request(url="https://other.example/two"), spider)
+
+    assert sleep_calls == []
+
+
+async def test_robots_txt_delay_middleware_uses_fallback_after_fetch_error(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    sleep_calls: list[float] = []
+
+    async def fake_sleep(delay: float) -> None:
+        sleep_calls.append(delay)
+
+    async def fetcher(url: str) -> str:
+        raise RuntimeError(f"failed: {url}")
+
+    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+
+    middleware = RobotsTxtDelayMiddleware(
+        "https://example.com",
+        fallback_delay=0.5,
+        fetcher=fetcher,
+    )
+    spider = Spider()
+
+    await middleware.process_request(Request(url="https://example.com/one"), spider)
+    await middleware.process_request(Request(url="https://example.com/two"), spider)
+
+    assert sleep_calls == [pytest.approx(0.5, abs=0.01)]
+
+
+def test_robots_txt_delay_middleware_validation_errors():
+    with pytest.raises(ValueError, match="website_url must not be empty"):
+        RobotsTxtDelayMiddleware("")
+
+    with pytest.raises(ValueError, match="absolute http or https"):
+        RobotsTxtDelayMiddleware("example.com")
+
+    with pytest.raises(ValueError, match="user_agent must not be empty"):
+        RobotsTxtDelayMiddleware("https://example.com", user_agent="")
+
+    with pytest.raises(ValueError, match="fallback_delay must be non-negative"):
+        RobotsTxtDelayMiddleware("https://example.com", fallback_delay=-1)
+
+    with pytest.raises(ValueError, match="timeout must be non-negative"):
+        RobotsTxtDelayMiddleware("https://example.com", timeout=-1)
 
 
 # ProxyMiddleware tests

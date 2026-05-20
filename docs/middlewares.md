@@ -138,6 +138,38 @@ def custom_delay(request, spider) -> float:
 DelayMiddleware(delay_func=custom_delay)
 ```
 
+### RobotsTxtDelayMiddleware
+- Downloads `robots.txt` from the provided website origin and applies delay settings from that file.
+- Uses `Crawl-delay` first. If it is absent, uses `Request-rate` as `seconds / requests`.
+- Applies only to requests for the same scheme/host/port as the robots.txt origin.
+- Serializes same-origin requests with an internal async lock so engine concurrency cannot bypass the robots delay.
+- Fetches robots.txt during middleware `open`; if used without the engine lifecycle, it loads lazily on the first request.
+- Code: [src/silkworm/middlewares.py](../src/silkworm/middlewares.py)
+
+```python
+from silkworm import RobotsTxtDelayMiddleware, run_spider
+
+run_spider(
+    MySpider,
+    request_middlewares=[
+        RobotsTxtDelayMiddleware(
+            "https://example.com",
+            user_agent="silkworm",
+            fallback_delay=1.0,
+            timeout=10.0,
+        )
+    ],
+)
+```
+
+Constructor options:
+
+- `website_url`: absolute `http` or `https` site URL; Silkworm fetches `/robots.txt` for that origin.
+- `user_agent`: user-agent token used when reading `Crawl-delay` and `Request-rate`; defaults to `"*"`.
+- `fallback_delay`: optional delay to apply when robots.txt has no delay directive or cannot be fetched.
+- `timeout`: robots.txt fetch timeout in seconds or `timedelta`; defaults to `10.0`.
+- `ignore_fetch_errors`: when `True` (default), fetch failures fall back to `fallback_delay`; when `False`, the fetch error is raised.
+
 ### RetryMiddleware
 - Retries on HTTP codes (defaults include 500, 502, 503, 504, 522, 524, 408, 429).
 - Exponential backoff via `backoff_base`.
