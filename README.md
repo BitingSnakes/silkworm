@@ -14,7 +14,7 @@ Async-first web scraping framework built on [wreq](https://github.com/0x676e67/w
 - Optional OnionLink client integration for scraping Tor v3 `.onion` sites without routing through wreq.
 - Optional Servo rendering via `ServoFetchClient` for JavaScript-rendered pages without changing the default HTTP client.
 - Typed spiders and callbacks that can return items or `Request` objects; `HTMLResponse` ships helper methods plus `Response.follow` to reuse callbacks.
-- HTML-to-Markdown conversion via `fast-h2m`, including rich `full`, lean `minimal`, mdream, and streaming modes.
+- HTML-to-Markdown conversion via `fast-h2m`, including rich `full`, lean `minimal`, and streaming modes.
 - Middlewares: User-Agent rotation/default, proxy rotation, cookie jars with save/load, retry with exponential backoff + optional sleep codes, flexible delays (fixed/random/custom), robots.txt delay enforcement, `SkipNonHTMLMiddleware` to drop non-HTML callbacks, and `CloudflareCrawlMiddleware` for Browser Rendering crawl jobs.
 - Pipelines: JSON Lines, SQLite, XML (nested data preserved), and CSV (flattens dicts and lists) out of the box.
 - Structured logging via `logly` (`SILKWORM_LOG_LEVEL=DEBUG`), plus periodic/final crawl statistics (requests/sec, queue size, memory, seen URLs).
