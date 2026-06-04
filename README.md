@@ -14,6 +14,7 @@ Async-first web scraping framework built on [wreq](https://github.com/0x676e67/w
 - Optional OnionLink client integration for scraping Tor v3 `.onion` sites without routing through wreq.
 - Optional Servo rendering via `ServoFetchClient` for JavaScript-rendered pages without changing the default HTTP client.
 - Typed spiders and callbacks that can return items or `Request` objects; `HTMLResponse` ships helper methods plus `Response.follow` to reuse callbacks.
+- HTML-to-Markdown conversion via `fast-h2m`, including rich `full`, lean `minimal`, mdream, and streaming modes.
 - Middlewares: User-Agent rotation/default, proxy rotation, cookie jars with save/load, retry with exponential backoff + optional sleep codes, flexible delays (fixed/random/custom), robots.txt delay enforcement, `SkipNonHTMLMiddleware` to drop non-HTML callbacks, and `CloudflareCrawlMiddleware` for Browser Rendering crawl jobs.
 - Pipelines: JSON Lines, SQLite, XML (nested data preserved), and CSV (flattens dicts and lists) out of the box.
 - Structured logging via `logly` (`SILKWORM_LOG_LEVEL=DEBUG`), plus periodic/final crawl statistics (requests/sec, queue size, memory, seen URLs).
@@ -589,6 +590,30 @@ async def main():
 asyncio.run(main())
 ```
 
+### HTML to Markdown
+```python
+from silkworm import HTMLResponse, Response, Spider, html_to_markdown, stream_html_to_markdown
+
+markdown = html_to_markdown("<h1>Hello</h1><p>World</p>", mode="minimal")
+streamed = stream_html_to_markdown(["<h1>Hello</h1>", "<p>World</p>"])
+
+
+class MarkdownSpider(Spider):
+    name = "markdown"
+    start_urls = ("https://example.com",)
+
+    async def parse(self, response: Response):
+        if not isinstance(response, HTMLResponse):
+            return
+
+        yield {
+            "url": response.url,
+            "markdown": await response.to_markdown(mode="full"),
+        }
+```
+
+Modes are `full` for rich conversion, `minimal` for the lean Fast DOM path, and `mdream` for the mdream-backed converter. `to_markdown_result(...)` and `convert_html_to_markdown(...)` return `fast-h2m`'s structured result.
+
 ## Contributing
 Pull requests and issues are welcome. To set up a dev environment, install [uv](https://docs.astral.sh/uv/getting-started/), create a Python 3.13 virtualenv, and sync dev dependencies:
 
@@ -610,6 +635,7 @@ Silkworm is built on top of excellent open-source projects:
 - [onionlink](https://github.com/RustedBytes/onionlink-rs) - Tor v3 onion-service client
 - [servofetch](https://github.com/RustedBytes/servofetch-py) - Bindings to the Servo browser
 - [scraper-rs](https://github.com/RustedBytes/scraper-rs) - Fast HTML parsing library
+- [fast-h2m](https://github.com/RustedBytes/fast-h2m) - Fast HTML-to-Markdown conversion
 - [logly](https://github.com/muhammad-fiaz/logly) - Structured logging
 - [rxml](https://github.com/nephi-dev/rxml) - XML parsing and writing
 

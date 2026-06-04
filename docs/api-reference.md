@@ -22,6 +22,9 @@ This page lists the public API exports from [src/silkworm/__init__.py](../src/si
 - **`fetch_html(...)`**: Fetch HTML text and a scraper-rs `AsyncDocument`. [src/silkworm/api.py](../src/silkworm/api.py)
 - **`fetch_html_cdp(...)`**: Fetch rendered HTML text and a scraper-rs `AsyncDocument` via CDP. [src/silkworm/api.py](../src/silkworm/api.py)
 - **`fetch_html_servo(...)`**: Fetch rendered HTML text and a scraper-rs `AsyncDocument` via Servo/servofetch. [src/silkworm/api.py](../src/silkworm/api.py)
+- **`html_to_markdown(...)`**: Convert HTML to Markdown with `fast-h2m` in `full`, `minimal`, or `mdream` mode. [src/silkworm/markdown.py](../src/silkworm/markdown.py)
+- **`convert_html_to_markdown(...)`**: Return `fast-h2m`'s structured Markdown conversion result. [src/silkworm/markdown.py](../src/silkworm/markdown.py)
+- **`MarkdownStream`**, **`stream_html_to_markdown(...)`**, **`stream_html_to_markdown_async(...)`**: Streaming HTML-to-Markdown conversion helpers. [src/silkworm/markdown.py](../src/silkworm/markdown.py)
 - **`get_logger(...)`**: Configured logly logger. [src/silkworm/logging.py](../src/silkworm/logging.py)
 
 ## Public Client Adapters
@@ -41,3 +44,4 @@ This page lists the public API exports from [src/silkworm/__init__.py](../src/si
 - **`HttpError`**: HTTP failures. [src/silkworm/exceptions.py](../src/silkworm/exceptions.py)
 - **`SpiderError`**: Callback failures. [src/silkworm/exceptions.py](../src/silkworm/exceptions.py)
 - **`SelectorError`**: Selector failures. [src/silkworm/exceptions.py](../src/silkworm/exceptions.py)
+- **`MarkdownConversionError`**: HTML-to-Markdown conversion failures. [src/silkworm/exceptions.py](../src/silkworm/exceptions.py)

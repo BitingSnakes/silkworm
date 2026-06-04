@@ -42,6 +42,7 @@ dependencies = [
   "wreq>=0.10.0",
   "pyopenssl>=26.0.0",
   "requests>=2.33.0",
+  "fast-h2m==0.4.2",
 ]
 
 [project.optional-dependencies]

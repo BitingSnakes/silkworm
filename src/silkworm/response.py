@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
     from scraper_rs.asyncio import AsyncDocument, AsyncElement  # type: ignore[import]
 
+    from .markdown import MarkdownMode, MarkdownOptions, MarkdownResult
     from .request import Callback, Request
 
 
@@ -426,6 +427,36 @@ class HTMLResponse(Response):
     async def prettify(self) -> str:
         document = await self._get_document()
         return await self._run_document_op(document.prettify, kind="HTML prettify")
+
+    async def to_markdown(
+        self,
+        *,
+        mode: MarkdownMode = "full",
+        options: MarkdownOptions | None = None,
+    ) -> str:
+        from .markdown import html_to_markdown
+
+        return await asyncio.to_thread(
+            html_to_markdown,
+            self.text,
+            mode=mode,
+            options=options,
+        )
+
+    async def to_markdown_result(
+        self,
+        *,
+        mode: MarkdownMode = "full",
+        options: MarkdownOptions | None = None,
+    ) -> MarkdownResult:
+        from .markdown import convert_html_to_markdown
+
+        return await asyncio.to_thread(
+            convert_html_to_markdown,
+            self.text,
+            mode=mode,
+            options=options,
+        )
 
     @override
     def follow(

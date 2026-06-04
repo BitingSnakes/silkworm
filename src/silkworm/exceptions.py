@@ -15,3 +15,7 @@ class SpiderError(SilkwormError):
 
 class SelectorError(SilkwormError):
     """Raised when CSS/XPath selector evaluation fails."""
+
+
+class MarkdownConversionError(SilkwormError):
+    """Raised when HTML to Markdown conversion fails."""

@@ -3,8 +3,21 @@ from __future__ import annotations
 from .request import Request
 from .response import Response, HTMLResponse
 from .spiders import Spider
-from .exceptions import SilkwormError, HttpError, SpiderError, SelectorError
+from .exceptions import (
+    SilkwormError,
+    HttpError,
+    SpiderError,
+    SelectorError,
+    MarkdownConversionError,
+)
 from .engine import DedupKey, Engine, EngineLogger, default_dedup_key
+from .markdown import (
+    MarkdownStream,
+    convert_html_to_markdown,
+    html_to_markdown,
+    stream_html_to_markdown,
+    stream_html_to_markdown_async,
+)
 from .onionlink import OnionLinkClient
 from .runner import (
     crawl,
@@ -32,10 +45,16 @@ __all__ = [
     "SpiderError",
     "Spider",
     "SelectorError",
+    "MarkdownConversionError",
     "Engine",
     "EngineLogger",
     "DedupKey",
     "default_dedup_key",
+    "MarkdownStream",
+    "convert_html_to_markdown",
+    "html_to_markdown",
+    "stream_html_to_markdown",
+    "stream_html_to_markdown_async",
     "OnionLinkClient",
     "crawl",
     "run_spider",

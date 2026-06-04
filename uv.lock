@@ -596,6 +596,18 @@ wheels = [
 ]
 
 [[package]]
+name = "fast-h2m"
+version = "0.4.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ab/49/24bc4105c410aafab2dffb6f5612d117d87bf39893fc843e9ecce943f756/fast_h2m-0.4.2.tar.gz", hash = "sha256:1b302a7c51414216733ad2fd3e4e6f036a1f3d4db4649b1a8c16b8661eeb8a86", size = 338708, upload-time = "2026-06-04T10:45:19.33Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/dc/f3/654898bc71544a2b3ba86ad5e7f8956098406851bc9f6c81715ec6a04c46/fast_h2m-0.4.2-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:8f7d0809f891628f1b14a53e7eeeb045e44bfda0bc4879582e609f5b2f6ab272", size = 904261, upload-time = "2026-06-04T10:45:12.871Z" },
+    { url = "https://files.pythonhosted.org/packages/79/9e/947d51c22a6c9576b8473594ed7a645ad584804e1b45ca28a569e075f570/fast_h2m-0.4.2-cp38-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:059f8038112acb34581e6812af3596192acb40658a616c08ca5521a43892617e", size = 959366, upload-time = "2026-06-04T10:45:14.562Z" },
+    { url = "https://files.pythonhosted.org/packages/ad/3b/ddc6e0d1c39b471490fb0c702c97ceab862b170e7136570546e66c6d0827/fast_h2m-0.4.2-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8db2615cd775e4b09ff876750df285567aa26c9afdfedc51a8fae80119ae13d5", size = 1005643, upload-time = "2026-06-04T10:45:16.372Z" },
+    { url = "https://files.pythonhosted.org/packages/a9/ad/55766d48890e0f7523daab2cc844752b7f1791795a3d439eb9c037c2c939/fast_h2m-0.4.2-cp38-abi3-win_amd64.whl", hash = "sha256:ebd6766be54a96d0a2441b5e1ed411f9e2583c884743b67c8978cd0ed3f24719", size = 912679, upload-time = "2026-06-04T10:45:17.854Z" },
+]
+
+[[package]]
 name = "fastavro"
 version = "1.12.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2146,6 +2158,7 @@ version = "0.6.0"
 source = { editable = "." }
 dependencies = [
     { name = "charset-normalizer" },
+    { name = "fast-h2m" },
     { name = "logly" },
     { name = "pyopenssl" },
     { name = "requests" },
@@ -2264,6 +2277,7 @@ requires-dist = [
     { name = "charset-normalizer", specifier = "==3.4.4" },
     { name = "duckdb", marker = "extra == 'duckdb'", specifier = "==1.5.1" },
     { name = "elasticsearch", marker = "extra == 'elasticsearch'", specifier = "==9.3.0" },
+    { name = "fast-h2m", specifier = "==0.4.2" },
     { name = "fastavro", marker = "extra == 'avro'", specifier = "==1.12.1" },
     { name = "google-api-python-client", marker = "extra == 'gsheets'", specifier = "==2.193.0" },
     { name = "google-auth", marker = "extra == 'gsheets'", specifier = "==2.49.1" },

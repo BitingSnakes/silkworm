@@ -98,6 +98,8 @@ Core APIs:
 - **`follow(href, callback=None, **kwargs)`**: URL join + callback reuse.
 - **`follow_all(hrefs, callback=None, **kwargs)`**: Convenience helper for multiple follow-up requests.
 - **`close()`**: Release payload references to save memory.
+- **`to_markdown(mode="full" | "minimal" | "mdream")`**: Convert an `HTMLResponse` to Markdown via `fast-h2m`.
+- **`to_markdown_result(...)`**: Return `fast-h2m`'s structured conversion result.
 
 ```python
 from silkworm import HTMLResponse, Response
@@ -127,6 +129,8 @@ for card in await response.select(".card"):
 ```
 
 The selector engine uses `scraper-rs` and respects `doc_max_size_bytes` (see [HttpClient](../src/silkworm/http.py)). Errors are raised as `SelectorError` in [src/silkworm/exceptions.py](../src/silkworm/exceptions.py).
+
+Markdown conversion is also available as standalone helpers from `silkworm`: `html_to_markdown`, `convert_html_to_markdown`, `MarkdownStream`, `stream_html_to_markdown`, and `stream_html_to_markdown_async`. `full` mode uses the rich converter, `minimal` uses the lean Fast DOM path, and streaming uses `fast-h2m`'s stream processor.
 
 ## Callback Results (What `parse` Can Return)
 Callback output is normalized by the engine. See [src/silkworm/engine.py](../src/silkworm/engine.py).
