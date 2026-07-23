@@ -112,13 +112,7 @@ class _SpyLogger:
     def configure(
         self,
         *,
-        level: str,
-        show_time: bool,
-        show_module: bool,
-        show_function: bool,
-        show_filename: bool,
-        show_lineno: bool,
-        console_levels: dict[str, bool] | None = None,
+        handlers: list[dict[str, object]] | None = None,
     ) -> None:
         return None
 

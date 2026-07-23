@@ -31,7 +31,7 @@ def recording_logger(monkeypatch: pytest.MonkeyPatch) -> _RecordingLogger:
     return logger
 
 
-def test_env_log_level_filters_debug(
+def test_env_log_level_configures_stderr_handler(
     monkeypatch: pytest.MonkeyPatch, recording_logger: _RecordingLogger
 ) -> None:
     monkeypatch.setenv("SILKWORM_LOG_LEVEL", "INFO")
@@ -40,13 +40,7 @@ def test_env_log_level_filters_debug(
 
     configured = recording_logger.configured_kwargs
     assert configured is not None
-    levels = configured["console_levels"]
-    assert isinstance(levels, dict)
-    assert levels["TRACE"] is False
-    assert levels["DEBUG"] is False
-    assert levels["INFO"] is True
-    assert levels["ERROR"] is True
-    assert configured["level"] == "INFO"
+    assert configured["handlers"] == [{"sink": "stderr", "level": "INFO"}]
 
 
 def test_invalid_env_level_defaults_to_info(
@@ -58,4 +52,4 @@ def test_invalid_env_level_defaults_to_info(
 
     configured = recording_logger.configured_kwargs
     assert configured is not None
-    assert configured["level"] == "INFO"
+    assert configured["handlers"] == [{"sink": "stderr", "level": "INFO"}]

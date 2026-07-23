@@ -30,13 +30,7 @@ class _Logger(Protocol):
     def configure(
         self,
         *,
-        level: str,
-        show_time: bool,
-        show_module: bool,
-        show_function: bool,
-        show_filename: bool,
-        show_lineno: bool,
-        console_levels: dict[str, bool] | None = None,
+        handlers: list[dict[str, object]] | None = None,
     ) -> None: ...
 
     def bind(self, **context: object) -> _Logger: ...
@@ -77,17 +71,6 @@ def _normalized_level(raw_level: str) -> str:
     return level if level in _LEVELS else "INFO"
 
 
-def _console_levels(min_level: str) -> dict[str, bool]:
-    """
-    Build a console_levels map for logly so it actually filters logs.
-    logly's global level currently doesn't gate console output, so we
-    disable lower levels explicitly.
-    """
-    min_level = _normalized_level(min_level)
-    min_index = _LEVELS.index(min_level)
-    return {level: idx >= min_index for idx, level in enumerate(_LEVELS)}
-
-
 def _configure_if_needed() -> _Logger:
     """
     Configure the shared Logly logger once using env overrides and
@@ -99,13 +82,12 @@ def _configure_if_needed() -> _Logger:
 
     level = _normalized_level(os.getenv("SILKWORM_LOG_LEVEL", "INFO"))
     _typed_logger.configure(
-        level=level,
-        console_levels=_console_levels(level),
-        show_time=True,
-        show_module=True,
-        show_function=False,
-        show_filename=False,
-        show_lineno=False,
+        handlers=[
+            {
+                "sink": "stderr",
+                "level": level,
+            }
+        ],
     )
     _configured = True
     return _typed_logger
