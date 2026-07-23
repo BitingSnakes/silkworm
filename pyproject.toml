@@ -37,7 +37,7 @@ classifiers = [
 dependencies = [
   "charset-normalizer==3.4.4",
   "scraper-rust>=0.6.0",
-  "logly==0.1.6",
+  "logly==0.2.1",
   "rxml==2.4.1",
   "wreq>=0.10.0",
   "pyopenssl>=26.0.0",
@@ -47,7 +47,7 @@ dependencies = [
 
 [project.optional-dependencies]
 rsloop = [
-  "rsloop==0.1.18",
+  "rsloop==0.1.27",
 ]
 taskiq = [
   "taskiq==0.12.4",
