@@ -195,11 +195,11 @@ wheels = [
 
 [[package]]
 name = "annotated-types"
-version = "0.7.0"
+version = "0.8.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ee/67/531ea369ba64dcff5ec9c3402f9f51bf748cec26dde048a2f973a4eea7f5/annotated_types-0.7.0.tar.gz", hash = "sha256:aff07c09a53a08bc8cfccb9c85b05f1aa9a2a6f23728d790723543408344ce89", size = 16081, upload-time = "2024-05-20T21:33:25.928Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5f/56/a8120250d128bed162cd73c76d45f6ef9991f3e068f62a8ee060afa3104a/annotated_types-0.8.0.tar.gz", hash = "sha256:13b2beaad985e05e2d6407ee4c4f35590b11f8d693a258a561055cac8f64cab7", size = 15893, upload-time = "2026-07-23T20:16:13.995Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/78/b6/6307fbef88d9b5ee7421e68d78a9f162e0da4900bc5f5793f6d3d0e34fb8/annotated_types-0.7.0-py3-none-any.whl", hash = "sha256:1f02e8b43a8fbbc3f3e0d4f0f4bfc8131bcb4eebe8849b8e5c773f3a1c582a53", size = 13643, upload-time = "2024-05-20T21:33:24.1Z" },
+    { url = "https://files.pythonhosted.org/packages/99/91/8acff4f5e50511b911bbccb72b8628a49c68ce14148cd9f6431094859a90/annotated_types-0.8.0-py3-none-any.whl", hash = "sha256:f072f4d804ea359e4eaf198b1af7a8b0943881a87f31bb764f8bf219bb9419e0", size = 13427, upload-time = "2026-07-23T20:16:12.938Z" },
 ]
 
 [[package]]
@@ -1905,11 +1905,11 @@ wheels = [
 
 [[package]]
 name = "pytz"
-version = "2026.2"
+version = "2026.3.post1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ff/46/dd499ec9038423421951e4fad73051febaa13d2df82b4064f87af8b8c0c3/pytz-2026.2.tar.gz", hash = "sha256:0e60b47b29f21574376f218fe21abc009894a2321ea16c6754f3cad6eb7cdd6a", size = 320861, upload-time = "2026-05-04T01:35:29.667Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fb/48/fb042503b6ca6cd271261dc559fd6432f7d8c713153e9ec5c591af4dfc1c/pytz-2026.3.post1.tar.gz", hash = "sha256:2211d3fcf9a797d3405cac96ac7f61d80e6a644f72a3309607282fe8a2010c5d", size = 319745, upload-time = "2026-07-25T15:12:07.385Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ec/dd/96da98f892250475bdf2328112d7468abdd4acc7b902b6af23f4ed958ea0/pytz-2026.2-py2.py3-none-any.whl", hash = "sha256:04156e608bee23d3792fd45c94ae47fae1036688e75032eea2e3bf0323d1f126", size = 510141, upload-time = "2026-05-04T01:35:27.408Z" },
+    { url = "https://files.pythonhosted.org/packages/0f/7b/39c34ca613b0b198cb866466651b26b045e2009864c5183c979a3b83f383/pytz-2026.3.post1-py2.py3-none-any.whl", hash = "sha256:dd95840dd199baea12d9cc096a1d452caa6596a1c1e4b5f3dbd1541855d5e815", size = 508283, upload-time = "2026-07-25T15:12:05.782Z" },
 ]
 
 [[package]]
@@ -2149,14 +2149,14 @@ wheels = [
 
 [[package]]
 name = "scraper-rust"
-version = "0.6.0"
+version = "0.7.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/7e/8a/20d84639397a11aab00746bedd279416e29f616f0f464b25056650fe965f/scraper_rust-0.6.0.tar.gz", hash = "sha256:c50bb5310d6dcafea3cb1ddcddc472c1ad7d6fed9845b7bb719baadfe48ef8bb", size = 76685, upload-time = "2026-06-04T14:42:49.167Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3c/8d/066c3ee6af1db71ddac2a1b7bc3f81727f1f135c2fb6aa314497b693ea64/scraper_rust-0.7.0.tar.gz", hash = "sha256:a17242f19900c471d82ff4ba69fe932e18fc1b11cd78c9d0e21d267b638517d9", size = 77359, upload-time = "2026-07-27T22:20:31.928Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f3/66/df7290dbf69f635d9fff2e98b56380ff026bce9ad848d6cb4350a0ad086d/scraper_rust-0.6.0-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:1a14b23af5cae72756bc37e9bb0cc6a55e19feebab516a4d96a0a34aebfb3c9e", size = 2011424, upload-time = "2026-06-04T14:42:42.341Z" },
-    { url = "https://files.pythonhosted.org/packages/73/d4/9698a1cfddf69bbd8010d84cee06e0670e4d7d52009b59b41ab4fb83b80d/scraper_rust-0.6.0-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:200589c32874ba0af8d9200a910847822e23295a22b8a93d675e011f2234f9b2", size = 2168513, upload-time = "2026-06-04T14:42:44.174Z" },
-    { url = "https://files.pythonhosted.org/packages/e4/0b/c034134f437ea0cf0a4eb0656907f275e901ec5e94787b46da650a2430b6/scraper_rust-0.6.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d4fb656cb3f083bd06927a9c4a1215d99457b71d948a2a490bbca5fd96441281", size = 2277654, upload-time = "2026-06-04T14:42:46.018Z" },
-    { url = "https://files.pythonhosted.org/packages/c0/93/0c05608f16ba0c209e4efcba723b244f348ade69bfae9aa12d83f09c396d/scraper_rust-0.6.0-cp310-abi3-win_amd64.whl", hash = "sha256:9f9ce55855c12a447bf85aa55506cbfec61621c76a76d1196261b25cbba0631a", size = 2066280, upload-time = "2026-06-04T14:42:47.561Z" },
+    { url = "https://files.pythonhosted.org/packages/d6/35/302971c9d205d678db9e40ff9b8f98dd3b939206aa0f2c87380362806714/scraper_rust-0.7.0-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:0e9b3ba528f05a46718e818e283f18c32a0e504a6dffdd40ae7a774f8819d5db", size = 2005186, upload-time = "2026-07-27T22:20:25.234Z" },
+    { url = "https://files.pythonhosted.org/packages/38/9e/c0cfcc91255df6937c8583ab1223a3d747d01c011cf958366ff7be29e9a4/scraper_rust-0.7.0-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:3d47c73fdd3268f9848e4b6bed1993ec65683430ecfd6371135867cb1d84c476", size = 2160549, upload-time = "2026-07-27T22:20:26.911Z" },
+    { url = "https://files.pythonhosted.org/packages/c2/98/9b1550b7d483679804eca3f6ecb3b911f3deebc0bfada48caa26742b4e16/scraper_rust-0.7.0-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:42db5e0c0668f064eec1402184dff42f34ad04766b52b96ed547b10677205029", size = 2261497, upload-time = "2026-07-27T22:20:28.441Z" },
+    { url = "https://files.pythonhosted.org/packages/3a/0c/ffb1022151b9eabd137d2c0a10acc2b83236eae820ec9c2fc127c3442e53/scraper_rust-0.7.0-cp310-abi3-win_amd64.whl", hash = "sha256:55aa24a60bfac851b3daa241636fd327e9074f555f40f9eb227d8fd594037497", size = 2058482, upload-time = "2026-07-27T22:20:30.285Z" },
 ]
 
 [[package]]
@@ -2174,7 +2174,7 @@ wheels = [
 
 [[package]]
 name = "silkworm-rs"
-version = "0.7.0"
+version = "0.7.1"
 source = { editable = "." }
 dependencies = [
     { name = "charset-normalizer" },
@@ -2314,7 +2314,7 @@ requires-dist = [
     { name = "requests", specifier = ">=2.33.0" },
     { name = "rsloop", marker = "extra == 'rsloop'", specifier = "==0.1.27" },
     { name = "rxml", specifier = "==2.4.1" },
-    { name = "scraper-rust", specifier = ">=0.6.0" },
+    { name = "scraper-rust", specifier = ">=0.7.0" },
     { name = "snowflake-connector-python", marker = "extra == 'snowflake'", specifier = "==4.4.0" },
     { name = "taskiq", marker = "extra == 'taskiq'", specifier = "==0.12.4" },
     { name = "trio", marker = "extra == 'trio'", specifier = "==0.33.0" },
