@@ -35,10 +35,10 @@ classifiers = [
 ]
 
 dependencies = [
-  "charset-normalizer==3.4.4",
+  "charset-normalizer==3.5.1",
   "scraper-rust>=0.7.0",
-  "logly==0.2.1",
-  "rxml==2.4.1",
+  "logly==0.2.2",
+  "rxml==3.0.0",
   "wreq>=0.10.0",
   "pyopenssl>=26.0.0",
   "requests>=2.33.0",
