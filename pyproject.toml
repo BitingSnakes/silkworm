@@ -106,7 +106,7 @@ ftp = [
   "aioftp==0.27.2",
 ]
 sftp = [
-  "asyncssh==2.23.0",
+  "asyncssh==2.23.1",
 ]
 cassandra = [
   "cassandra-driver==3.29.3; sys_platform != 'win32' and python_version < '3.14'",
