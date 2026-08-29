@@ -650,14 +650,14 @@ wheels = [
 
 [[package]]
 name = "fast-h2m"
-version = "0.4.2"
+version = "0.4.4"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ab/49/24bc4105c410aafab2dffb6f5612d117d87bf39893fc843e9ecce943f756/fast_h2m-0.4.2.tar.gz", hash = "sha256:1b302a7c51414216733ad2fd3e4e6f036a1f3d4db4649b1a8c16b8661eeb8a86", size = 338708, upload-time = "2026-06-04T10:45:19.33Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/89/07/c1881aac25a783cf09fd2655e815c337e529337ce5bdec87e7fed5c991b8/fast_h2m-0.4.4.tar.gz", hash = "sha256:7e735e068b5b6bca8f0f28b2d81a3431ba0ab33c2f05a5b084849943c32ba107", size = 343594, upload-time = "2026-08-29T17:23:48.461Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/dc/f3/654898bc71544a2b3ba86ad5e7f8956098406851bc9f6c81715ec6a04c46/fast_h2m-0.4.2-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:8f7d0809f891628f1b14a53e7eeeb045e44bfda0bc4879582e609f5b2f6ab272", size = 904261, upload-time = "2026-06-04T10:45:12.871Z" },
-    { url = "https://files.pythonhosted.org/packages/79/9e/947d51c22a6c9576b8473594ed7a645ad584804e1b45ca28a569e075f570/fast_h2m-0.4.2-cp38-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:059f8038112acb34581e6812af3596192acb40658a616c08ca5521a43892617e", size = 959366, upload-time = "2026-06-04T10:45:14.562Z" },
-    { url = "https://files.pythonhosted.org/packages/ad/3b/ddc6e0d1c39b471490fb0c702c97ceab862b170e7136570546e66c6d0827/fast_h2m-0.4.2-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8db2615cd775e4b09ff876750df285567aa26c9afdfedc51a8fae80119ae13d5", size = 1005643, upload-time = "2026-06-04T10:45:16.372Z" },
-    { url = "https://files.pythonhosted.org/packages/a9/ad/55766d48890e0f7523daab2cc844752b7f1791795a3d439eb9c037c2c939/fast_h2m-0.4.2-cp38-abi3-win_amd64.whl", hash = "sha256:ebd6766be54a96d0a2441b5e1ed411f9e2583c884743b67c8978cd0ed3f24719", size = 912679, upload-time = "2026-06-04T10:45:17.854Z" },
+    { url = "https://files.pythonhosted.org/packages/03/30/3fc65747fc7b68e707a21ed013010e42cf17286fb492cce9fc2f977b013e/fast_h2m-0.4.4-cp38-abi3-macosx_11_0_arm64.whl", hash = "sha256:db080d9059137df966dc4511e4cd39a63c00b2097528122eb9e142a0c094da7a", size = 931254, upload-time = "2026-08-29T17:23:41.151Z" },
+    { url = "https://files.pythonhosted.org/packages/96/37/af39210775d3b42962bc8839361f4fc70a9827351173c649e055b8713823/fast_h2m-0.4.4-cp38-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:12a7b81545bbf1cc6e6a419dc7dc2455cdc7d81e21ae86dd13ecf48437b42799", size = 1135873, upload-time = "2026-08-29T17:23:42.843Z" },
+    { url = "https://files.pythonhosted.org/packages/3f/ca/f8cca337ddaf04347ae446e056c9eade05b6cbf7dea8541b03513248fe32/fast_h2m-0.4.4-cp38-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:8e30c50d9b5b225444f35163567f4a181d8be66de12f890068ea9381845d8600", size = 1185504, upload-time = "2026-08-29T17:23:44.671Z" },
+    { url = "https://files.pythonhosted.org/packages/eb/ae/df0da87465c9a2c67a6a189b55952df78679641253d6a43b0f0af8b29ccd/fast_h2m-0.4.4-cp38-abi3-win_amd64.whl", hash = "sha256:12208eebc57f951c05b26566577a7310026e745f7810ee3652fba64c468eb2e8", size = 1107626, upload-time = "2026-08-29T17:23:46.283Z" },
 ]
 
 [[package]]
@@ -2209,7 +2209,7 @@ wheels = [
 
 [[package]]
 name = "silkworm-rs"
-version = "0.7.4"
+version = "0.7.5"
 source = { editable = "." }
 dependencies = [
     { name = "charset-normalizer" },
@@ -2332,7 +2332,7 @@ requires-dist = [
     { name = "charset-normalizer", specifier = "==3.5.1" },
     { name = "duckdb", marker = "extra == 'duckdb'", specifier = "==1.5.1" },
     { name = "elasticsearch", marker = "extra == 'elasticsearch'", specifier = "==9.3.0" },
-    { name = "fast-h2m", specifier = "==0.4.2" },
+    { name = "fast-h2m", specifier = "==0.4.4" },
     { name = "fastavro", marker = "extra == 'avro'", specifier = "==1.12.1" },
     { name = "google-api-python-client", marker = "extra == 'gsheets'", specifier = "==2.193.0" },
     { name = "google-auth", marker = "extra == 'gsheets'", specifier = "==2.49.1" },
