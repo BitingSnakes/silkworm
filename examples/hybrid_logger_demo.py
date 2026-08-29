@@ -39,24 +39,21 @@ def configure_hybrid_logger(
     log_path = Path(json_log_file)
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Configure logly with hybrid output
+    # Configure logly with one human-readable console sink and one structured
+    # JSON file sink.
     logly_logger.configure(
-        level=log_level.upper(),
-        # Console output: human-readable text
-        console=True,
-        json=False,  # Console gets text, not JSON
-        color=True,  # Colorize console output
-        show_time=True,
-        show_module=True,
-        show_function=False,
-        # File output: structured JSON
-        auto_sink=True,
-        auto_sink_levels={
-            log_level.upper(): {
-                "path": json_log_file,
-                "json": True,  # File gets JSON format
-            }
-        },
+        handlers=[
+            {
+                "sink": "stderr",
+                "level": log_level.upper(),
+                "colorize": True,
+            },
+            {
+                "sink": json_log_file,
+                "level": log_level.upper(),
+                "serialize": True,
+            },
+        ],
     )
 
     print("✓ Hybrid logger configured:")

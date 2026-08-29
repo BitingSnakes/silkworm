@@ -108,7 +108,7 @@ class _RecordingOnionSession:
 @pytest.fixture
 def onionlink_session(monkeypatch: pytest.MonkeyPatch) -> type[_RecordingOnionSession]:
     module = types.ModuleType("onionlink")
-    module.AsyncSession = _RecordingOnionSession
+    setattr(module, "AsyncSession", _RecordingOnionSession)
     monkeypatch.setitem(sys.modules, "onionlink", module)
     return _RecordingOnionSession
 
@@ -164,7 +164,7 @@ def servofetch_module(monkeypatch: pytest.MonkeyPatch) -> type[_FakeServoAsyncBr
     _FakeServoAsyncBrowser.active = 0
     _FakeServoAsyncBrowser.max_active = 0
     module = types.ModuleType("servofetch")
-    module.AsyncBrowser = _FakeServoAsyncBrowser
+    setattr(module, "AsyncBrowser", _FakeServoAsyncBrowser)
     monkeypatch.setitem(sys.modules, "servofetch", module)
     return _FakeServoAsyncBrowser
 
@@ -868,7 +868,7 @@ def test_onionlink_client_requires_async_session(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     module = types.ModuleType("onionlink")
-    module.Session = _RecordingOnionSession
+    setattr(module, "Session", _RecordingOnionSession)
     monkeypatch.setitem(sys.modules, "onionlink", module)
 
     with pytest.raises(ImportError, match=r"onionlink>=0\.1\.2"):
@@ -1762,7 +1762,9 @@ async def test_cloudflare_crawl_middleware_builds_synthetic_response(
     assert isinstance(mock_response, dict)
     assert processed.meta["_cloudflare_crawl_applied"] is True
     assert mock_response["status"] == 200
-    assert mock_response["headers"]["x-silkworm-source"] == "cloudflare-crawl"
+    mock_headers = mock_response["headers"]
+    assert isinstance(mock_headers, dict)
+    assert mock_headers["x-silkworm-source"] == "cloudflare-crawl"
 
     payload = json.loads(str(mock_response["body"]))
     assert payload["result"]["records"][0]["url"] == "https://example.com"
@@ -1804,8 +1806,14 @@ async def test_cloudflare_crawl_middleware_polls_until_completion(
 
     payload = await middleware._run_crawl("https://example.com", {})
 
-    assert payload["result"]["status"] == "completed"
-    assert payload["result"]["records"][0]["url"] == "https://a"
+    result = payload["result"]
+    assert isinstance(result, dict)
+    assert result["status"] == "completed"
+    records = result["records"]
+    assert isinstance(records, list)
+    first_record = records[0]
+    assert isinstance(first_record, dict)
+    assert first_record["url"] == "https://a"
     assert sleep_calls == [0.1]
     assert api_paths == [
         "/accounts/acct/browser-rendering/crawl",
@@ -1984,7 +1992,7 @@ async def test_engine_runs_middleware_lifecycle_hooks():
             request=request,
         )
 
-    engine.http.fetch = fake_fetch  # type: ignore[method-assign]
+    engine.http.fetch = fake_fetch  # type: ignore[assignment]
     await engine.run()
 
     assert events == [
@@ -2043,7 +2051,7 @@ async def test_engine_shared_stream_middleware_only_opens_once(
             request=request,
         )
 
-    engine.http.fetch = fake_fetch  # type: ignore[method-assign]
+    engine.http.fetch = fake_fetch  # type: ignore[assignment]
     await engine.run()
 
     assert events == [

@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
     from ._types import MetaData
     from .logging import _Logger
-    from .request import CallbackOutput
+    from .request import CallbackResult
     from .response import Response
 
 
@@ -118,7 +118,7 @@ class Spider:
         for url in self.start_urls:
             yield Request(url=url, callback=self.parse)
 
-    async def parse(self, response: Response) -> CallbackOutput:
+    def parse(self, response: Response) -> CallbackResult:
         raise NotImplementedError
 
     # hooks for pipelines / engine if desired later

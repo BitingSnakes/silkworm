@@ -294,7 +294,7 @@ try:
     # Note: We use msgpack for reading because ormsgpack (used by MsgPackPipeline
     # for writing) doesn't have an Unpacker class to read multiple objects from a stream.
     # The two libraries are compatible for reading/writing MessagePack data.
-    import msgpack  # For reading back the data
+    import msgpack  # type: ignore[import-not-found, import-untyped]  # For reading back the data
 
     MSGPACK_AVAILABLE = True
 except ImportError:
@@ -330,7 +330,7 @@ async def test_msgpack_pipeline_integration():
 
 try:
     from silkworm.pipelines import PolarsPipeline
-    import polars as pl
+    import polars as pl  # type: ignore[import-not-found, import-untyped]
 
     POLARS_AVAILABLE = True
 except ImportError:
@@ -363,7 +363,7 @@ async def test_polars_pipeline_integration():
 
 try:
     from silkworm.pipelines import ExcelPipeline
-    import openpyxl
+    import openpyxl  # type: ignore[import-not-found, import-untyped]
 
     EXCEL_AVAILABLE = True
 except ImportError:
@@ -398,7 +398,7 @@ async def test_excel_pipeline_integration():
 
 try:
     from silkworm.pipelines import YAMLPipeline
-    import yaml
+    import yaml  # type: ignore[import-not-found, import-untyped]
 
     YAML_AVAILABLE = True
 except ImportError:
@@ -429,7 +429,7 @@ async def test_yaml_pipeline_integration():
 
 try:
     from silkworm.pipelines import AvroPipeline
-    import fastavro
+    import fastavro  # type: ignore[import-not-found, import-untyped]
 
     AVRO_AVAILABLE = True
 except ImportError:
@@ -463,7 +463,7 @@ async def test_avro_pipeline_integration():
 
 try:
     from silkworm.pipelines import VortexPipeline
-    import vortex
+    import vortex  # type: ignore[import-not-found, import-untyped]
 
     VORTEX_AVAILABLE = True
 except ImportError:
@@ -555,8 +555,8 @@ IS_WINDOWS = platform.system() == "Windows"
 if not IS_WINDOWS:
     try:
         from silkworm.pipelines import MySQLPipeline
-        from testcontainers.mysql import MySqlContainer  # noqa: F401
-        import aiomysql
+        from testcontainers.mysql import MySqlContainer  # type: ignore[import-not-found, import-untyped]  # noqa: F401
+        import aiomysql  # type: ignore[import-not-found, import-untyped]
 
         MYSQL_AVAILABLE = True
     except ImportError:
@@ -625,8 +625,8 @@ async def test_mysql_pipeline_integration(mysql_container):
 if not IS_WINDOWS:
     try:
         from silkworm.pipelines import PostgreSQLPipeline
-        from testcontainers.postgres import PostgresContainer  # noqa: F401
-        import asyncpg
+        from testcontainers.postgres import PostgresContainer  # type: ignore[import-not-found, import-untyped]  # noqa: F401
+        import asyncpg  # type: ignore[import-not-found, import-untyped]
 
         POSTGRESQL_AVAILABLE = True
     except ImportError:
@@ -691,8 +691,8 @@ async def test_postgresql_pipeline_integration(postgres_container):
 if not IS_WINDOWS:
     try:
         from silkworm.pipelines import MongoDBPipeline
-        from testcontainers.mongodb import MongoDbContainer  # noqa: F401
-        import motor.motor_asyncio
+        from testcontainers.mongodb import MongoDbContainer  # type: ignore[import-not-found, import-untyped]  # noqa: F401
+        import motor.motor_asyncio  # type: ignore[import-not-found, import-untyped]
 
         MONGODB_AVAILABLE = True
     except ImportError:
@@ -748,8 +748,8 @@ async def test_mongodb_pipeline_integration(mongodb_container):
 if not IS_WINDOWS:
     try:
         from silkworm.pipelines import ElasticsearchPipeline
-        from testcontainers.elasticsearch import ElasticsearchContainer  # noqa: F401
-        from elasticsearch import AsyncElasticsearch
+        from testcontainers.elasticsearch import ElasticsearchContainer  # type: ignore[import-not-found, import-untyped]  # noqa: F401
+        from elasticsearch import AsyncElasticsearch  # type: ignore[import-not-found, import-untyped]
 
         ELASTICSEARCH_AVAILABLE = True
     except ImportError:
@@ -811,8 +811,8 @@ async def test_elasticsearch_pipeline_integration(elasticsearch_container):
 if not IS_WINDOWS:
     try:
         from silkworm.pipelines import CassandraPipeline
-        from testcontainers.cassandra import CassandraContainer  # noqa: F401
-        from cassandra.cluster import Cluster
+        from testcontainers.cassandra import CassandraContainer  # type: ignore[import-not-found, import-untyped]  # noqa: F401
+        from cassandra.cluster import Cluster  # type: ignore[import-not-found, import-untyped]
 
         CASSANDRA_AVAILABLE = True
     except ImportError:
@@ -871,8 +871,8 @@ async def test_cassandra_pipeline_integration(cassandra_container):
 if not IS_WINDOWS:
     try:
         from silkworm.pipelines import CouchDBPipeline
-        from testcontainers.couchdb import CouchDbContainer  # noqa: F401
-        import aiocouch
+        from testcontainers.couchdb import CouchDbContainer  # type: ignore[import-not-found, import-untyped]  # noqa: F401
+        import aiocouch  # type: ignore[import-not-found, import-untyped]
 
         COUCHDB_AVAILABLE = True
     except ImportError:
