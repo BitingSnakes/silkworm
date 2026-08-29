@@ -4,7 +4,10 @@ Example demonstrating the CallbackPipeline usage.
 This shows how to use CallbackPipeline to process items with custom callback functions.
 """
 
+from __future__ import annotations
+
 from typing import override
+
 from silkworm import HTMLResponse, Response, Spider, run_spider
 from silkworm.request import CallbackOutput
 from silkworm.middlewares import UserAgentMiddleware

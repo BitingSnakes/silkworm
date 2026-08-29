@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from typing import override
+from typing import cast, override
 
 from silkworm import Request, Response, Spider, run_spider
+from silkworm._types import JSONValue
 from silkworm.http import MOCK_RESPONSE_META_KEY
 from silkworm.middlewares import RequestMiddleware
 from silkworm.pipelines import JsonLinesPipeline
@@ -48,12 +49,15 @@ class FailThenRecoverMiddleware:
             meta={
                 **request.meta,
                 "failed_once": True,
-                MOCK_RESPONSE_META_KEY: {
-                    "url": request.url,
-                    "status": 200,
-                    "headers": {"content-type": "text/plain; charset=utf-8"},
-                    "body": "Recovered by process_exception",
-                },
+                MOCK_RESPONSE_META_KEY: cast(
+                    "JSONValue",
+                    {
+                        "url": request.url,
+                        "status": 200,
+                        "headers": {"content-type": "text/plain; charset=utf-8"},
+                        "body": "Recovered by process_exception",
+                    },
+                ),
             },
         )
 

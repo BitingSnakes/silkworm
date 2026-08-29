@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections.abc import Mapping
 from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
@@ -71,7 +72,7 @@ class CookieDemoHandler(BaseHTTPRequestHandler):
 
     def _send_json(
         self,
-        payload: dict[str, str | None],
+        payload: Mapping[str, str | None],
         *,
         headers: dict[str, str] | None = None,
     ) -> None:
@@ -92,7 +93,10 @@ class CookieDemoServer:
 
     @property
     def base_url(self) -> str:
-        host, port = self._server.server_address
+        host = self._server.server_address[0]
+        if isinstance(host, bytes):
+            host = host.decode()
+        port = self._server.server_address[1]
         return f"http://{host}:{port}"
 
     def __enter__(self) -> CookieDemoServer:
