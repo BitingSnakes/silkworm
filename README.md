@@ -14,6 +14,7 @@ Async-first web scraping framework built on [wreq](https://github.com/0x676e67/w
 - Optional OnionLink client integration for scraping Tor v3 `.onion` sites without routing through wreq.
 - Optional Servo rendering via `ServoFetchClient` for JavaScript-rendered pages without changing the default HTTP client.
 - Typed spiders and callbacks that can return items or `Request` objects; `HTMLResponse` ships helper methods plus `Response.follow` to reuse callbacks.
+- Optional declarative extraction with compiled `Item`, `Text`, and `Attr` field plans while keeping the callback API available.
 - HTML-to-Markdown conversion via `fast-h2m`, including rich `full`, lean `minimal`, and streaming modes.
 - Middlewares: User-Agent rotation/default, proxy rotation, cookie jars with save/load, retry with exponential backoff + optional sleep codes, flexible delays (fixed/random/custom), robots.txt delay enforcement, `SkipNonHTMLMiddleware` to drop non-HTML callbacks, and `CloudflareCrawlMiddleware` for Browser Rendering crawl jobs.
 - Pipelines: JSON Lines, SQLite, XML (nested data preserved), and CSV (flattens dicts and lists) out of the box.
@@ -97,6 +98,74 @@ if __name__ == "__main__":
         log_stats_interval=30,
     )
 ```
+
+## Declarative extraction
+
+Use `silkworm.declarative` when the extraction is regular and keep ordinary
+callbacks for pagination or site-specific behavior:
+
+```python
+from silkworm import HTMLResponse, Response, Spider
+from silkworm.declarative import Attr, Item, Text
+
+
+def parse_price(value: str) -> float:
+    return float(value.removeprefix("$").strip())
+
+
+class Product(Item):
+    __selector__ = ".product"
+
+    title: str = Text("h2", strip=True)
+    price: float = Text(".price", transform=parse_price)
+    url: str = Attr("a", "href", absolute=True)
+    image: str | None = Attr("img", "src", absolute=True)
+    tags: list[str] = Text(".tag")
+
+
+class ProductsSpider(Spider):
+    start_urls = ("https://shop.example.com/products/",)
+
+    async def parse(self, response: Response):
+        if not isinstance(response, HTMLResponse):
+            return
+
+        async for product in Product.extract(response):
+            # Existing pipelines consume JSON-compatible values.
+            yield product.to_dict()
+```
+
+The annotation controls selector cardinality:
+
+| Annotation | Selector operation | Missing result |
+| --- | --- | --- |
+| `T` | `select_first()` | raises `MissingFieldError` |
+| `T \| None` | `select_first()` | `None` |
+| `list[T]` | `select()` | `[]` |
+
+Fields support these options:
+
+- `default=...` supplies the final scalar value when an element or attribute is missing.
+- `transform=...` applies a synchronous conversion to each extracted string. Declarative extraction does not implicitly coerce annotations.
+- `Text(..., strip=True)` strips surrounding whitespace before transformation.
+- `Attr(..., absolute=True)` resolves the attribute through `response.url_join()`.
+
+Plans are compiled from annotations once per `Item` class and then cached. A
+required-field or transform failure includes the item, field, selector, response
+URL, and root index. `after_extract()` is available for the irregular part of an
+otherwise declarative extraction:
+
+```python
+class Article(Item):
+    title: str = Text("h1")
+
+    async def after_extract(self, response: HTMLResponse) -> None:
+        self.title = self.title.strip()
+```
+
+`Item.extract()` intentionally does not replace `Spider`, callbacks, requests,
+middlewares, or pipelines. See `examples/declarative_quotes_spider.py` for a
+complete spider with pagination.
 
 `run_spider`/`crawl` knobs:
 - `concurrency`: number of concurrent HTTP requests; default 16; must be positive.
