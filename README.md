@@ -705,7 +705,6 @@ Silkworm is built on top of excellent open-source projects:
 - [servofetch](https://github.com/RustedBytes/servofetch-py) - Bindings to the Servo browser
 - [scraper-rs](https://github.com/RustedBytes/scraper-rs) - Fast HTML parsing library
 - [fast-h2m](https://github.com/RustedBytes/fast-h2m) - Fast HTML-to-Markdown conversion
-- Python's standard `logging` module - Structured logging
 - [rxml](https://github.com/nephi-dev/rxml) - XML parsing and writing
 
 We are grateful to the maintainers and contributors of these projects for their work.
