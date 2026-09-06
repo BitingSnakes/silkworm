@@ -14,15 +14,6 @@ if str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 
-def _mock_logger() -> Mock:
-    logger = Mock(name="logly_logger")
-    logger.configure.return_value = None
-    logger.bind.side_effect = lambda **_: logger
-    for method in ("debug", "info", "warning", "error", "complete"):
-        getattr(logger, method).return_value = None
-    return logger
-
-
 def _mock_response(
     *, status: int = 200, headers: Any = None, body: bytes | str = b""
 ) -> Mock:
@@ -159,9 +150,6 @@ def _dummy_write_string(
 
 
 # Minimal stub modules so tests don't need real dependencies.
-logly_module: Any = types.ModuleType("logly")
-logly_module.logger = _mock_logger()
-
 wreq_module: Any = types.ModuleType("wreq")
 wreq_module.Client = _build_client
 wreq_module.Emulation = _DummyEmulation
@@ -188,7 +176,6 @@ scraper_asyncio_module.prettify = AsyncMock(side_effect=lambda html, **_: html)
 
 sys.modules.update(
     {
-        "logly": logly_module,
         "wreq": wreq_module,
         "rxml": rxml_module,
         "scraper_rs": scraper_module,

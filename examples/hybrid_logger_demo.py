@@ -16,8 +16,6 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from logly import logger as logly_logger
-
 from silkworm import HTMLResponse, Response, Spider, run_spider
 from silkworm.logging import get_logger
 
@@ -39,9 +37,9 @@ def configure_hybrid_logger(
     log_path = Path(json_log_file)
     log_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Configure logly with one human-readable console sink and one structured
-    # JSON file sink.
-    logly_logger.configure(
+    # Configure the shared logger with one human-readable console handler and
+    # one structured JSON file handler.
+    get_logger().configure(
         handlers=[
             {
                 "sink": "stderr",

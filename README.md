@@ -18,7 +18,7 @@ Async-first web scraping framework built on [wreq](https://github.com/0x676e67/w
 - HTML-to-Markdown conversion via `fast-h2m`, including rich `full`, lean `minimal`, and streaming modes.
 - Middlewares: User-Agent rotation/default, proxy rotation, cookie jars with save/load, retry with exponential backoff + optional sleep codes, flexible delays (fixed/random/custom), robots.txt delay enforcement, `SkipNonHTMLMiddleware` to drop non-HTML callbacks, and `CloudflareCrawlMiddleware` for Browser Rendering crawl jobs.
 - Pipelines: JSON Lines, SQLite, XML (nested data preserved), and CSV (flattens dicts and lists) out of the box.
-- Structured logging via `logly` (`SILKWORM_LOG_LEVEL=DEBUG`), plus periodic/final crawl statistics (requests/sec, queue size, memory, seen URLs).
+- Structured logging via the standard library (`SILKWORM_LOG_LEVEL=DEBUG`), plus periodic/final crawl statistics (requests/sec, queue size, memory, seen URLs).
 
 ## Installation
 
@@ -585,7 +585,7 @@ run_spider(
 `OnionLinkClient` supports Silkworm `Request` headers, `params`, body/data, JSON payloads, redirects, HTML detection, and `request.meta["redirect_times"]`. Override OnionLink's response byte cap per request with `request.meta["onionlink_response_limit"]`.
 
 ## Logging and crawl statistics
-- Structured logs via `logly`; set `SILKWORM_LOG_LEVEL=DEBUG` for verbose request/response/middleware output.
+- Structured logs via the standard library; set `SILKWORM_LOG_LEVEL=DEBUG` for verbose request/response/middleware output.
 - Periodic statistics with `log_stats_interval`; final stats always include elapsed time, queue size, requests/sec, seen URLs, items scraped, errors, and memory MB.
 
 ## Limitations
@@ -705,7 +705,7 @@ Silkworm is built on top of excellent open-source projects:
 - [servofetch](https://github.com/RustedBytes/servofetch-py) - Bindings to the Servo browser
 - [scraper-rs](https://github.com/RustedBytes/scraper-rs) - Fast HTML parsing library
 - [fast-h2m](https://github.com/RustedBytes/fast-h2m) - Fast HTML-to-Markdown conversion
-- [logly](https://github.com/muhammad-fiaz/logly) - Structured logging
+- Python's standard `logging` module - Structured logging
 - [rxml](https://github.com/nephi-dev/rxml) - XML parsing and writing
 
 We are grateful to the maintainers and contributors of these projects for their work.

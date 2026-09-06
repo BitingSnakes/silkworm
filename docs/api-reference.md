@@ -25,7 +25,7 @@ This page lists the public API exports from [src/silkworm/__init__.py](../src/si
 - **`html_to_markdown(...)`**: Convert HTML to Markdown with `fast-h2m` in `full`, `minimal`, or `mdream` mode. [src/silkworm/markdown.py](../src/silkworm/markdown.py)
 - **`convert_html_to_markdown(...)`**: Return `fast-h2m`'s structured Markdown conversion result. [src/silkworm/markdown.py](../src/silkworm/markdown.py)
 - **`MarkdownStream`**, **`stream_html_to_markdown(...)`**, **`stream_html_to_markdown_async(...)`**: Streaming HTML-to-Markdown conversion helpers. [src/silkworm/markdown.py](../src/silkworm/markdown.py)
-- **`get_logger(...)`**: Configured logly logger. [src/silkworm/logging.py](../src/silkworm/logging.py)
+- **`get_logger(...)`**: Configured standard-library logger adapter. [src/silkworm/logging.py](../src/silkworm/logging.py)
 
 ## Public Client Adapters
 - **`OnionLinkClient`**: Optional client for Tor v3 `.onion` services (requires `onionlink` extra). [src/silkworm/onionlink.py](../src/silkworm/onionlink.py)

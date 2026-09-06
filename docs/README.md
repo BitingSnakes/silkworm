@@ -9,7 +9,7 @@
 - **Middlewares**: request/response hooks in [src/silkworm/middlewares.py](../src/silkworm/middlewares.py)
 - **Pipelines**: export formats and integrations in [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
 - **Runner helpers**: asyncio, rsloop, uvloop, winloop, trio entrypoints in [src/silkworm/runner.py](../src/silkworm/runner.py)
-- **Logging**: structured logs via logly in [src/silkworm/logging.py](../src/silkworm/logging.py)
+- **Logging**: structured logs via a standard-library adapter in [src/silkworm/logging.py](../src/silkworm/logging.py)
 - **Convenience API**: one-off HTML fetch helpers (`fetch_html`, `fetch_html_cdp`, `fetch_html_servo`) in [src/silkworm/api.py](../src/silkworm/api.py)
 - **CDP client (optional)**: browser-driven fetches in [src/silkworm/cdp.py](../src/silkworm/cdp.py)
 - **Servo client**: rendered fetches through external `servofetch` wheels in [src/silkworm/servo.py](../src/silkworm/servo.py)

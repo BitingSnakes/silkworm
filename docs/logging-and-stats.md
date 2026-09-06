@@ -1,9 +1,11 @@
 # Logging and Stats
 
-Silkworm uses **logly** for structured logging and emits crawl statistics from the engine.
+Silkworm uses Python's standard `logging` module through a structured compatibility
+adapter and emits crawl statistics from the engine.
 
 ## Logger Basics
-`get_logger` returns a shared, configured logly logger. See [src/silkworm/logging.py](../src/silkworm/logging.py).
+`get_logger` returns a shared, configured logger adapter. It supports bound context
+and structured keyword fields. See [src/silkworm/logging.py](../src/silkworm/logging.py).
 
 ```python
 from silkworm.logging import get_logger

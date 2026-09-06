@@ -19,14 +19,13 @@ if str(SRC) not in sys.path:
 
 # Remove the dummy modules installed by parent conftest
 # and replace them with real modules (including submodules)
-modules_to_reload = ["scraper_rs", "scraper_rs.asyncio", "logly", "wreq", "rxml"]
+modules_to_reload = ["scraper_rs", "scraper_rs.asyncio", "wreq", "rxml"]
 for module_name in modules_to_reload:
     sys.modules.pop(module_name, None)
 
 # Now import the real modules
 try:
     import scraper_rs  # type: ignore[import-untyped]  # noqa: F401
-    import logly  # type: ignore[import-untyped]  # noqa: F401
     import wreq  # type: ignore[import-untyped]  # noqa: F401
 except ImportError:
     pass  # It's okay if some aren't installed
