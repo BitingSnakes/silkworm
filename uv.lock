@@ -2209,14 +2209,12 @@ wheels = [
 
 [[package]]
 name = "silkworm-rs"
-version = "0.7.5"
+version = "0.7.6"
 source = { editable = "." }
 dependencies = [
     { name = "charset-normalizer" },
     { name = "fast-h2m" },
     { name = "logly" },
-    { name = "pyopenssl" },
-    { name = "requests" },
     { name = "rxml" },
     { name = "scraper-rust" },
     { name = "wreq" },
@@ -2344,9 +2342,7 @@ requires-dist = [
     { name = "openpyxl", marker = "extra == 'excel'", specifier = "==3.1.5" },
     { name = "ormsgpack", marker = "extra == 'msgpack'", specifier = "==1.12.2" },
     { name = "polars", marker = "extra == 'polars'", specifier = "==1.39.3" },
-    { name = "pyopenssl", specifier = ">=26.0.0" },
     { name = "pyyaml", marker = "extra == 'yaml'", specifier = "==6.0.3" },
-    { name = "requests", specifier = ">=2.33.0" },
     { name = "rsloop", marker = "extra == 'rsloop'", specifier = ">=0.1.42" },
     { name = "rxml", specifier = "==3.0.0" },
     { name = "scraper-rust", specifier = ">=0.7.0" },
