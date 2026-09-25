@@ -174,7 +174,7 @@ def elasticsearch_container():
     The container is automatically started and stopped.
 
     The Elasticsearch version can be specified using the ELASTICSEARCH_VERSION environment variable.
-    Defaults to "8.11.0" if not specified.
+    Defaults to "9.5.4" if not specified.
     """
     _require_testcontainers()
 
@@ -185,8 +185,10 @@ def elasticsearch_container():
     except ImportError:
         pytest.skip("elasticsearch testcontainer dependencies not installed")
 
-    version = os.getenv("ELASTICSEARCH_VERSION", "8.11.0")
-    container = ElasticSearchContainer(f"elasticsearch:{version}")
+    version = os.getenv("ELASTICSEARCH_VERSION", "9.5.4")
+    container = ElasticSearchContainer(
+        f"docker.elastic.co/elasticsearch/elasticsearch:{version}"
+    )
     container.start()
     try:
         yield container
