@@ -5,6 +5,7 @@ This conftest overrides the parent conftest's dummy modules
 to allow integration tests to use the real implementations.
 """
 
+import functools
 import os
 import platform
 import sys
@@ -47,6 +48,36 @@ else:
     TESTCONTAINERS_AVAILABLE = False
 
 
+@functools.cache
+def _docker_unavailable_reason() -> str | None:
+    """Return why the Docker daemon can't be reached, or None if it can."""
+    try:
+        import docker  # testcontainers dependency
+        from docker.errors import DockerException
+    except ImportError as exc:
+        return f"Docker SDK is not installed: {exc}"
+    try:
+        docker.from_env().ping()
+    except DockerException as exc:
+        return f"Docker daemon is not available: {exc}"
+    return None
+
+
+def _require_testcontainers() -> None:
+    """Skip the calling fixture unless testcontainers can start containers.
+
+    On CI (``CI`` is set) a missing Docker daemon fails instead of skipping, so
+    the database integration workflow cannot pass without running its tests.
+    """
+    if not TESTCONTAINERS_AVAILABLE:
+        pytest.skip("testcontainers not installed")
+    reason = _docker_unavailable_reason()
+    if reason is not None:
+        if os.getenv("CI"):
+            pytest.fail(reason)
+        pytest.skip(reason)
+
+
 @pytest.fixture(scope="session")
 def mysql_container():
     """
@@ -58,8 +89,7 @@ def mysql_container():
     The MySQL version can be specified using the MYSQL_VERSION environment variable.
     Defaults to "8.0" if not specified.
     """
-    if not TESTCONTAINERS_AVAILABLE:
-        pytest.skip("testcontainers not installed")
+    _require_testcontainers()
 
     try:
         from testcontainers.community.mysql import (
@@ -88,8 +118,7 @@ def postgres_container():
     The PostgreSQL version can be specified using the POSTGRES_VERSION environment variable.
     Defaults to "16" if not specified.
     """
-    if not TESTCONTAINERS_AVAILABLE:
-        pytest.skip("testcontainers not installed")
+    _require_testcontainers()
 
     try:
         from testcontainers.community.postgres import (
@@ -118,8 +147,7 @@ def mongodb_container():
     The MongoDB version can be specified using the MONGODB_VERSION environment variable.
     Defaults to "7" if not specified.
     """
-    if not TESTCONTAINERS_AVAILABLE:
-        pytest.skip("testcontainers not installed")
+    _require_testcontainers()
 
     try:
         from testcontainers.community.mongodb import (
@@ -148,8 +176,7 @@ def elasticsearch_container():
     The Elasticsearch version can be specified using the ELASTICSEARCH_VERSION environment variable.
     Defaults to "8.11.0" if not specified.
     """
-    if not TESTCONTAINERS_AVAILABLE:
-        pytest.skip("testcontainers not installed")
+    _require_testcontainers()
 
     try:
         from testcontainers.community.elasticsearch import (
@@ -178,8 +205,7 @@ def cassandra_container():
     The Cassandra version can be specified using the CASSANDRA_VERSION environment variable.
     Defaults to "4.1" if not specified.
     """
-    if not TESTCONTAINERS_AVAILABLE:
-        pytest.skip("testcontainers not installed")
+    _require_testcontainers()
 
     try:
         from testcontainers.community.cassandra import (
@@ -208,8 +234,7 @@ def couchdb_container():
     The CouchDB version can be specified using the COUCHDB_VERSION environment variable.
     Defaults to "3.3" if not specified.
     """
-    if not TESTCONTAINERS_AVAILABLE:
-        pytest.skip("testcontainers not installed")
+    _require_testcontainers()
 
     try:
         from testcontainers.couchdb import (  # pyright: ignore[reportMissingImports]
