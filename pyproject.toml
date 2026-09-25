@@ -10,7 +10,7 @@ authors = [
   { name = "Yehor Smoliakov", email = "egorsmkv@gmail.com" }
 ]
 readme = { file = "README.md", content-type = "text/markdown" }
-requires-python = ">=3.13,<3.15"
+requires-python = ">=3.13,<3.16"
 license = { file = "LICENSE" }
 keywords = [
   "web-scraping",
@@ -36,6 +36,7 @@ classifiers = [
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3.15",
   "Programming Language :: Python :: Implementation :: CPython",
   "Topic :: Internet",
   "Topic :: Internet :: WWW/HTTP",
@@ -75,7 +76,8 @@ trio = [
   "trio-asyncio==0.16.0",
 ]
 msgpack = [
-  "ormsgpack==1.12.2",
+  # No Python 3.15 wheels yet (PyO3 build fails); drop the marker once published.
+  "ormsgpack==1.12.2; python_version < '3.15'",
 ]
 polars = [
   "polars==1.44.2",
@@ -99,7 +101,8 @@ s3 = [
   "opendal==0.47.10",
 ]
 vortex = [
-  "vortex-data==0.86.1",
+  # Its pyarrow dependency has no Python 3.15 wheels yet.
+  "vortex-data==0.86.1; python_version < '3.15'",
 ]
 mysql = [
   "aiomysql==0.3.2",
@@ -139,7 +142,8 @@ cdp = [
   "websockets==17.1",
 ]
 onionlink = [
-  "onionlink==0.1.2",
+  # No Python 3.15 wheels or sdist yet.
+  "onionlink==0.1.2; python_version < '3.15'",
 ]
 
 [project.urls]

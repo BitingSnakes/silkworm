@@ -297,9 +297,10 @@ try:
     # The two libraries are compatible for reading/writing MessagePack data.
     import msgpack  # type: ignore[import-not-found, import-untyped]  # For reading back the data
 
-    from silkworm.pipelines import MsgPackPipeline
+    from silkworm.pipelines import ORMSGPACK_AVAILABLE, MsgPackPipeline
 
-    MSGPACK_AVAILABLE = True
+    # MsgPackPipeline itself always imports; writing needs ormsgpack.
+    MSGPACK_AVAILABLE = ORMSGPACK_AVAILABLE
 except ImportError:
     MSGPACK_AVAILABLE = False
 

@@ -13,7 +13,7 @@
 - **Structured logging + crawl stats** via logly (`SILKWORM_LOG_LEVEL`, periodic + final summaries)
 
 ### Target Python Versions
-- **Python 3.13+** (primary target; `pyproject.toml` requires `>=3.13,<3.15`)
+- **Python 3.13+** (primary target; `pyproject.toml` requires `>=3.13,<3.16`, CI tests 3.13, 3.14 and 3.15)
 - **Python 3.14** experimental support (including free-threaded build via `justfile-3.14t`)
 
 ## Python 3.13/3.14 Language Features and Best Practices

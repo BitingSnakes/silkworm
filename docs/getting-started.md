@@ -1,7 +1,7 @@
 # Getting Started
 
 ## Requirements
-- **Python**: 3.13+ (3.14 is supported experimentally).
+- **Python**: 3.13, 3.14 or 3.15. On Python 3.15 the `msgpack`, `vortex` and `onionlink` extras install without their backing library until it ships 3.15 wheels, so those pipelines/clients are unavailable there for now; `cassandra` is limited to Python 3.13.
 - **Project metadata**: [pyproject.toml](../pyproject.toml)
 
 ## Installation
