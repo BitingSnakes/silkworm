@@ -284,13 +284,24 @@ FTPPipeline(host="ftp.example.com", user="user", password="pass")
 
 ### SFTPPipeline
 - **Purpose**: Upload JSON Lines to SFTP (buffered).
-- **Options**: `host`, `user`, `password` or `private_key`, `remote_path`, `port`.
+- **Options**: `host`, `user`, `password` or `private_key`, `remote_path`, `port`, `known_hosts`, `verify_host_key`.
+- **Host key verification**: on by default. The server's host key is checked against `~/.ssh/known_hosts`; pass `known_hosts="path/to/known_hosts"` to use another file. `verify_host_key=False` skips the check. Use it only on trusted networks, since it allows man-in-the-middle attacks. It can't be combined with `known_hosts`.
 - **Extras**: `sftp`.
 - **Code**: [src/silkworm/_pipelines/sftp_pipeline.py](../src/silkworm/_pipelines/sftp_pipeline.py)
 
 ```python
 SFTPPipeline(host="sftp.example.com", user="user", password="pass")
+
+# Verify against a specific known_hosts file
+SFTPPipeline(
+    host="sftp.example.com",
+    user="user",
+    private_key="~/.ssh/id_ed25519",
+    known_hosts="deploy/known_hosts",
+)
 ```
+
+> **Behaviour change:** earlier versions never verified the SFTP server's host key. Uploads to a server that isn't in your `known_hosts` file now fail until you add its key (for example with `ssh-keyscan sftp.example.com >> ~/.ssh/known_hosts`), point `known_hosts` at a file that has it, or opt out with `verify_host_key=False`.
 
 ### CassandraPipeline
 - **Purpose**: Insert items into Cassandra.

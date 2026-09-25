@@ -5,7 +5,7 @@ import sys
 import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Self, cast
 
 import anyio
 import pytest
@@ -1462,6 +1462,130 @@ def test_sftp_pipeline_requires_password_or_key():
             host="sftp.example.com",
             user="username",
             remote_path="data/items.jl",
+        )
+
+
+class _FakeSFTPFile:
+    def __init__(self, uploads: dict[str, bytes], path: str) -> None:
+        self._uploads = uploads
+        self._path = path
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(self, *exc_info: object) -> None:
+        return None
+
+    async def write(self, data: bytes) -> None:
+        self._uploads[self._path] = data
+
+
+class _FakeSFTPClient:
+    def __init__(self, uploads: dict[str, bytes]) -> None:
+        self._uploads = uploads
+
+    def open(self, path: str, mode: str) -> _FakeSFTPFile:
+        return _FakeSFTPFile(self._uploads, path)
+
+    def exit(self) -> None:
+        return None
+
+
+class _FakeSSHConnection:
+    def __init__(self, uploads: dict[str, bytes]) -> None:
+        self._uploads = uploads
+
+    async def start_sftp_client(self) -> _FakeSFTPClient:
+        return _FakeSFTPClient(self._uploads)
+
+    def close(self) -> None:
+        return None
+
+    async def wait_closed(self) -> None:
+        return None
+
+
+async def _upload_with_fake_asyncssh(
+    monkeypatch: pytest.MonkeyPatch, pipeline: Any
+) -> tuple[dict[str, Any], dict[str, bytes]]:
+    """Run the pipeline against a fake asyncssh.connect; return its kwargs and uploads."""
+    from silkworm._pipelines import sftp_pipeline
+
+    captured: dict[str, Any] = {}
+    uploads: dict[str, bytes] = {}
+
+    async def fake_connect(**kwargs: Any) -> _FakeSSHConnection:
+        captured.update(kwargs)
+        return _FakeSSHConnection(uploads)
+
+    monkeypatch.setattr(sftp_pipeline.asyncssh, "connect", fake_connect)
+    spider = Spider()
+    await pipeline.open(spider)
+    await pipeline.process_item({"text": "Hello"}, spider)
+    await pipeline.close(spider)
+    return captured, uploads
+
+
+@pytest.mark.skipif(not ASYNCSSH_AVAILABLE, reason="asyncssh not installed")
+async def test_sftp_pipeline_verifies_host_key_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    pipeline = SFTPPipeline(  # type: ignore
+        host="sftp.example.com", user="username", password="password"
+    )
+
+    captured, uploads = await _upload_with_fake_asyncssh(monkeypatch, pipeline)
+
+    # Not passing known_hosts lets asyncssh verify against ~/.ssh/known_hosts;
+    # known_hosts=None would disable verification.
+    assert "known_hosts" not in captured
+    assert captured["host"] == "sftp.example.com"
+    assert uploads == {"items.jl": b'{"text": "Hello"}\n'}
+
+
+@pytest.mark.skipif(not ASYNCSSH_AVAILABLE, reason="asyncssh not installed")
+async def test_sftp_pipeline_forwards_known_hosts_path(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    known_hosts = tmp_path / "known_hosts"
+    pipeline = SFTPPipeline(  # type: ignore
+        host="sftp.example.com",
+        user="username",
+        password="password",
+        known_hosts=known_hosts,
+    )
+
+    captured, _ = await _upload_with_fake_asyncssh(monkeypatch, pipeline)
+
+    assert captured["known_hosts"] == str(known_hosts)
+
+
+@pytest.mark.skipif(not ASYNCSSH_AVAILABLE, reason="asyncssh not installed")
+async def test_sftp_pipeline_can_disable_host_key_verification(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    pipeline = SFTPPipeline(  # type: ignore
+        host="sftp.example.com",
+        user="username",
+        password="password",
+        verify_host_key=False,
+    )
+
+    captured, _ = await _upload_with_fake_asyncssh(monkeypatch, pipeline)
+
+    assert "known_hosts" in captured
+    assert captured["known_hosts"] is None
+
+
+@pytest.mark.skipif(not ASYNCSSH_AVAILABLE, reason="asyncssh not installed")
+def test_sftp_pipeline_rejects_known_hosts_without_verification():
+    with pytest.raises(ValueError, match="known_hosts cannot be used"):
+        SFTPPipeline(  # type: ignore
+            host="sftp.example.com",
+            user="username",
+            password="password",
+            known_hosts="/etc/ssh/known_hosts",
+            verify_host_key=False,
         )
 
 

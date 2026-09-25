@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 from typing import TYPE_CHECKING, Any
 
 try:
@@ -32,6 +33,10 @@ class SFTPPipeline:
             password="password",
             remote_path="data/items.jl",
         )
+
+    The server's host key is verified against ``~/.ssh/known_hosts`` by default.
+    Pass ``known_hosts`` to use another file, or ``verify_host_key=False`` to
+    skip verification (not recommended: it allows man-in-the-middle attacks).
     """
 
     def __init__(
@@ -43,6 +48,8 @@ class SFTPPipeline:
         *,
         port: int = 22,
         private_key: str | None = None,
+        known_hosts: str | os.PathLike[str] | None = None,
+        verify_host_key: bool = True,
     ) -> None:
         """
         Initialize SFTPPipeline.
@@ -54,6 +61,12 @@ class SFTPPipeline:
             remote_path: Remote file path (default: "items.jl")
             port: SFTP port (default: 22)
             private_key: Path to private key file for key-based authentication (optional)
+            known_hosts: Path to an OpenSSH known_hosts file used to verify the
+                server's host key. ``None`` (default) uses asyncssh's default,
+                the user's ``~/.ssh/known_hosts``.
+            verify_host_key: Verify the server's host key (default: True). Set to
+                False only for trusted networks; it disables protection against
+                man-in-the-middle attacks. Cannot be combined with ``known_hosts``.
         """
         if not ASYNCSSH_AVAILABLE:
             raise ImportError(
@@ -62,6 +75,8 @@ class SFTPPipeline:
 
         if password is None and private_key is None:
             raise ValueError("Either password or private_key must be provided")
+        if not verify_host_key and known_hosts is not None:
+            raise ValueError("known_hosts cannot be used with verify_host_key=False")
 
         self.host = host
         self.user = user
@@ -69,6 +84,8 @@ class SFTPPipeline:
         self.remote_path = remote_path
         self.port = port
         self.private_key = private_key
+        self.known_hosts: str | os.PathLike[str] | None = known_hosts
+        self.verify_host_key: bool = verify_host_key
         self._items: list[str] = []
         self._conn: Any = None
         self._sftp: Any = None
@@ -93,8 +110,18 @@ class SFTPPipeline:
                     "host": self.host,
                     "port": self.port,
                     "username": self.user,
-                    "known_hosts": None,  # Disable host key verification for simplicity
                 }
+                if not self.verify_host_key:
+                    # asyncssh treats known_hosts=None as "skip host key checks".
+                    self.logger.warning(
+                        "SFTP host key verification is disabled",
+                        host=self.host,
+                        port=self.port,
+                    )
+                    connect_kwargs["known_hosts"] = None
+                elif self.known_hosts is not None:
+                    connect_kwargs["known_hosts"] = os.fspath(self.known_hosts)
+                # Otherwise asyncssh verifies against ~/.ssh/known_hosts.
                 if self.password:
                     connect_kwargs["password"] = self.password
                 if self.private_key:
