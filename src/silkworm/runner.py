@@ -13,6 +13,7 @@ spider takes arguments, so they are type-checked against its ``__init__``.
 from __future__ import annotations
 
 import asyncio
+import sys
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Unpack
 
@@ -162,9 +163,25 @@ def run_spider_trio(
     try:
         import trio_asyncio  # type: ignore[import]
     except ImportError as err:
+        if sys.version_info >= (3, 15):
+            # The trio extra skips trio-asyncio here; see pyproject.toml.
+            msg = (
+                "trio support is not available on Python 3.15 yet: trio-asyncio "
+                "has no compatible release."
+            )
+        else:
+            msg = (
+                "trio-asyncio is required for trio support. "
+                "Install it with: pip install silkworm-rs[trio]"
+            )
+        raise ImportError(msg) from err
+    except AttributeError as err:
+        # trio-asyncio <= 0.16 subclasses asyncio policy classes that Python 3.15
+        # removed, so importing it fails with AttributeError.
+        version = f"{sys.version_info.major}.{sys.version_info.minor}"
         msg = (
-            "trio-asyncio is required for trio support. "
-            "Install it with: pip install silkworm-rs[trio]"
+            f"The installed trio-asyncio does not support Python {version}; "
+            "trio support needs a trio-asyncio release compatible with it."
         )
         raise ImportError(msg) from err
 

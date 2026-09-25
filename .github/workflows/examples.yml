@@ -8,6 +8,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
+      matrix:
+        python-version: ["3.13", "3.14", "3.15"]
 
     steps:
       - uses: actions/checkout@v7
@@ -16,10 +18,10 @@ jobs:
         uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
-          python-version: "3.13"
+          python-version: ${{ matrix.python-version }}
 
       - name: Init venv
-        run: uv venv --python 3.13
+        run: uv venv --python ${{ matrix.python-version }}
 
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libev-dev
@@ -66,7 +68,12 @@ jobs:
           run_example "export_formats_demo" python examples/export_formats_demo.py --pages 1
           run_example "quotes_spider" python examples/quotes_spider.py
           run_example "quotes_spider_xpath" python examples/quotes_spider_xpath.py
-          run_example "quotes_spider_trio" python examples/quotes_spider_trio.py
+          if [ "${{ matrix.python-version }}" = "3.15" ]; then
+            # trio-asyncio has no Python 3.15 compatible release yet.
+            echo "Skipping quotes_spider_trio on Python 3.15"
+          else
+            run_example "quotes_spider_trio" python examples/quotes_spider_trio.py
+          fi
           run_example "hackernews_spider" python examples/hackernews_spider.py --pages 1
           run_example "lobsters_spider" python examples/lobsters_spider.py --pages 1
           run_example "sitemap_spider" python examples/sitemap_spider.py --sitemap-url https://azure.microsoft.com/en-us/blog/post-sitemap.xml --pages 1 --concurrency 4
@@ -80,6 +87,12 @@ jobs:
 
   examples-windows:
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13", "3.14", "3.15"]
+    # winloop has no Python 3.15 wheels yet and is built from source there.
+    continue-on-error: ${{ matrix.python-version == '3.15' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -87,10 +100,10 @@ jobs:
         uses: astral-sh/setup-uv@v10.0.1
         with:
           enable-cache: true
-          python-version: "3.13"
+          python-version: ${{ matrix.python-version }}
 
       - name: Init venv
-        run: uv venv --python 3.13
+        run: uv venv --python ${{ matrix.python-version }}
 
       - name: Install dependencies
         shell: bash

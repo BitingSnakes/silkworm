@@ -6,6 +6,8 @@ on:
 jobs:
   tests:
     runs-on: ${{ matrix.os }}
+    # winloop has no Python 3.15 wheels yet and is built from source on Windows.
+    continue-on-error: ${{ matrix.os == 'windows-latest' && matrix.python-version == '3.15' }}
     strategy:
       fail-fast: false
       matrix:

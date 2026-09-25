@@ -2377,7 +2377,7 @@ taskiq = [
 ]
 trio = [
     { name = "trio" },
-    { name = "trio-asyncio" },
+    { name = "trio-asyncio", marker = "python_full_version < '3.15'" },
 ]
 uvloop = [
     { name = "uvloop" },
@@ -2435,7 +2435,7 @@ requires-dist = [
     { name = "snowflake-connector-python", marker = "extra == 'snowflake'", specifier = "==4.7.5" },
     { name = "taskiq", marker = "extra == 'taskiq'", specifier = "==0.12.6" },
     { name = "trio", marker = "extra == 'trio'", specifier = "==0.34.0" },
-    { name = "trio-asyncio", marker = "extra == 'trio'", specifier = "==0.16.0" },
+    { name = "trio-asyncio", marker = "python_full_version < '3.15' and extra == 'trio'", specifier = "==0.16.0" },
     { name = "uvloop", marker = "extra == 'uvloop'", specifier = "==0.22.1" },
     { name = "vortex-data", marker = "python_full_version < '3.15' and extra == 'vortex'", specifier = "==0.86.1" },
     { name = "websockets", marker = "extra == 'cdp'", specifier = "==17.1" },

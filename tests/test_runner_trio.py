@@ -1,5 +1,6 @@
 """Tests for trio runner functionality."""
 
+import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -39,6 +40,12 @@ def test_run_spider_trio_raises_when_trio_not_installed():
 def test_run_spider_trio_raises_when_trio_asyncio_not_installed():
     """Test that ImportError is raised when trio-asyncio is not installed."""
     mock_trio = MagicMock()
+    # The trio extra skips trio-asyncio on Python 3.15, so the hint differs.
+    expected = (
+        "not available on Python 3.15"
+        if sys.version_info >= (3, 15)
+        else "trio-asyncio is required"
+    )
 
     import builtins
 
@@ -53,7 +60,31 @@ def test_run_spider_trio_raises_when_trio_asyncio_not_installed():
 
     with (
         patch("builtins.__import__", side_effect=mock_import),
-        pytest.raises(ImportError, match="trio-asyncio is required"),
+        pytest.raises(ImportError, match=expected),
+    ):
+        run_spider_trio(SimpleSpider, concurrency=1)
+
+
+def test_run_spider_trio_explains_incompatible_trio_asyncio():
+    """An incompatible trio-asyncio fails on import with AttributeError."""
+    mock_trio = MagicMock()
+
+    import builtins
+
+    original_import = builtins.__import__
+
+    def mock_import(name, *args, **kwargs):
+        if name == "trio":
+            return mock_trio
+        if name == "trio_asyncio":
+            raise AttributeError(
+                "module 'asyncio.events' has no attribute 'BaseDefaultEventLoopPolicy'"
+            )
+        return original_import(name, *args, **kwargs)
+
+    with (
+        patch("builtins.__import__", side_effect=mock_import),
+        pytest.raises(ImportError, match="does not support Python"),
     ):
         run_spider_trio(SimpleSpider, concurrency=1)
 
