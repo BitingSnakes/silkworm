@@ -8,9 +8,12 @@ This page lists the public API exports from [src/silkworm/__init__.py](../src/si
 - **`HTMLResponse`**: Response with async selectors. [src/silkworm/response.py](../src/silkworm/response.py)
 - **`Spider`**: Base spider class. [src/silkworm/spiders.py](../src/silkworm/spiders.py)
 - **`Engine`**: Crawl orchestrator. [src/silkworm/engine.py](../src/silkworm/engine.py)
+- **`EngineOptions`**: Typed dict of `Engine` keyword options, accepted by every runner. [src/silkworm/engine.py](../src/silkworm/engine.py)
 - **`EngineLogger`**: Logging controls for URL, status, middleware, and pipeline event visibility. [src/silkworm/engine.py](../src/silkworm/engine.py)
 
 ## Runner Helpers
+All runners take a spider (a class, or an instance when it has constructor arguments) plus keyword engine options described by **`EngineOptions`**. See [Runners](runners.md).
+
 - **`crawl(...)`**: Async entrypoint that runs a spider. [src/silkworm/runner.py](../src/silkworm/runner.py)
 - **`run_spider(...)`**: Sync wrapper around `crawl`. [src/silkworm/runner.py](../src/silkworm/runner.py)
 - **`run_spider_rsloop(...)`**: `run_spider` with rsloop. [src/silkworm/runner.py](../src/silkworm/runner.py)
@@ -40,7 +43,7 @@ This page lists the public API exports from [src/silkworm/__init__.py](../src/si
 - **`CDPClient`**: CDP client for browser-driven fetches. Always importable; constructing it requires the `cdp` extra (`websockets`). [src/silkworm/cdp.py](../src/silkworm/cdp.py)
 
 ## Types (`silkworm.types`)
-Public type aliases and protocols for annotating your own code: `JSONValue`, `JSONLike`, `JSONScalar`, `Headers`, `QueryParams`, `QueryValue`, `MetaData`, `BodyData`, `Callback`, `CallbackOutput`, `CallbackResult`, `Errback`, `DedupKey`, `Logger`, `LogLevel`, `ItemPipeline`, `RequestMiddleware`, `ResponseMiddleware`, `ExceptionMiddleware`. [src/silkworm/types.py](../src/silkworm/types.py)
+Public type aliases and protocols for annotating your own code: `JSONValue`, `JSONLike`, `JSONScalar`, `Headers`, `QueryParams`, `QueryValue`, `MetaData`, `BodyData`, `Callback`, `CallbackOutput`, `CallbackResult`, `Errback`, `DedupKey`, `EngineOptions`, `LoopFactory`, `Logger`, `LogLevel`, `ItemPipeline`, `RequestMiddleware`, `ResponseMiddleware`, `ExceptionMiddleware`. [src/silkworm/types.py](../src/silkworm/types.py)
 
 ## Exceptions
 - **`SilkwormError`**: Base exception. [src/silkworm/exceptions.py](../src/silkworm/exceptions.py)

@@ -137,12 +137,11 @@ if __name__ == "__main__":
         print("  - data/quotes_demo.msgpack (MsgPack)")
 
     run_spider(
-        ExportFormatsSpider,
+        ExportFormatsSpider(max_pages=args.pages),
         request_middlewares=request_mw,
         response_middlewares=response_mw,
         item_pipelines=pipelines,
         request_timeout=10,
-        max_pages=args.pages,
     )
 
     print("\nDone! Check the data/ directory for output files.")

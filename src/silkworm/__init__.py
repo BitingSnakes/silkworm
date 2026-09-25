@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from .api import fetch_html, fetch_html_cdp, fetch_html_servo
 from .cdp import CDPClient
-from .engine import DedupKey, Engine, EngineLogger, default_dedup_key
+from .engine import DedupKey, Engine, EngineLogger, EngineOptions, default_dedup_key
 from .exceptions import (
     HttpError,
     MarkdownConversionError,
@@ -43,6 +43,7 @@ __all__ = [
     "DedupKey",
     "Engine",
     "EngineLogger",
+    "EngineOptions",
     "HTMLResponse",
     "HttpError",
     "MarkdownConversionError",

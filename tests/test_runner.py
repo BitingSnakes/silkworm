@@ -130,3 +130,69 @@ def test_run_spider_with_uvloop_not_installed():
             pytest.raises(ImportError, match="uvloop is not installed"),
         ):
             run_spider_uvloop(SimpleSpider, concurrency=1)
+
+
+class ArgSpider(Spider):
+    """A spider whose constructor takes its own argument."""
+
+    name = "args"
+
+    def __init__(self, *, pages: int, **kwargs):
+        super().__init__(**kwargs)
+        self.pages = pages
+
+    async def parse(self, response):
+        yield {}
+
+
+def _record_engines(monkeypatch: pytest.MonkeyPatch) -> list[tuple[Spider, dict]]:
+    created: list[tuple[Spider, dict]] = []
+
+    class FakeEngine:
+        def __init__(self, spider: Spider, **options) -> None:
+            created.append((spider, options))
+
+        async def run(self) -> None:
+            return None
+
+    monkeypatch.setattr("silkworm.runner.Engine", FakeEngine)
+    return created
+
+
+def test_run_spider_uses_spider_instance_and_forwards_options(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    created = _record_engines(monkeypatch)
+    spider = ArgSpider(pages=3)
+
+    run_spider(spider, concurrency=4, request_timeout=5, emulation=None)
+
+    assert len(created) == 1
+    used_spider, options = created[0]
+    assert used_spider is spider
+    assert spider.pages == 3
+    assert options == {"concurrency": 4, "request_timeout": 5, "emulation": None}
+
+
+def test_run_spider_instantiates_spider_class(monkeypatch: pytest.MonkeyPatch):
+    created = _record_engines(monkeypatch)
+
+    run_spider(SimpleSpider)
+
+    used_spider, options = created[0]
+    assert isinstance(used_spider, SimpleSpider)
+    assert options == {}
+
+
+def test_engine_options_match_engine_keyword_parameters():
+    import inspect
+
+    from silkworm.engine import Engine, EngineOptions
+
+    parameters = inspect.signature(Engine.__init__).parameters
+    keyword_only = {
+        name
+        for name, parameter in parameters.items()
+        if parameter.kind is inspect.Parameter.KEYWORD_ONLY
+    }
+    assert set(EngineOptions.__annotations__) == keyword_only

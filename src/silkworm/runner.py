@@ -1,20 +1,30 @@
+"""Entry points that run a spider to completion.
+
+Every runner takes a spider and the same keyword options (see
+:class:`~silkworm.engine.EngineOptions`); they differ only in the event loop::
+
+    run_spider(QuotesSpider, concurrency=32, request_timeout=10)
+    run_spider_uvloop(SitemapSpider(sitemap_url=url, max_pages=5), keep_alive=True)
+
+Pass a spider class to use its no-argument constructor, or an instance when the
+spider takes arguments, so they are type-checked against its ``__init__``.
+"""
+
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable, Iterable
-from datetime import timedelta
-from typing import TYPE_CHECKING, Any
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Unpack
+
+from .engine import Engine, EngineOptions
 
 if TYPE_CHECKING:
-    from .http import HttpClient
-    from .middlewares import RequestMiddleware, ResponseMiddleware
-    from .pipelines import ItemPipeline
     from .spiders import Spider
 
-from .engine import DedupKey, Engine, EngineLogger
+type LoopFactory = Callable[[], asyncio.AbstractEventLoop]
 
 
-def _install_uvloop() -> Callable[[], asyncio.AbstractEventLoop]:
+def _install_uvloop() -> LoopFactory:
     """Return a uvloop event loop factory if available."""
     try:
         import uvloop  # type: ignore[import]
@@ -28,7 +38,7 @@ def _install_uvloop() -> Callable[[], asyncio.AbstractEventLoop]:
         raise ImportError(msg) from err
 
 
-def _install_rsloop() -> Callable[[], asyncio.AbstractEventLoop]:
+def _install_rsloop() -> LoopFactory:
     """Return an rsloop event loop factory if available."""
     try:
         import rsloop  # type: ignore[import]
@@ -41,7 +51,7 @@ def _install_rsloop() -> Callable[[], asyncio.AbstractEventLoop]:
         raise ImportError(msg) from err
 
 
-def _install_winloop() -> Callable[[], asyncio.AbstractEventLoop]:
+def _install_winloop() -> LoopFactory:
     """Return a winloop event loop factory if available."""
     try:
         import winloop  # type: ignore[import]
@@ -49,157 +59,40 @@ def _install_winloop() -> Callable[[], asyncio.AbstractEventLoop]:
         policy = winloop.EventLoopPolicy()
         return policy.new_event_loop
     except ImportError as err:
-        msg = "winloop is not installed. Install it with: pip install silkworm-rs[winloop]"
+        msg = (
+            "winloop is not installed. "
+            "Install it with: pip install silkworm-rs[winloop]"
+        )
         raise ImportError(msg) from err
 
 
-def run_spider_trio(
-    spider_cls: type[Spider],
-    *,
-    concurrency: int = 16,
-    request_middlewares: Iterable[RequestMiddleware] | None = None,
-    response_middlewares: Iterable[ResponseMiddleware] | None = None,
-    item_pipelines: Iterable[ItemPipeline] | None = None,
-    request_timeout: float | timedelta | None = None,
-    log_stats_interval: float | None = None,
-    max_pending_requests: int | None = None,
-    html_max_size_bytes: int = 5_000_000,
-    keep_alive: bool = False,
-    http_client: HttpClient | None = None,
-    engine_logger: EngineLogger | None = None,
-    dedup_key: DedupKey | None = None,
-    **spider_kwargs: Any,
-) -> None:
-    """
-    Run a spider using trio as the async backend.
-
-    This is similar to run_spider but uses trio.run() instead of asyncio.run().
-    Trio must be installed separately: pip install silkworm-rs[trio]
-
-    Args:
-        spider_cls: Spider class to instantiate and run
-        concurrency: Number of concurrent HTTP requests (default: 16)
-        request_middlewares: Optional request middlewares
-        response_middlewares: Optional response middlewares
-        item_pipelines: Optional item pipelines
-        request_timeout: Per-request timeout in seconds
-        log_stats_interval: Interval for logging statistics
-        max_pending_requests: Maximum pending requests in queue
-        html_max_size_bytes: Maximum HTML size to parse
-        keep_alive: Enable HTTP keep-alive when supported by the HTTP client
-        **spider_kwargs: Additional kwargs passed to spider constructor
-
-    Raises:
-        ImportError: If trio or trio-asyncio is not installed
-    """
-    try:
-        import trio  # type: ignore[import]
-    except ImportError as err:
-        msg = "trio is not installed. Install it with: pip install silkworm-rs[trio]"
-        raise ImportError(msg) from err
-
-    # Trio uses its own async primitives, but the engine uses asyncio primitives
-    # We use trio-asyncio to run asyncio code within trio
-    try:
-        import trio_asyncio  # type: ignore[import]
-    except ImportError as err:
-        msg = "trio-asyncio is required for trio support. Install it with: pip install silkworm-rs[trio]"
-        raise ImportError(msg) from err
-
-    async def run_with_trio_asyncio():
-        async with trio_asyncio.open_loop():
-            # Run the asyncio-based crawl coroutine within Trio's event loop.
-            # This ensures asyncio TaskGroups have a parent task.
-            await trio_asyncio.aio_as_trio(crawl)(
-                spider_cls,
-                concurrency=concurrency,
-                request_middlewares=request_middlewares,
-                response_middlewares=response_middlewares,
-                item_pipelines=item_pipelines,
-                request_timeout=request_timeout,
-                log_stats_interval=log_stats_interval,
-                max_pending_requests=max_pending_requests,
-                html_max_size_bytes=html_max_size_bytes,
-                keep_alive=keep_alive,
-                http_client=http_client,
-                engine_logger=engine_logger,
-                dedup_key=dedup_key,
-                **spider_kwargs,
-            )
-
-    trio.run(run_with_trio_asyncio)
+def _as_spider(spider: Spider | type[Spider]) -> Spider:
+    return spider() if isinstance(spider, type) else spider
 
 
 async def crawl(
-    spider_cls: type[Spider],
-    *,
-    concurrency: int = 16,
-    request_middlewares: Iterable[RequestMiddleware] | None = None,
-    response_middlewares: Iterable[ResponseMiddleware] | None = None,
-    item_pipelines: Iterable[ItemPipeline] | None = None,
-    request_timeout: float | timedelta | None = None,
-    log_stats_interval: float | None = None,
-    max_pending_requests: int | None = None,
-    html_max_size_bytes: int = 5_000_000,
-    keep_alive: bool = False,
-    http_client: HttpClient | None = None,
-    engine_logger: EngineLogger | None = None,
-    dedup_key: DedupKey | None = None,
-    **spider_kwargs: Any,
+    spider: Spider | type[Spider],
+    **options: Unpack[EngineOptions],
 ) -> None:
-    spider = spider_cls(**spider_kwargs)
-    engine = Engine(
-        spider,
-        concurrency=concurrency,
-        request_middlewares=request_middlewares,
-        response_middlewares=response_middlewares,
-        item_pipelines=item_pipelines,
-        request_timeout=request_timeout,
-        log_stats_interval=log_stats_interval,
-        max_pending_requests=max_pending_requests,
-        html_max_size_bytes=html_max_size_bytes,
-        keep_alive=keep_alive,
-        http_client=http_client,
-        engine_logger=engine_logger,
-        dedup_key=dedup_key,
-    )
-    await engine.run()
+    """Run ``spider`` to completion on the current event loop."""
+    await Engine(_as_spider(spider), **options).run()
 
 
 def run_spider(
-    spider_cls: type[Spider],
+    spider: Spider | type[Spider],
     *,
-    concurrency: int = 16,
-    request_middlewares: Iterable[RequestMiddleware] | None = None,
-    response_middlewares: Iterable[ResponseMiddleware] | None = None,
-    item_pipelines: Iterable[ItemPipeline] | None = None,
-    request_timeout: float | timedelta | None = None,
-    log_stats_interval: float | None = None,
-    max_pending_requests: int | None = None,
-    html_max_size_bytes: int = 5_000_000,
-    keep_alive: bool = False,
-    loop_factory: Callable[[], asyncio.AbstractEventLoop] | None = None,
-    http_client: HttpClient | None = None,
-    engine_logger: EngineLogger | None = None,
-    dedup_key: DedupKey | None = None,
-    **spider_kwargs: Any,
+    loop_factory: LoopFactory | None = None,
+    **options: Unpack[EngineOptions],
 ) -> None:
-    coroutine = crawl(
-        spider_cls,
-        concurrency=concurrency,
-        request_middlewares=request_middlewares,
-        response_middlewares=response_middlewares,
-        item_pipelines=item_pipelines,
-        request_timeout=request_timeout,
-        log_stats_interval=log_stats_interval,
-        max_pending_requests=max_pending_requests,
-        html_max_size_bytes=html_max_size_bytes,
-        keep_alive=keep_alive,
-        http_client=http_client,
-        engine_logger=engine_logger,
-        dedup_key=dedup_key,
-        **spider_kwargs,
-    )
+    """
+    Run ``spider`` with ``asyncio``, blocking until the crawl finishes.
+
+    Args:
+        spider: Spider instance, or a spider class to instantiate without arguments.
+        loop_factory: Optional event loop factory, e.g. from uvloop.
+        **options: Engine options; see :class:`~silkworm.engine.EngineOptions`.
+    """
+    coroutine = crawl(spider, **options)
     if loop_factory is None:
         asyncio.run(coroutine)
         return
@@ -209,157 +102,87 @@ def run_spider(
 
 
 def run_spider_uvloop(
-    spider_cls: type[Spider],
-    *,
-    concurrency: int = 16,
-    request_middlewares: Iterable[RequestMiddleware] | None = None,
-    response_middlewares: Iterable[ResponseMiddleware] | None = None,
-    item_pipelines: Iterable[ItemPipeline] | None = None,
-    request_timeout: float | timedelta | None = None,
-    log_stats_interval: float | None = None,
-    max_pending_requests: int | None = None,
-    html_max_size_bytes: int = 5_000_000,
-    keep_alive: bool = False,
-    http_client: HttpClient | None = None,
-    engine_logger: EngineLogger | None = None,
-    dedup_key: DedupKey | None = None,
-    **spider_kwargs: Any,
+    spider: Spider | type[Spider],
+    **options: Unpack[EngineOptions],
 ) -> None:
-    loop_factory = _install_uvloop()
-    run_spider(
-        spider_cls,
-        concurrency=concurrency,
-        request_middlewares=request_middlewares,
-        response_middlewares=response_middlewares,
-        item_pipelines=item_pipelines,
-        request_timeout=request_timeout,
-        log_stats_interval=log_stats_interval,
-        max_pending_requests=max_pending_requests,
-        html_max_size_bytes=html_max_size_bytes,
-        keep_alive=keep_alive,
-        http_client=http_client,
-        engine_logger=engine_logger,
-        dedup_key=dedup_key,
-        loop_factory=loop_factory,
-        **spider_kwargs,
-    )
+    """
+    Run ``spider`` on a uvloop event loop (``pip install silkworm-rs[uvloop]``).
+
+    Raises:
+        ImportError: If uvloop is not installed.
+    """
+    run_spider(spider, loop_factory=_install_uvloop(), **options)
 
 
 def run_spider_winloop(
-    spider_cls: type[Spider],
-    *,
-    concurrency: int = 16,
-    request_middlewares: Iterable[RequestMiddleware] | None = None,
-    response_middlewares: Iterable[ResponseMiddleware] | None = None,
-    item_pipelines: Iterable[ItemPipeline] | None = None,
-    request_timeout: float | timedelta | None = None,
-    log_stats_interval: float | None = None,
-    max_pending_requests: int | None = None,
-    html_max_size_bytes: int = 5_000_000,
-    keep_alive: bool = False,
-    http_client: HttpClient | None = None,
-    engine_logger: EngineLogger | None = None,
-    dedup_key: DedupKey | None = None,
-    **spider_kwargs: Any,
+    spider: Spider | type[Spider],
+    **options: Unpack[EngineOptions],
 ) -> None:
     """
-    Run a spider using winloop as the event loop.
-
-    This is similar to run_spider_uvloop but uses winloop instead,
-    which is optimized for Windows. Winloop must be installed separately:
-    pip install silkworm-rs[winloop]
-
-    Args:
-        spider_cls: Spider class to instantiate and run
-        concurrency: Number of concurrent HTTP requests (default: 16)
-        request_middlewares: Optional request middlewares
-        response_middlewares: Optional response middlewares
-        item_pipelines: Optional item pipelines
-        request_timeout: Per-request timeout in seconds
-        log_stats_interval: Interval for logging statistics
-        max_pending_requests: Maximum pending requests in queue
-        html_max_size_bytes: Maximum HTML size to parse
-        keep_alive: Enable HTTP keep-alive when supported by the HTTP client
-        **spider_kwargs: Additional kwargs passed to spider constructor
+    Run ``spider`` on a winloop event loop, optimized for Windows
+    (``pip install silkworm-rs[winloop]``).
 
     Raises:
-        ImportError: If winloop is not installed
+        ImportError: If winloop is not installed.
     """
-    loop_factory = _install_winloop()
-    run_spider(
-        spider_cls,
-        concurrency=concurrency,
-        request_middlewares=request_middlewares,
-        response_middlewares=response_middlewares,
-        item_pipelines=item_pipelines,
-        request_timeout=request_timeout,
-        log_stats_interval=log_stats_interval,
-        max_pending_requests=max_pending_requests,
-        html_max_size_bytes=html_max_size_bytes,
-        keep_alive=keep_alive,
-        http_client=http_client,
-        engine_logger=engine_logger,
-        dedup_key=dedup_key,
-        loop_factory=loop_factory,
-        **spider_kwargs,
-    )
+    run_spider(spider, loop_factory=_install_winloop(), **options)
 
 
 def run_spider_rsloop(
-    spider_cls: type[Spider],
-    *,
-    concurrency: int = 16,
-    request_middlewares: Iterable[RequestMiddleware] | None = None,
-    response_middlewares: Iterable[ResponseMiddleware] | None = None,
-    item_pipelines: Iterable[ItemPipeline] | None = None,
-    request_timeout: float | timedelta | None = None,
-    log_stats_interval: float | None = None,
-    max_pending_requests: int | None = None,
-    html_max_size_bytes: int = 5_000_000,
-    keep_alive: bool = False,
-    http_client: HttpClient | None = None,
-    engine_logger: EngineLogger | None = None,
-    dedup_key: DedupKey | None = None,
-    **spider_kwargs: Any,
+    spider: Spider | type[Spider],
+    **options: Unpack[EngineOptions],
 ) -> None:
     """
-    Run a spider using rsloop as the event loop.
-
-    This is similar to run_spider_uvloop but uses rsloop instead.
-    Rsloop must be installed separately:
-    pip install silkworm-rs[rsloop]
-
-    Args:
-        spider_cls: Spider class to instantiate and run
-        concurrency: Number of concurrent HTTP requests (default: 16)
-        request_middlewares: Optional request middlewares
-        response_middlewares: Optional response middlewares
-        item_pipelines: Optional item pipelines
-        request_timeout: Per-request timeout in seconds
-        log_stats_interval: Interval for logging statistics
-        max_pending_requests: Maximum pending requests in queue
-        html_max_size_bytes: Maximum HTML size to parse
-        keep_alive: Enable HTTP keep-alive when supported by the HTTP client
-        **spider_kwargs: Additional kwargs passed to spider constructor
+    Run ``spider`` on an rsloop event loop (``pip install silkworm-rs[rsloop]``).
 
     Raises:
-        ImportError: If rsloop is not installed
+        ImportError: If rsloop is not installed.
     """
-    loop_factory = _install_rsloop()
-    run_spider(
-        spider_cls,
-        concurrency=concurrency,
-        request_middlewares=request_middlewares,
-        response_middlewares=response_middlewares,
-        item_pipelines=item_pipelines,
-        request_timeout=request_timeout,
-        log_stats_interval=log_stats_interval,
-        max_pending_requests=max_pending_requests,
-        html_max_size_bytes=html_max_size_bytes,
-        keep_alive=keep_alive,
-        http_client=http_client,
-        engine_logger=engine_logger,
-        dedup_key=dedup_key,
-        loop_factory=loop_factory,
-        **spider_kwargs,
-    )
+    run_spider(spider, loop_factory=_install_rsloop(), **options)
+
+
+def run_spider_trio(
+    spider: Spider | type[Spider],
+    **options: Unpack[EngineOptions],
+) -> None:
+    """
+    Run ``spider`` with trio as the async backend (``pip install silkworm-rs[trio]``).
+
+    The engine uses asyncio primitives, so it runs inside trio via trio-asyncio.
+
+    Raises:
+        ImportError: If trio or trio-asyncio is not installed.
+    """
+    try:
+        import trio  # type: ignore[import]
+    except ImportError as err:
+        msg = "trio is not installed. Install it with: pip install silkworm-rs[trio]"
+        raise ImportError(msg) from err
+
+    try:
+        import trio_asyncio  # type: ignore[import]
+    except ImportError as err:
+        msg = (
+            "trio-asyncio is required for trio support. "
+            "Install it with: pip install silkworm-rs[trio]"
+        )
+        raise ImportError(msg) from err
+
+    async def run_with_trio_asyncio() -> None:
+        async with trio_asyncio.open_loop():
+            # Run the asyncio-based crawl within trio's event loop so asyncio
+            # TaskGroups have a parent task.
+            await trio_asyncio.aio_as_trio(crawl)(spider, **options)
+
+    trio.run(run_with_trio_asyncio)
+
+
+__all__ = [
+    "LoopFactory",
+    "crawl",
+    "run_spider",
+    "run_spider_rsloop",
+    "run_spider_trio",
+    "run_spider_uvloop",
+    "run_spider_winloop",
+]

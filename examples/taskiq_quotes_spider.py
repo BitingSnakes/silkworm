@@ -105,8 +105,7 @@ if __name__ == "__main__":
     pipeline = TaskiqPipeline(broker, task=process_quote)
 
     run_spider(
-        TaskiqQuotesSpider,
-        max_pages=args.pages,
+        TaskiqQuotesSpider(max_pages=args.pages),
         request_middlewares=[UserAgentMiddleware()],
         response_middlewares=[RetryMiddleware(max_times=3)],
         item_pipelines=[pipeline],

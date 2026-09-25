@@ -366,7 +366,7 @@ def main() -> None:
     ]
 
     run_spider_uvloop(
-        SitemapSpider,
+        SitemapSpider(sitemap_url=args.sitemap_url, max_pages=args.pages),
         request_middlewares=request_mw,
         response_middlewares=response_mw,
         item_pipelines=pipelines,
@@ -374,8 +374,6 @@ def main() -> None:
         request_timeout=30,
         log_stats_interval=10,
         html_max_size_bytes=2_000_000,  # 2MB limit for HTML parsing
-        sitemap_url=args.sitemap_url,
-        max_pages=args.pages,
     )
 
 

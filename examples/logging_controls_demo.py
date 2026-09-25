@@ -112,11 +112,10 @@ def main() -> None:
         ]
 
     run_spider(
-        TokenizedApiSpider,
+        TokenizedApiSpider(item_count=args.items),
         item_pipelines=pipelines,
         engine_logger=engine_logger,
         concurrency=1,
-        item_count=args.items,
     )
     print(f"Wrote {args.items} items to {output_path}")
 

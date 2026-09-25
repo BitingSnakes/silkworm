@@ -161,13 +161,12 @@ def main() -> None:
     ]
 
     run_spider(
-        HackerNewsSpider,
+        HackerNewsSpider(pages=args.pages),
         request_middlewares=request_mw,
         response_middlewares=response_mw,
         item_pipelines=pipelines,
         request_timeout=10,
         log_stats_interval=10,  # Log statistics every 10 seconds
-        pages=args.pages,
     )
 
 

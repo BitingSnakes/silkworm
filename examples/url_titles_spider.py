@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from silkworm import (
+    EngineOptions,
     HTMLResponse,
     Response,
     Spider,
@@ -172,7 +173,7 @@ def main() -> None:
         JsonLinesPipeline(args.output, use_opendal=False),
     ]
 
-    kwargs: dict[str, Any] = {
+    options: EngineOptions = {
         "concurrency": 128,
         "request_middlewares": request_mw,
         "response_middlewares": response_mw,
@@ -181,20 +182,14 @@ def main() -> None:
         "log_stats_interval": 10,
         "html_max_size_bytes": 1_000_000,
         "keep_alive": True,
-        "urls_file": args.urls_file,
     }
+    spider = UrlTitlesSpider(urls_file=args.urls_file)
 
     if args.use_trio:
-        run_spider_trio(
-            UrlTitlesSpider,
-            **kwargs,
-        )
+        run_spider_trio(spider, **options)
     else:
         runner = run_spider_uvloop if args.use_uvloop else run_spider
-        runner(
-            UrlTitlesSpider,
-            **kwargs,
-        )
+        runner(spider, **options)
 
 
 if __name__ == "__main__":

@@ -156,8 +156,7 @@ def run_cookie_reuse_demo(
     ]
 
     run_spider(
-        CaptureCookiesSpider,
-        start_urls=[capture_url],
+        CaptureCookiesSpider(start_urls=[capture_url]),
         request_middlewares=request_middlewares,
         response_middlewares=response_middlewares,
         item_pipelines=item_pipelines,
@@ -170,8 +169,7 @@ def run_cookie_reuse_demo(
     reuse_cookies.load(cookie_file)
 
     run_spider(
-        ReuseCookiesSpider,
-        start_urls=[reuse_url],
+        ReuseCookiesSpider(start_urls=[reuse_url]),
         request_middlewares=[reuse_cookies],
         response_middlewares=[reuse_cookies],
         item_pipelines=[JsonLinesPipeline(output_path, use_opendal=False)],

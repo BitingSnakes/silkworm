@@ -21,7 +21,7 @@ logger.info("Started")
 You can pass a logger or a context dict into the spider constructor. See [src/silkworm/spiders.py](../src/silkworm/spiders.py).
 
 ```python
-run_spider(MySpider, logger={"component": "QuotesSpider", "env": "dev"})
+run_spider(MySpider(logger={"component": "QuotesSpider", "env": "dev"}))
 ```
 
 The `Spider.log` property always returns a valid logger (creating one if needed).

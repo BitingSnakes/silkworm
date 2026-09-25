@@ -189,9 +189,7 @@ def main() -> None:
     ]
 
     run_spider(
-        CloudflareCrawlSpider,
-        start_url=args.url,
-        crawl_options=crawl_options,
+        CloudflareCrawlSpider(start_url=args.url, crawl_options=crawl_options),
         request_middlewares=request_mw,
         item_pipelines=pipelines,
         concurrency=1,

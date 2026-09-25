@@ -15,7 +15,7 @@ from collections.abc import (
 from dataclasses import dataclass
 from datetime import timedelta
 from itertools import count
-from typing import TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, TypedDict, cast
 
 try:  # resource is POSIX-only
     import resource
@@ -137,6 +137,28 @@ type PrioritizedRequest = tuple[int, int, Request]
 
 def default_dedup_key(req: Request) -> str:
     return req.url
+
+
+class EngineOptions(TypedDict, total=False):
+    """Keyword options for :class:`Engine`, also accepted by every runner.
+
+    ``run_spider(MySpider, concurrency=32, request_timeout=10)`` forwards these
+    to ``Engine``; omitted keys use the ``Engine`` defaults.
+    """
+
+    concurrency: int
+    max_pending_requests: int | None
+    emulation: Emulation | Profile | None
+    request_timeout: float | timedelta | None
+    html_max_size_bytes: int
+    request_middlewares: Iterable[RequestMiddleware] | None
+    response_middlewares: Iterable[ResponseMiddleware] | None
+    item_pipelines: Iterable[ItemPipeline] | None
+    log_stats_interval: float | None
+    keep_alive: bool
+    http_client: HttpClient | None
+    engine_logger: EngineLogger | None
+    dedup_key: DedupKey | None
 
 
 class Engine:

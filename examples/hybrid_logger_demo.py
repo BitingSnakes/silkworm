@@ -204,8 +204,7 @@ def demo_3_run_spider_with_hybrid_logger():
 
     try:
         run_spider(
-            HybridLoggerSpider,
-            logger={"component": "QuotesSpider", "mode": "hybrid"},
+            HybridLoggerSpider(logger={"component": "QuotesSpider", "mode": "hybrid"}),
             concurrency=8,
             request_timeout=10,
         )

@@ -95,8 +95,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     run_spider(
-        StartUrlsFromFileSpider,
-        urls_file=args.urls_file,
+        StartUrlsFromFileSpider(urls_file=args.urls_file),
         request_middlewares=[UserAgentMiddleware()],
         response_middlewares=[RetryMiddleware(max_times=3)],
         item_pipelines=[JsonLinesPipeline(args.output, use_opendal=False)],

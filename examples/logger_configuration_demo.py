@@ -70,8 +70,8 @@ def demo_3_no_logger():
 def demo_4_via_run_spider():
     """Demo 4: Configuring logger when using run_spider."""
     print("\n=== Demo 4: Via run_spider ===")
-    print("You can pass logger configuration through spider_kwargs in run_spider:")
-    print("run_spider(LoggingSpider, logger={'component': 'MySpider'})")
+    print("Pass logger configuration to the spider, then hand it to run_spider:")
+    print("run_spider(LoggingSpider(logger={'component': 'MySpider'}))")
 
 
 if __name__ == "__main__":

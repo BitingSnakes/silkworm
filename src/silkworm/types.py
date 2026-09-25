@@ -19,11 +19,12 @@ from ._types import (
     QueryParams,
     QueryValue,
 )
-from .engine import DedupKey
+from .engine import DedupKey, EngineOptions
 from .logging import Logger, LogLevel
 from .middlewares import ExceptionMiddleware, RequestMiddleware, ResponseMiddleware
 from .pipelines import ItemPipeline
 from .request import Callback, CallbackOutput, CallbackResult, Errback
+from .runner import LoopFactory
 
 __all__ = [
     "BodyData",
@@ -31,6 +32,7 @@ __all__ = [
     "CallbackOutput",
     "CallbackResult",
     "DedupKey",
+    "EngineOptions",
     "Errback",
     "ExceptionMiddleware",
     "Headers",
@@ -40,6 +42,7 @@ __all__ = [
     "JSONValue",
     "LogLevel",
     "Logger",
+    "LoopFactory",
     "MetaData",
     "QueryParams",
     "QueryValue",

@@ -104,13 +104,12 @@ def main() -> None:
     ]
 
     run_spider(
-        RuntimeStatsQuotesSpider,
+        RuntimeStatsQuotesSpider(max_pages=3),
         request_middlewares=request_mw,
         response_middlewares=response_mw,
         item_pipelines=pipelines,
         request_timeout=10,
         log_stats_interval=5,
-        max_pages=3,
     )
 
 
