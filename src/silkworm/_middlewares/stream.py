@@ -8,7 +8,7 @@ from datetime import timedelta
 from typing import TYPE_CHECKING, Any, cast
 from uuid import uuid4
 
-from wreq import Client, Method  # type: ignore[import]
+from wreq import Client, Method
 
 from .._timeouts import to_seconds
 from .._types import JSONValue
@@ -102,7 +102,7 @@ class RequestResponseStreamMiddleware:
         self.batch_size = batch_size
         self.batch_envelope_key = batch_envelope_key
 
-        self._client: Client | None = None  # type: ignore[name-defined]
+        self._client: Client | None = None
         self._queue: asyncio.Queue[JSONValue | _Stop] | None = None
         self._sender_task: asyncio.Task[None] | None = None
         self._dropped_events = 0
@@ -205,7 +205,7 @@ class RequestResponseStreamMiddleware:
 
     async def _ensure_started(self) -> None:
         if self._client is None:
-            self._client = Client()  # type: ignore[misc]
+            self._client = Client()
         if self._queue is None:
             self._queue = asyncio.Queue(maxsize=self.queue_size)
         if self._sender_task is None:
@@ -256,12 +256,12 @@ class RequestResponseStreamMiddleware:
             return
 
         method_upper = self.method.upper()
-        if not hasattr(Method, method_upper):  # type: ignore[attr-defined]
+        if not hasattr(Method, method_upper):
             raise ValueError(
                 f"Invalid HTTP method '{self.method}'. Must be one of: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS",
             )
 
-        method = getattr(Method, method_upper)  # type: ignore[attr-defined]
+        method = getattr(Method, method_upper)
         request_kwargs: dict[str, object] = {
             "headers": self.headers,
             "json": payload,

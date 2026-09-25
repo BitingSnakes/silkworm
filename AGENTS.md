@@ -564,6 +564,7 @@ just lint          # Lint code with ruff
 just typecheck     # Type check src with pyright
 just test          # Run tests with pytest
 just pyright       # Type check all code (src, tests, examples)
+just verifytypes   # Check the public API is fully typed (100% completeness)
 just clean         # Remove all generated files
 just build         # Build distribution packages
 ```

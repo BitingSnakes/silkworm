@@ -38,7 +38,7 @@ class Request:
         """
         Return a new Request with the provided fields replaced.
         """
-        return replace(self, **kwargs)  # type: ignore[arg-type]
+        return replace(self, **kwargs)
 
 
 type CallbackOutput = (

@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from urllib.parse import urljoin
 
-from pydantic import BaseModel, ValidationError, field_validator  # type: ignore[import]
+from pydantic import BaseModel, ValidationError, field_validator
 
 from silkworm import HTMLResponse, Response, Spider, run_spider
 from silkworm.logging import get_logger

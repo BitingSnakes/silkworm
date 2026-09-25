@@ -63,7 +63,7 @@ class FTPPipeline:
         self.remote_path = remote_path
         self.port = port
         self._items: list[str] = []
-        self._client: aioftp.Client | None = None  # type: ignore[name-defined]
+        self._client: aioftp.Client | None = None
         self.logger: Logger = get_logger(component="FTPPipeline")
 
     async def open(self, spider: Spider) -> None:
@@ -97,7 +97,7 @@ class FTPPipeline:
                 )
             finally:
                 if self._client:
-                    await self._client.quit()  # type: ignore[union-attr]
+                    await self._client.quit()
                     self._client = None
 
         self.logger.info("Closed FTP pipeline", remote_path=self.remote_path)

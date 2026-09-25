@@ -27,8 +27,8 @@ for module_name in modules_to_reload:
 
 # Now import the real modules
 try:
-    import scraper_rs  # type: ignore[import-untyped]  # noqa: F401
-    import wreq  # type: ignore[import-untyped]  # noqa: F401
+    import scraper_rs  # noqa: F401
+    import wreq  # noqa: F401
 except ImportError:
     pass  # It's okay if some aren't installed
 
@@ -39,7 +39,7 @@ IS_WINDOWS = platform.system() == "Windows"
 
 if not IS_WINDOWS:
     try:
-        import testcontainers  # type: ignore[import-untyped]  # noqa: F401
+        import testcontainers  # noqa: F401
 
         TESTCONTAINERS_AVAILABLE = True
     except ImportError:

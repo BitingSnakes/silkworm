@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import urlsplit, urlunsplit
 from urllib.robotparser import RobotFileParser
 
-from wreq import Client, Method  # type: ignore[import]
+from wreq import Client, Method
 
 from .._timeouts import to_seconds
 from ..exceptions import HttpError

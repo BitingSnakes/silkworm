@@ -7,7 +7,7 @@ from datetime import timedelta
 from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit
 
-from wreq import Client, Emulation, Method, Proxy  # type: ignore[import]
+from wreq import Client, Emulation, Method, Proxy
 
 from ._timeouts import to_seconds
 from ._validation import require_positive_int
@@ -16,7 +16,7 @@ from .logging import Logger, get_logger
 from .response import HTMLResponse, Response
 
 if TYPE_CHECKING:
-    from wreq import Profile  # type: ignore[import]
+    from wreq import Profile
 
     from ._types import Headers, QueryValue
     from .request import Request
@@ -525,7 +525,7 @@ class HttpClient:
             return member
 
         try:
-            return Method[upper]  # type: ignore[index]
+            return Method[upper]
         except (KeyError, TypeError):
             # Fallback to the uppercased string for test doubles or alternative
             # Method implementations that are not subscriptable.

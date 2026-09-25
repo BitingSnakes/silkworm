@@ -86,5 +86,9 @@ jobs:
           # Install msgpack for reading in tests (ormsgpack from --extra msgpack is for writing)
           uv pip install msgpack
 
+      - name: Verify public API type completeness
+        # Fails if any exported symbol has a missing or partially unknown type.
+        run: uv run --group dev pyright --verifytypes silkworm --ignoreexternal
+
       - name: Run tests
         run: uv run --group dev pytest -o "anyio_mode=auto"

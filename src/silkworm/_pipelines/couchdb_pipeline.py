@@ -80,9 +80,9 @@ class CouchDBPipeline:
 
         # Create database if it doesn't exist
         try:
-            self._db = await client[self.database]  # type: ignore[index]
+            self._db = await client[self.database]
         except KeyError:
-            self._db = await client.create(self.database)  # type: ignore[union-attr]
+            self._db = await client.create(self.database)
 
         self.logger.info(
             "Opened CouchDB pipeline",
@@ -92,7 +92,7 @@ class CouchDBPipeline:
 
     async def close(self, spider: Spider) -> None:
         if self._client:
-            await self._client.__aexit__(None, None, None)  # type: ignore[union-attr]
+            await self._client.__aexit__(None, None, None)
             self._client = None
             self._db = None
             self.logger.info("Closed CouchDB pipeline", database=self.database)
@@ -105,7 +105,7 @@ class CouchDBPipeline:
         doc_data = {"spider": spider.name, "data": item}
 
         # Create document in CouchDB
-        await self._db.create(doc_data)  # type: ignore[union-attr]
+        await self._db.create(doc_data)
 
         log_pipeline_item(
             self,

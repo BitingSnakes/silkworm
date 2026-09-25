@@ -14,7 +14,9 @@ from ..logging import Logger, get_logger
 from .base import log_pipeline_item
 
 if TYPE_CHECKING:
-    from .._types import JSONValue
+    from collections.abc import Mapping
+
+    from .._types import JSONLike, JSONValue
     from ..spiders import Spider
 
 
@@ -43,7 +45,7 @@ class AvroPipeline:
         self,
         path: str | Path = "items.avro",
         *,
-        schema: dict[str, Any] | None = None,
+        schema: Mapping[str, JSONLike] | None = None,
     ) -> None:
         """
         Initialize AvroPipeline.
@@ -58,7 +60,7 @@ class AvroPipeline:
             )
 
         self.path: Path = Path(path)
-        self.schema = schema
+        self.schema: Mapping[str, JSONLike] | None = schema
         self._items: list[JSONValue] = []
         self.logger: Logger = get_logger(component="AvroPipeline")
 
@@ -69,10 +71,12 @@ class AvroPipeline:
 
     async def close(self, spider: Spider) -> None:
         if self._items:
-            schema = self.schema
-            if schema is None:
+            if self.schema is None:
                 # Infer schema from first item
                 schema = self._infer_schema(self._items[0])
+            else:
+                # fastavro expects a plain dict.
+                schema = dict(self.schema)
 
             with self.path.open("wb") as f:
                 fastavro.writer(f, schema, self._items)  # pyright: ignore[reportPossiblyUnboundVariable]

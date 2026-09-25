@@ -54,15 +54,15 @@ class MongoDBPipeline:
         self.connection_string = connection_string
         self.database = database
         self.collection = collection
-        self._client = None  # type: ignore[var-annotated]
+        self._client = None
         self._db = None
         self._coll = None
         self.logger: Logger = get_logger(component="MongoDBPipeline")
 
     async def open(self, spider: Spider) -> None:
         self._client = motor.motor_asyncio.AsyncIOMotorClient(self.connection_string)  # type: ignore[assignment]
-        self._db = self._client[self.database]  # type: ignore[index]
-        self._coll = self._db[self.collection]  # type: ignore[index]
+        self._db = self._client[self.database]
+        self._coll = self._db[self.collection]
         self.logger.info(
             "Opened MongoDB pipeline",
             database=self.database,

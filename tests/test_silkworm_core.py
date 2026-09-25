@@ -584,7 +584,7 @@ def test_httpclient_normalize_headers_handles_wreq_header_map_shape():
 
 async def test_httpclient_follows_redirects():
     class RedirectClient(_RecordingClient):
-        async def request(self, method: Any, url: str, **kwargs: Any) -> _StubResponse:  # type: ignore[override]
+        async def request(self, method: Any, url: str, **kwargs: Any) -> _StubResponse:
             self.calls.append((method, url, kwargs))
             if url.startswith("http://example.com/start"):
                 return _StubResponse(
@@ -596,7 +596,7 @@ async def test_httpclient_follows_redirects():
             )
 
     client = HttpClient()
-    client._client = RedirectClient()  # type: ignore[assignment]
+    client._client = RedirectClient()
 
     resp = await client.fetch(
         Request(url="http://example.com/start", params={"foo": "1"})
@@ -612,7 +612,7 @@ async def test_httpclient_follows_redirects():
 
 async def test_httpclient_redirect_does_not_mutate_original_request_meta():
     class RedirectClient(_RecordingClient):
-        async def request(self, method: Any, url: str, **kwargs: Any) -> _StubResponse:  # type: ignore[override]
+        async def request(self, method: Any, url: str, **kwargs: Any) -> _StubResponse:
             self.calls.append((method, url, kwargs))
             if len(self.calls) == 1:
                 return _StubResponse(
@@ -626,7 +626,7 @@ async def test_httpclient_redirect_does_not_mutate_original_request_meta():
             )
 
     client = HttpClient()
-    client._client = RedirectClient()  # type: ignore[assignment]
+    client._client = RedirectClient()
     request = Request(url="http://example.com/start", meta={"trace": "root"})
 
     resp = await client.fetch(request)
@@ -638,7 +638,7 @@ async def test_httpclient_redirect_does_not_mutate_original_request_meta():
 
 async def test_httpclient_converts_string_proxy_to_wreq_proxy():
     client = HttpClient()
-    client._client = _RecordingClient()  # type: ignore[assignment]
+    client._client = _RecordingClient()
 
     await client.fetch(
         Request(
@@ -658,14 +658,14 @@ async def test_httpclient_detects_redirect_loops():
     from silkworm.exceptions import HttpError
 
     class LoopingClient(_RecordingClient):
-        async def request(self, method: Any, url: str, **kwargs: Any) -> _StubResponse:  # type: ignore[override]
+        async def request(self, method: Any, url: str, **kwargs: Any) -> _StubResponse:
             self.calls.append((method, url, kwargs))
             return _StubResponse(
                 status=302, headers={"Location": "/loop", "Content-Type": "text/plain"}
             )
 
     client = HttpClient(max_redirects=2)
-    client._client = LoopingClient()  # type: ignore[assignment]
+    client._client = LoopingClient()
 
     with pytest.raises(HttpError):
         await client.fetch(Request(url="http://example.com/loop"))
@@ -679,9 +679,7 @@ async def test_httpclient_handles_unhashable_status_codes():
             return 302
 
     class RedirectClient(_RecordingClient):
-        async def request(  # type: ignore[override]
-            self, method: Any, url: str, **kwargs: Any
-        ) -> _StubResponse:
+        async def request(self, method: Any, url: str, **kwargs: Any) -> _StubResponse:
             self.calls.append((method, url, kwargs))
             if len(self.calls) == 1:
                 return _StubResponse(
@@ -694,7 +692,7 @@ async def test_httpclient_handles_unhashable_status_codes():
 
     client = HttpClient()
     redirect_client = RedirectClient()
-    client._client = redirect_client  # type: ignore[assignment]
+    client._client = redirect_client
 
     resp = await client.fetch(Request(url="http://example.com/start"))
 
@@ -707,7 +705,7 @@ async def test_httpclient_handles_unhashable_status_codes():
 async def test_httpclient_sets_keep_alive():
     client = HttpClient(keep_alive=True)
     recording = _RecordingClient()
-    client._client = recording  # type: ignore[assignment]
+    client._client = recording
 
     await client.fetch(Request(url="http://example.com/keep-alive"))
 
@@ -748,7 +746,7 @@ async def test_httpclient_keep_alive_when_kwarg_not_supported():
 
     client = HttpClient(keep_alive=True)
     strict = StrictClient()
-    client._client = strict  # type: ignore[assignment]
+    client._client = strict
 
     resp = await client.fetch(Request(url="http://example.com/no-kw"))
 
@@ -761,7 +759,7 @@ async def test_httpclient_keep_alive_when_kwarg_not_supported():
 async def test_httpclient_uses_timedelta_timeout():
     client = HttpClient()
     recording = _RecordingClient()
-    client._client = recording  # type: ignore[assignment]
+    client._client = recording
 
     resp = await client.fetch(Request(url="http://example.com", timeout=5))
 
@@ -1087,7 +1085,7 @@ async def test_engine_closes_responses(monkeypatch: pytest.MonkeyPatch):
         seen.append(resp)
         return resp
 
-    engine.http.fetch = fake_fetch  # type: ignore[assignment]
+    engine.http.fetch = fake_fetch
 
     await engine.run()
 
@@ -1143,7 +1141,7 @@ async def test_engine_retries_requests_even_if_url_seen(
         seen_requests.append((status, retry_times))
         return Response(url=req.url, status=status, headers={}, body=b"", request=req)
 
-    engine.http.fetch = fake_fetch  # type: ignore[assignment]
+    engine.http.fetch = fake_fetch
 
     await engine.run()
 
@@ -1737,8 +1735,8 @@ async def test_engine_retries_failed_request_with_another_proxy():
             raise RuntimeError(f"Proxy failed for {req.url}")
         return Response(url=req.url, status=200, headers={}, body=b"ok", request=req)
 
-    engine.http.fetch = fake_fetch  # type: ignore[assignment]
-    engine._process_item = fake_process_item  # type: ignore[method-assign]
+    engine.http.fetch = fake_fetch
+    engine._process_item = fake_process_item
 
     await engine.run()
 

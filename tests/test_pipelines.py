@@ -921,7 +921,7 @@ try:
     ELASTICSEARCH_AVAILABLE = True
 except ImportError:
     ELASTICSEARCH_AVAILABLE = False
-    ElasticsearchPipeline = None  # type: ignore
+    ElasticsearchPipeline = None
 
 
 @pytest.mark.skipif(not ELASTICSEARCH_AVAILABLE, reason="elasticsearch not installed")
@@ -944,7 +944,7 @@ try:
     MOTOR_AVAILABLE = True
 except ImportError:
     MOTOR_AVAILABLE = False
-    MongoDBPipeline = None  # type: ignore
+    MongoDBPipeline = None
 
 
 @pytest.mark.skipif(not MOTOR_AVAILABLE, reason="motor not installed")
@@ -968,7 +968,7 @@ try:
     OPENDAL_AVAILABLE = True
 except ImportError:
     OPENDAL_AVAILABLE = False
-    S3JsonLinesPipeline = None  # type: ignore
+    S3JsonLinesPipeline = None
 
 
 @pytest.mark.skipif(not OPENDAL_AVAILABLE, reason="opendal not installed")
@@ -1019,7 +1019,7 @@ try:
     VORTEX_AVAILABLE = True
 except ImportError:
     VORTEX_AVAILABLE = False
-    VortexPipeline = None  # type: ignore
+    VortexPipeline = None
 
 
 @pytest.mark.skipif(not VORTEX_AVAILABLE, reason="vortex not installed")
@@ -1137,7 +1137,7 @@ try:
     AIOMYSQL_AVAILABLE = True
 except ImportError:
     AIOMYSQL_AVAILABLE = False
-    MySQLPipeline = None  # type: ignore
+    MySQLPipeline = None
 
 
 @pytest.mark.skipif(not AIOMYSQL_AVAILABLE, reason="aiomysql not installed")
@@ -1180,7 +1180,7 @@ try:
     ASYNCPG_AVAILABLE = True
 except ImportError:
     ASYNCPG_AVAILABLE = False
-    PostgreSQLPipeline = None  # type: ignore
+    PostgreSQLPipeline = None
 
 
 @pytest.mark.skipif(not ASYNCPG_AVAILABLE, reason="asyncpg not installed")
@@ -1221,7 +1221,7 @@ try:
     WEBHOOK_AVAILABLE = True
 except ImportError:
     WEBHOOK_AVAILABLE = False
-    WebhookPipeline = None  # type: ignore
+    WebhookPipeline = None
 
 
 @pytest.mark.skipif(not WEBHOOK_AVAILABLE, reason="wreq not available")
@@ -1253,7 +1253,7 @@ async def test_webhook_pipeline_not_opened_raises_error():
 )
 def test_google_sheets_pipeline_initialization():
     # Test that we can initialize the pipeline
-    pipeline = GoogleSheetsPipeline(  # type: ignore
+    pipeline = GoogleSheetsPipeline(
         spreadsheet_id="test_id",
         credentials_file="test_creds.json",
         sheet_name="TestSheet",
@@ -1269,7 +1269,7 @@ def test_google_sheets_pipeline_initialization():
     not GOOGLE_SHEETS_AVAILABLE, reason="google-api-python-client not installed"
 )
 async def test_google_sheets_pipeline_not_opened_raises_error():
-    pipeline = GoogleSheetsPipeline(  # type: ignore
+    pipeline = GoogleSheetsPipeline(
         spreadsheet_id="test_id", credentials_file="test_creds.json"
     )
     spider = Spider()
@@ -1283,7 +1283,7 @@ async def test_google_sheets_pipeline_not_opened_raises_error():
 )
 def test_snowflake_pipeline_initialization():
     # Test that we can initialize the pipeline
-    pipeline = SnowflakePipeline(  # type: ignore
+    pipeline = SnowflakePipeline(
         account="test_account",
         user="test_user",
         password="test_password",
@@ -1308,7 +1308,7 @@ def test_snowflake_pipeline_initialization():
 def test_snowflake_pipeline_invalid_table_name():
     # Test that invalid table names are rejected
     with pytest.raises(ValueError, match="Invalid table name"):
-        SnowflakePipeline(  # type: ignore
+        SnowflakePipeline(
             account="test",
             user="test",
             password="test",
@@ -1319,7 +1319,7 @@ def test_snowflake_pipeline_invalid_table_name():
         )
 
     with pytest.raises(ValueError, match="Invalid table name"):
-        SnowflakePipeline(  # type: ignore
+        SnowflakePipeline(
             account="test",
             user="test",
             password="test",
@@ -1334,7 +1334,7 @@ def test_snowflake_pipeline_invalid_table_name():
     not SNOWFLAKE_AVAILABLE, reason="snowflake-connector-python not installed"
 )
 async def test_snowflake_pipeline_not_opened_raises_error():
-    pipeline = SnowflakePipeline(  # type: ignore
+    pipeline = SnowflakePipeline(
         account="test_account",
         user="test_user",
         password="test_password",
@@ -1357,7 +1357,7 @@ try:
     AIOFTP_AVAILABLE = True
 except ImportError:
     AIOFTP_AVAILABLE = False
-    FTPPipeline = None  # type: ignore
+    FTPPipeline = None
 
 
 @pytest.mark.skipif(not AIOFTP_AVAILABLE, reason="aioftp not installed")
@@ -1380,8 +1380,8 @@ def test_ftp_pipeline_initialization():
 @pytest.mark.skipif(not AIOFTP_AVAILABLE, reason="aioftp not installed")
 async def test_ftp_pipeline_uploads_items():
     with tempfile.TemporaryDirectory() as tmpdir:
-        user = aioftp.User("user", "password", base_path=tmpdir)  # type: ignore[attr-defined]
-        server = aioftp.Server([user])  # type: ignore[attr-defined]
+        user = aioftp.User("user", "password", base_path=tmpdir)
+        server = aioftp.Server([user])
         await server.start("127.0.0.1", 0)
         try:
             port = server.server.sockets[0].getsockname()[1]
@@ -1417,7 +1417,7 @@ try:
     ASYNCSSH_AVAILABLE = True
 except ImportError:
     ASYNCSSH_AVAILABLE = False
-    SFTPPipeline = None  # type: ignore
+    SFTPPipeline = None
 
 
 @pytest.mark.skipif(not ASYNCSSH_AVAILABLE, reason="asyncssh not installed")
@@ -1604,7 +1604,7 @@ else:
         CASSANDRA_AVAILABLE = True
     except ImportError:
         CASSANDRA_AVAILABLE = False
-        CassandraPipeline = None  # type: ignore
+        CassandraPipeline = None
 
 
 @pytest.mark.skipif(not CASSANDRA_AVAILABLE, reason="cassandra-driver not installed")
@@ -1670,7 +1670,7 @@ try:
     AIOCOUCH_AVAILABLE = True
 except ImportError:
     AIOCOUCH_AVAILABLE = False
-    CouchDBPipeline = None  # type: ignore
+    CouchDBPipeline = None
 
 
 @pytest.mark.skipif(not AIOCOUCH_AVAILABLE, reason="aiocouch not installed")
@@ -1709,7 +1709,7 @@ try:
     AIOBOTO3_AVAILABLE = True
 except ImportError:
     AIOBOTO3_AVAILABLE = False
-    DynamoDBPipeline = None  # type: ignore
+    DynamoDBPipeline = None
 
 
 @pytest.mark.skipif(not AIOBOTO3_AVAILABLE, reason="aioboto3 not installed")
@@ -1750,7 +1750,7 @@ try:
     DUCKDB_AVAILABLE = True
 except ImportError:
     DUCKDB_AVAILABLE = False
-    DuckDBPipeline = None  # type: ignore
+    DuckDBPipeline = None
 
 
 @pytest.mark.skipif(not DUCKDB_AVAILABLE, reason="duckdb not installed")

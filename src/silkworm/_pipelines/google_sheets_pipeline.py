@@ -13,8 +13,8 @@ try:
 
     GOOGLE_SHEETS_AVAILABLE = True
 except ImportError:
-    Credentials = None  # type: ignore
-    build = None  # type: ignore
+    Credentials = None
+    build = None
     GOOGLE_SHEETS_AVAILABLE = False
 
 from ..logging import Logger, get_logger
@@ -68,7 +68,7 @@ class GoogleSheetsPipeline:
         self.credentials_file = credentials_file
         self.sheet_name = sheet_name
         self.batch_size = batch_size
-        self._service = None  # type: ignore[var-annotated]
+        self._service = None
         self._batch: list[JSONValue] = []
         self._fieldnames: list[str] | None = None
         self._header_written = False
@@ -128,7 +128,7 @@ class GoogleSheetsPipeline:
                     # Initialize fieldnames from first item
                     if self._fieldnames is None:
                         self._fieldnames = list(flat_item.keys())
-                    row = [flat_item.get(field) for field in self._fieldnames]  # type: ignore[misc]
+                    row = [flat_item.get(field) for field in self._fieldnames]
                     rows.append(row)  # type: ignore
                 else:
                     # Simple value

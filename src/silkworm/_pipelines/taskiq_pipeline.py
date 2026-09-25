@@ -7,7 +7,7 @@ try:
 
     TASKIQ_AVAILABLE = True
 except ImportError:
-    AsyncBroker = None  # type: ignore
+    AsyncBroker = None
     TASKIQ_AVAILABLE = False
 
 from ..logging import Logger, get_logger

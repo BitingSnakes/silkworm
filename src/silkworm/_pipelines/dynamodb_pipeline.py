@@ -63,10 +63,10 @@ class DynamoDBPipeline:
         self.aws_access_key_id = aws_access_key_id
         self.aws_secret_access_key = aws_secret_access_key
         self.endpoint_url = endpoint_url
-        self._session = None  # type: ignore[var-annotated]
-        self._client = None  # type: ignore[var-annotated]
-        self._resource = None  # type: ignore[var-annotated]
-        self._table = None  # type: ignore[var-annotated]
+        self._session = None
+        self._client = None
+        self._resource = None
+        self._table = None
         self.logger: Logger = get_logger(component="DynamoDBPipeline")
 
     async def open(self, spider: Spider) -> None:
@@ -84,11 +84,11 @@ class DynamoDBPipeline:
         if self.endpoint_url:
             resource_kwargs["endpoint_url"] = self.endpoint_url
 
-        resource = await session.resource(  # type: ignore[attr-defined]
+        resource = await session.resource(
             "dynamodb",
             **resource_kwargs,
         ).__aenter__()
-        client = await session.client(  # type: ignore[attr-defined]
+        client = await session.client(
             "dynamodb",
             **resource_kwargs,
         ).__aenter__()
@@ -97,18 +97,18 @@ class DynamoDBPipeline:
 
         # Create table if it doesn't exist
         try:
-            await client.describe_table(TableName=self.table_name)  # type: ignore[union-attr]
-            table = await resource.Table(self.table_name)  # type: ignore[union-attr]
-        except client.exceptions.ResourceNotFoundException:  # type: ignore[union-attr]
+            await client.describe_table(TableName=self.table_name)
+            table = await resource.Table(self.table_name)
+        except client.exceptions.ResourceNotFoundException:
             # Create table with a simple schema (id as primary key)
-            table = await resource.create_table(  # type: ignore[union-attr]
+            table = await resource.create_table(
                 TableName=self.table_name,
                 KeySchema=[{"AttributeName": "id", "KeyType": "HASH"}],
                 AttributeDefinitions=[{"AttributeName": "id", "AttributeType": "S"}],
                 BillingMode="PAY_PER_REQUEST",
             )
             # Wait for table to be created
-            await table.wait_until_exists()  # type: ignore[union-attr]
+            await table.wait_until_exists()
         self._table = table
 
         self.logger.info(
@@ -119,10 +119,10 @@ class DynamoDBPipeline:
 
     async def close(self, spider: Spider) -> None:
         if self._client:
-            await self._client.__aexit__(None, None, None)  # type: ignore[union-attr]
+            await self._client.__aexit__(None, None, None)
             self._client = None
         if self._resource:
-            await self._resource.__aexit__(None, None, None)  # type: ignore[union-attr]
+            await self._resource.__aexit__(None, None, None)
             self._resource = None
             self._table = None
         self.logger.info("Closed DynamoDB pipeline", table_name=self.table_name)
@@ -141,7 +141,7 @@ class DynamoDBPipeline:
         }
 
         # Put item in DynamoDB
-        await self._table.put_item(Item=dynamo_item)  # type: ignore[union-attr]
+        await self._table.put_item(Item=dynamo_item)
 
         log_pipeline_item(
             self,

@@ -24,6 +24,9 @@ test:
 pyright:
 	uv run --group dev pyright
 
+verifytypes:
+	uv run --group dev pyright --verifytypes silkworm --ignoreexternal
+
 clean:
 	rm -rf .venv/
 	rm -rf .uv-cache/

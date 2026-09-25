@@ -5,12 +5,12 @@ from datetime import timedelta
 from typing import TYPE_CHECKING
 
 try:
-    from wreq import Client, Method  # type: ignore[import]
+    from wreq import Client, Method
 
     WREQ_AVAILABLE = True
 except ImportError:
-    Client = None  # type: ignore
-    Method = None  # type: ignore
+    Client = None
+    Method = None
     WREQ_AVAILABLE = False
 
 from ..logging import Logger, get_logger
@@ -132,11 +132,11 @@ class WebhookPipeline:
         try:
             # Use the wreq client to send the request
             method_upper = self.method.upper()
-            if not hasattr(Method, method_upper):  # type: ignore[attr-defined]
+            if not hasattr(Method, method_upper):
                 raise ValueError(
                     f"Invalid HTTP method '{self.method}'. Must be one of: GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS",
                 )
-            method_enum = getattr(Method, method_upper)  # type: ignore[attr-defined]
+            method_enum = getattr(Method, method_upper)
             timeout: timedelta | None = None
             if self.timeout is not None:
                 timeout = (

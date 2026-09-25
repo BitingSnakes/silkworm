@@ -4,7 +4,7 @@ import argparse
 import re
 from urllib.parse import urljoin
 
-from pydantic import BaseModel, ValidationError, field_validator  # type: ignore[import]
+from pydantic import BaseModel, ValidationError, field_validator
 
 from silkworm import HTMLResponse, Response, Spider, run_spider_uvloop
 from silkworm.logging import get_logger

@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, override
 from urllib.parse import urljoin
 
-from scraper_rs.asyncio import (  # type: ignore[import-untyped]
+from scraper_rs.asyncio import (
     parse as parse_async,
 )
 
@@ -16,7 +16,7 @@ from .exceptions import SelectorError
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable, Iterable
 
-    from scraper_rs.asyncio import AsyncDocument, AsyncElement  # type: ignore[import]
+    from scraper_rs.asyncio import AsyncDocument, AsyncElement
 
     from .markdown import MarkdownMode, MarkdownOptions, MarkdownResult
     from .request import Callback, Request

@@ -2,16 +2,21 @@ from __future__ import annotations
 
 import inspect
 from datetime import timedelta
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
-from scraper_rs.asyncio import AsyncDocument, parse  # type: ignore[import]
-from wreq import Client, Emulation  # type: ignore[import]
+from scraper_rs.asyncio import AsyncDocument, parse
+from wreq import Client
+
+from .http import DEFAULT_EMULATION
+
+if TYPE_CHECKING:
+    from wreq import Emulation, Profile
 
 
 async def fetch_html(
     url: str,
     *,
-    emulation: Any = Emulation.Firefox139,
+    emulation: Emulation | Profile | None = DEFAULT_EMULATION,
     timeout: float | timedelta | None = None,
 ) -> tuple[str, AsyncDocument]:
     """

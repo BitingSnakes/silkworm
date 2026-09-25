@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, TypedDict, cast
 try:  # resource is POSIX-only
     import resource
 except ImportError:  # pragma: no cover - platform dependent
-    resource = None  # type: ignore[assignment]
+    resource = None
 
 from ._types import JSONLike, JSONValue
 from ._validation import require_positive_int
@@ -31,7 +31,7 @@ from .request import CallbackOutput, CallbackResult, Request
 from .response import HTMLResponse, Response
 
 if TYPE_CHECKING:
-    from wreq import Emulation, Profile  # type: ignore[import]
+    from wreq import Emulation, Profile
 
     from .middlewares import (
         ExceptionMiddleware,

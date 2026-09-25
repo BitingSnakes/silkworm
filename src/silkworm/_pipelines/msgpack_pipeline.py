@@ -76,7 +76,7 @@ class MsgPackPipeline:
     async def open(self, spider: Spider) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         file_mode = "ab" if self.mode == "append" else "wb"
-        self._fp = self.path.open(file_mode)  # type: ignore[assignment]
+        self._fp = self.path.open(file_mode)
         self.logger.info("Opened MsgPack pipeline", path=str(self.path), mode=self.mode)
 
     async def close(self, spider: Spider) -> None:

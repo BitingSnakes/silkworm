@@ -152,7 +152,7 @@ class SFTPPipeline:
                     self._sftp = None
                 if conn:
                     conn.close()
-                    await conn.wait_closed()  # type: ignore[union-attr]
+                    await conn.wait_closed()
                     self._conn = None
 
         self.logger.info("Closed SFTP pipeline", remote_path=self.remote_path)

@@ -18,8 +18,8 @@ try:
 
     CASSANDRA_AVAILABLE = True
 except ImportError:
-    Cluster = None  # type: ignore
-    PlainTextAuthProvider = None  # type: ignore
+    Cluster = None
+    PlainTextAuthProvider = None
     CASSANDRA_AVAILABLE = False
 
 from ..logging import Logger, get_logger
@@ -79,8 +79,8 @@ class CassandraPipeline:
         self.username = username
         self.password = password
         self.port = port
-        self._cluster = None  # type: ignore[var-annotated]
-        self._session = None  # type: ignore[var-annotated]
+        self._cluster = None
+        self._session = None
         self.logger: Logger = get_logger(component="CassandraPipeline")
 
     async def open(self, spider: Spider) -> None:

@@ -67,7 +67,7 @@ class PostgreSQLPipeline:
         self.password = password
         self.database = database
         self.table: str = validate_table_name(table)
-        self._pool = None  # type: ignore[var-annotated]
+        self._pool = None
         self.logger: Logger = get_logger(component="PostgreSQLPipeline")
 
     async def open(self, spider: Spider) -> None:
@@ -80,7 +80,7 @@ class PostgreSQLPipeline:
         )
 
         # Create table if it doesn't exist
-        async with self._pool.acquire() as conn:  # type: ignore[union-attr, attr-defined]
+        async with self._pool.acquire() as conn:
             await conn.execute(
                 f"""
                 CREATE TABLE IF NOT EXISTS {self.table} (
@@ -109,7 +109,7 @@ class PostgreSQLPipeline:
         if not self._pool:
             raise RuntimeError("PostgreSQLPipeline not opened")
 
-        async with self._pool.acquire() as conn:  # type: ignore[union-attr, attr-defined]
+        async with self._pool.acquire() as conn:
             await conn.execute(
                 f"INSERT INTO {self.table} (spider, data) VALUES ($1, $2)",
                 spider.name,

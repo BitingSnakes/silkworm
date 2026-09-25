@@ -67,7 +67,7 @@ class MySQLPipeline:
         self.password = password
         self.database = database
         self.table: str = validate_table_name(table)
-        self._pool = None  # type: ignore[var-annotated]
+        self._pool = None
         self.logger: Logger = get_logger(component="MySQLPipeline")
 
     async def open(self, spider: Spider) -> None:
@@ -81,7 +81,7 @@ class MySQLPipeline:
 
         # Create table if it doesn't exist
         async with (
-            self._pool.acquire() as conn,  # type: ignore[union-attr, attr-defined]
+            self._pool.acquire() as conn,
             conn.cursor() as cur,
         ):
             await cur.execute(
@@ -115,7 +115,7 @@ class MySQLPipeline:
             raise RuntimeError("MySQLPipeline not opened")
 
         async with (
-            self._pool.acquire() as conn,  # type: ignore[union-attr, attr-defined]
+            self._pool.acquire() as conn,
             conn.cursor() as cur,
         ):
             await cur.execute(
