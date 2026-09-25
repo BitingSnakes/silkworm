@@ -3,12 +3,12 @@ import io
 import json
 import sys
 import tempfile
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, Self, cast
 
 import anyio
 import pytest
+import rxml
 
 from silkworm.pipelines import (
     GOOGLE_SHEETS_AVAILABLE,
@@ -24,6 +24,14 @@ from silkworm.pipelines import (
 from silkworm.spiders import Spider
 
 
+def _children_named(node: rxml.Node, name: str) -> list[rxml.Node]:
+    return [child for child in node.children if child.name == name]
+
+
+def _child(node: rxml.Node, name: str) -> rxml.Node:
+    return next(child for child in node.children if child.name == name)
+
+
 async def test_xml_pipeline_creates_valid_xml():
     with tempfile.TemporaryDirectory() as tmpdir:
         xml_path = Path(tmpdir) / "test.xml"
@@ -36,22 +44,21 @@ async def test_xml_pipeline_creates_valid_xml():
         await pipeline.close(spider)
 
         # Verify XML is valid
-        tree = ET.parse(xml_path)
-        root = tree.getroot()
+        root = rxml.read_file(str(xml_path), "items")
 
-        assert root.tag == "items"
-        items = list(root)
+        assert root.name == "items"
+        items = root.children
         assert len(items) == 2
 
         # Check first item
-        assert items[0].tag == "item"
-        assert items[0].find("text").text == "Hello"
-        assert items[0].find("author").text == "John"
+        assert items[0].name == "item"
+        assert _child(items[0], "text").text == "Hello"
+        assert _child(items[0], "author").text == "John"
 
         # Check second item
-        assert items[1].tag == "item"
-        assert items[1].find("text").text == "World"
-        assert items[1].find("author").text == "Jane"
+        assert items[1].name == "item"
+        assert _child(items[1], "text").text == "World"
+        assert _child(items[1], "author").text == "Jane"
 
 
 async def test_xml_pipeline_custom_elements():
@@ -64,11 +71,10 @@ async def test_xml_pipeline_custom_elements():
         await pipeline.process_item({"text": "Test"}, spider)
         await pipeline.close(spider)
 
-        tree = ET.parse(xml_path)
-        root = tree.getroot()
+        root = rxml.read_file(str(xml_path), "quotes")
 
-        assert root.tag == "quotes"
-        assert root[0].tag == "quote"
+        assert root.name == "quotes"
+        assert root.children[0].name == "quote"
 
 
 async def test_xml_pipeline_handles_nested_dict():
@@ -83,13 +89,13 @@ async def test_xml_pipeline_handles_nested_dict():
         )
         await pipeline.close(spider)
 
-        tree = ET.parse(xml_path)
-        root = tree.getroot()
-        item = root[0]
+        root = rxml.read_file(str(xml_path), "items")
+        item = root.children[0]
 
-        assert item.find("user/name").text == "Alice"
-        assert item.find("user/age").text == "30"
-        assert item.find("active").text == "True"
+        user = _child(item, "user")
+        assert _child(user, "name").text == "Alice"
+        assert _child(user, "age").text == "30"
+        assert _child(item, "active").text == "True"
 
 
 async def test_xml_pipeline_handles_list():
@@ -102,12 +108,11 @@ async def test_xml_pipeline_handles_list():
         await pipeline.process_item({"tags": ["python", "web", "scraping"]}, spider)
         await pipeline.close(spider)
 
-        tree = ET.parse(xml_path)
-        root = tree.getroot()
-        item = root[0]
+        root = rxml.read_file(str(xml_path), "items")
+        item = root.children[0]
 
-        tags_elem = item.find("tags")
-        tag_items = tags_elem.findall("item")
+        tags_elem = _child(item, "tags")
+        tag_items = _children_named(tags_elem, "item")
         assert len(tag_items) == 3
         assert tag_items[0].text == "python"
         assert tag_items[1].text == "web"
@@ -149,12 +154,11 @@ async def test_rss_pipeline_respects_max_items():
         )
         await pipeline.close(spider)
 
-        tree = ET.parse(rss_path)
-        root = tree.getroot()
-        channel = root.find("channel")
-        items = channel.findall("item")
+        root = rxml.read_file(str(rss_path), "rss")
+        channel = _child(root, "channel")
+        items = _children_named(channel, "item")
         assert len(items) == 2
-        titles = [item.find("title").text for item in items]
+        titles = [_child(item, "title").text for item in items]
         assert titles == ["Second", "Third"]
 
 
@@ -180,12 +184,11 @@ async def test_rss_pipeline_skips_items_missing_required_fields():
         )
         await pipeline.close(spider)
 
-        tree = ET.parse(rss_path)
-        root = tree.getroot()
-        channel = root.find("channel")
-        items = channel.findall("item")
+        root = rxml.read_file(str(rss_path), "rss")
+        channel = _child(root, "channel")
+        items = _children_named(channel, "item")
         assert len(items) == 1
-        assert items[0].find("title").text == "Ok"
+        assert _child(items[0], "title").text == "Ok"
 
 
 # CallbackPipeline tests

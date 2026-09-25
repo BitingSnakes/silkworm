@@ -18,12 +18,12 @@ import platform
 import sqlite3
 import sys
 import tempfile
-import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, cast
 
 import anyio
 import pytest
+import rxml
 
 from silkworm import HTMLResponse, Request, Response, Spider
 from silkworm.pipelines import (
@@ -39,6 +39,14 @@ SAMPLE_QUOTES = [
     {"text": "Second quote", "author": "Author Two", "tags": ["tag3", "tag4"]},
     {"text": "Third quote", "author": "Author Three", "tags": ["tag5"]},
 ]
+
+
+def _children_named(node: rxml.Node, name: str) -> list[rxml.Node]:
+    return [child for child in node.children if child.name == name]
+
+
+def _child(node: rxml.Node, name: str) -> rxml.Node:
+    return next(child for child in node.children if child.name == name)
 
 
 class TestSpider(Spider):
@@ -149,22 +157,21 @@ async def test_xml_pipeline_integration():
         # Verify the file exists and has correct content
         assert output_path.exists()
 
-        tree = ET.parse(output_path)
-        root = tree.getroot()
+        root = rxml.read_file(str(output_path), "items")
 
-        assert root.tag == "items"
-        items = list(root)
+        assert root.name == "items"
+        items = root.children
         assert len(items) == len(SAMPLE_QUOTES)
 
         # Verify each item matches expected data
         for i, item in enumerate(items):
-            assert item.tag == "item"
-            assert item.find("text").text == SAMPLE_QUOTES[i]["text"]
-            assert item.find("author").text == SAMPLE_QUOTES[i]["author"]
+            assert item.name == "item"
+            assert _child(item, "text").text == SAMPLE_QUOTES[i]["text"]
+            assert _child(item, "author").text == SAMPLE_QUOTES[i]["author"]
 
             # Verify tags list structure
-            tags_elem = item.find("tags")
-            tag_items = tags_elem.findall("item")
+            tags_elem = _child(item, "tags")
+            tag_items = _children_named(tags_elem, "item")
             expected_tags = SAMPLE_QUOTES[i]["tags"]
             assert len(tag_items) == len(expected_tags)
             for j, tag in enumerate(tag_items):
@@ -229,13 +236,12 @@ async def test_xml_pipeline_custom_elements():
         # Verify the file exists and has correct structure
         assert output_path.exists()
 
-        tree = ET.parse(output_path)
-        root = tree.getroot()
+        root = rxml.read_file(str(output_path), "quotes")
 
-        assert root.tag == "quotes"
-        items = list(root)
+        assert root.name == "quotes"
+        items = root.children
         assert len(items) == len(SAMPLE_QUOTES)
-        assert items[0].tag == "quote"
+        assert items[0].name == "quote"
 
 
 async def test_csv_pipeline_custom_fieldnames():
@@ -551,9 +557,8 @@ async def test_multiple_pipelines_simultaneously():
         assert len(rows) == len(SAMPLE_QUOTES)
 
         # Quick verification of XML
-        tree = ET.parse(xml_path)
-        root = tree.getroot()
-        items = list(root)
+        root = rxml.read_file(str(xml_path), "items")
+        items = root.children
         assert len(items) == len(SAMPLE_QUOTES)
 
 

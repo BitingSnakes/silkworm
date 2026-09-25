@@ -1,7 +1,6 @@
 import importlib.util
 import sys
 import types
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, Mock
@@ -129,36 +128,12 @@ def _mock_async_document(
     return doc
 
 
-@dataclass
-class _DummyRxmlNode:
-    tag: str
-    children: list["_DummyRxmlNode"] | None = None
-    text: str = ""
-
-
-def _dummy_write_string(
-    node: "_DummyRxmlNode",
-    *,
-    indent: int = 0,
-    default_xml_def: bool = True,
-) -> str:
-    content = "".join(
-        _dummy_write_string(child, indent=indent, default_xml_def=default_xml_def)
-        for child in (node.children or [])
-    )
-    return f"<{node.tag}>{node.text}{content}</{node.tag}>"
-
-
 # Minimal stub modules so tests don't need real dependencies.
 wreq_module: Any = types.ModuleType("wreq")
 wreq_module.Client = _build_client
 wreq_module.Emulation = _DummyEmulation
 wreq_module.Method = _DummyMethod
 wreq_module.Proxy = _DummyProxy
-
-rxml_module: Any = types.ModuleType("rxml")
-rxml_module.Node = _DummyRxmlNode
-rxml_module.write_string = _dummy_write_string
 
 scraper_module: Any = types.ModuleType("scraper_rs")
 scraper_module.__path__ = []  # Allow importing submodules from the mock package.
@@ -177,7 +152,6 @@ scraper_asyncio_module.prettify = AsyncMock(side_effect=lambda html, **_: html)
 sys.modules.update(
     {
         "wreq": wreq_module,
-        "rxml": rxml_module,
         "scraper_rs": scraper_module,
         "scraper_rs.asyncio": scraper_asyncio_module,
     }

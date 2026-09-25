@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import json
-import xml.etree.ElementTree as ET
 from collections import deque
 from collections.abc import Mapping
 from datetime import UTC, date, datetime
 from email.utils import format_datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+import rxml
 
 from ..logging import Logger, get_logger
 from .base import log_pipeline_item
@@ -89,28 +90,32 @@ class RssPipeline:
 
     async def close(self, spider: Spider) -> None:
         """Build and write the RSS 2.0 document from buffered items."""
-        rss = ET.Element("rss", {"version": "2.0"})
-        channel = ET.SubElement(rss, "channel")
-        ET.SubElement(channel, "title").text = self.channel_title
-        ET.SubElement(channel, "link").text = self.channel_link
-        ET.SubElement(channel, "description").text = self.channel_description
-
+        item_nodes: list[rxml.Node] = []
         for item in self._items:
-            item_el = ET.SubElement(channel, "item")
-            ET.SubElement(item_el, "title").text = item["title"]
-            ET.SubElement(item_el, "link").text = item["link"]
-            ET.SubElement(item_el, "description").text = item["description"]
+            children = [
+                rxml.Node("title", text=item["title"]),
+                rxml.Node("link", text=item["link"]),
+                rxml.Node("description", text=item["description"]),
+            ]
             if pub_date := item.get("pub_date"):
-                ET.SubElement(item_el, "pubDate").text = pub_date
+                children.append(rxml.Node("pubDate", text=pub_date))
             if guid := item.get("guid"):
-                ET.SubElement(item_el, "guid").text = guid
+                children.append(rxml.Node("guid", text=guid))
             if author := item.get("author"):
-                ET.SubElement(item_el, "author").text = author
+                children.append(rxml.Node("author", text=author))
+            item_nodes.append(rxml.Node("item", children=children))
 
-        tree = ET.ElementTree(rss)
-        ET.indent(tree, space="  ")
-        with self.path.open("wb") as fp:
-            tree.write(fp, encoding="utf-8", xml_declaration=True)
+        channel = rxml.Node(
+            "channel",
+            children=[
+                rxml.Node("title", text=self.channel_title),
+                rxml.Node("link", text=self.channel_link),
+                rxml.Node("description", text=self.channel_description),
+                *item_nodes,
+            ],
+        )
+        rss = rxml.Node("rss", attrs={"version": "2.0"}, children=[channel])
+        rxml.write_file(rss, str(self.path), indent=2)
 
         self.logger.info(
             "Closed RSS pipeline",
