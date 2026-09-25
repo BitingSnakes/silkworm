@@ -40,10 +40,10 @@ def test_run_spider_trio_raises_when_trio_not_installed():
 def test_run_spider_trio_raises_when_trio_asyncio_not_installed():
     """Test that ImportError is raised when trio-asyncio is not installed."""
     mock_trio = MagicMock()
-    # The trio extra skips trio-asyncio on Python 3.15, so the hint differs.
+    # The trio extra skips trio-asyncio on Python 3.14+, so the hint differs.
     expected = (
-        "not available on Python 3.15"
-        if sys.version_info >= (3, 15)
+        f"not available on Python {sys.version_info.major}.{sys.version_info.minor}"
+        if sys.version_info >= (3, 14)
         else "trio-asyncio is required"
     )
 

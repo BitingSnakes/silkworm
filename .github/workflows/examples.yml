@@ -68,9 +68,9 @@ jobs:
           run_example "export_formats_demo" python examples/export_formats_demo.py --pages 1
           run_example "quotes_spider" python examples/quotes_spider.py
           run_example "quotes_spider_xpath" python examples/quotes_spider_xpath.py
-          if [ "${{ matrix.python-version }}" = "3.15" ]; then
-            # trio-asyncio has no Python 3.15 compatible release yet.
-            echo "Skipping quotes_spider_trio on Python 3.15"
+          if [ "${{ matrix.python-version }}" != "3.13" ]; then
+            # trio-asyncio 0.16 uses asyncio policy APIs removed in Python 3.14.
+            echo "Skipping quotes_spider_trio on Python ${{ matrix.python-version }}"
           else
             run_example "quotes_spider_trio" python examples/quotes_spider_trio.py
           fi

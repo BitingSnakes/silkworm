@@ -73,8 +73,8 @@ winloop = [
 ]
 trio = [
   "trio==0.34.0",
-  # trio-asyncio 0.16 uses asyncio policy classes removed in Python 3.15.
-  "trio-asyncio==0.16.0; python_version < '3.15'",
+  # trio-asyncio 0.16 uses asyncio policy classes removed in Python 3.14.
+  "trio-asyncio==0.16.0; python_version < '3.14'",
 ]
 msgpack = [
   # No Python 3.15 wheels yet (PyO3 build fails); drop the marker once published.

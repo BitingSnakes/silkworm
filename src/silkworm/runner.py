@@ -159,6 +159,8 @@ def run_spider_trio(
     Run ``spider`` with trio as the async backend (``pip install silkworm-rs[trio]``).
 
     The engine uses asyncio primitives, so it runs inside trio via trio-asyncio.
+    This runner is currently available on Python 3.13 only because
+    trio-asyncio 0.16 is incompatible with Python 3.14 and newer.
 
     Raises:
         ImportError: If trio or trio-asyncio is not installed.
@@ -172,10 +174,11 @@ def run_spider_trio(
     try:
         import trio_asyncio  # type: ignore[import]
     except ImportError as err:
-        if sys.version_info >= (3, 15):
+        if sys.version_info >= (3, 14):
             # The trio extra skips trio-asyncio here; see pyproject.toml.
+            version = f"{sys.version_info.major}.{sys.version_info.minor}"
             msg = (
-                "trio support is not available on Python 3.15 yet: trio-asyncio "
+                f"trio support is not available on Python {version} yet: trio-asyncio "
                 "has no compatible release."
             )
         else:
@@ -185,7 +188,7 @@ def run_spider_trio(
             )
         raise ImportError(msg) from err
     except AttributeError as err:
-        # trio-asyncio <= 0.16 subclasses asyncio policy classes that Python 3.15
+        # trio-asyncio <= 0.16 subclasses asyncio policy classes that Python 3.14
         # removed, so importing it fails with AttributeError.
         version = f"{sys.version_info.major}.{sys.version_info.minor}"
         msg = (

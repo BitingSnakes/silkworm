@@ -1,7 +1,7 @@
 # Getting Started
 
 ## Requirements
-- **Python**: 3.13, 3.14 or 3.15. On Python 3.15 the `msgpack`, `vortex` and `onionlink` extras install without their backing library until it ships 3.15 wheels, so those pipelines/clients are unavailable there for now. `run_spider_trio` is also unavailable on 3.15 until trio-asyncio supports it (the `trio` extra skips trio-asyncio there). `cassandra` is limited to Python 3.13.
+- **Python**: 3.13, 3.14 or 3.15. On Python 3.15 the `msgpack`, `vortex` and `onionlink` extras install without their backing library until it ships 3.15 wheels, so those pipelines/clients are unavailable there for now. `run_spider_trio` is available on Python 3.13 only until trio-asyncio supports Python 3.14+ (the `trio` extra skips trio-asyncio there). `cassandra` is limited to Python 3.13.
 - **Project metadata**: [pyproject.toml](../pyproject.toml)
 
 ## Installation

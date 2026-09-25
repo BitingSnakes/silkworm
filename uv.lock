@@ -2382,7 +2382,7 @@ taskiq = [
 ]
 trio = [
     { name = "trio" },
-    { name = "trio-asyncio", marker = "python_full_version < '3.15'" },
+    { name = "trio-asyncio", marker = "python_full_version < '3.14'" },
 ]
 uvloop = [
     { name = "uvloop" },
@@ -2440,7 +2440,7 @@ requires-dist = [
     { name = "snowflake-connector-python", marker = "extra == 'snowflake'", specifier = "==4.7.5" },
     { name = "taskiq", marker = "extra == 'taskiq'", specifier = "==0.12.6" },
     { name = "trio", marker = "extra == 'trio'", specifier = "==0.34.0" },
-    { name = "trio-asyncio", marker = "python_full_version < '3.15' and extra == 'trio'", specifier = "==0.16.0" },
+    { name = "trio-asyncio", marker = "python_full_version < '3.14' and extra == 'trio'", specifier = "==0.16.0" },
     { name = "uvloop", marker = "extra == 'uvloop'", specifier = "==0.22.1" },
     { name = "vortex-data", marker = "python_full_version < '3.15' and extra == 'vortex'", specifier = "==0.86.1" },
     { name = "websockets", marker = "extra == 'cdp'", specifier = "==17.1" },
@@ -2656,10 +2656,10 @@ name = "trio-asyncio"
 version = "0.16.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "greenlet" },
-    { name = "outcome" },
-    { name = "sniffio" },
-    { name = "trio" },
+    { name = "greenlet", marker = "python_full_version < '3.14'" },
+    { name = "outcome", marker = "python_full_version < '3.14'" },
+    { name = "sniffio", marker = "python_full_version < '3.14'" },
+    { name = "trio", marker = "python_full_version < '3.14'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/e1/76/b6317ad0536e155a9cce6c3f0db9a3b3f63e579e176779712ef3403d4af5/trio_asyncio-0.16.0.tar.gz", hash = "sha256:9f4e80aa344555548bf440e0f43072743aac1b3a538ebe3994f52363b7752d6f", size = 77120, upload-time = "2026-05-15T21:27:42.66Z" }
 wheels = [

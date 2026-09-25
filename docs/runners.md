@@ -85,7 +85,8 @@ from silkworm import run_spider_trio
 run_spider_trio(MySpider, concurrency=16)
 ```
 
-> **Requires**: `pip install silkworm-rs[trio]`
+> **Requires**: Python 3.13 and `pip install silkworm-rs[trio]`. trio-asyncio
+> 0.16 is not compatible with Python 3.14 or newer.
 
 ## Engine Direct Usage
 If you want to manage the lifecycle directly:

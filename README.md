@@ -442,6 +442,8 @@ run_spider_trio(
 ```
 
 This runs your spider using trio as the async backend via trio-asyncio compatibility layer.
+The Trio runner currently requires Python 3.13 because trio-asyncio 0.16 is not
+compatible with Python 3.14 or newer.
 
 ## JavaScript rendering with Servo
 For pages that need JavaScript execution but do not require driving an external browser process, install the optional Servo renderer and pass `ServoFetchClient` as the spider HTTP client.
