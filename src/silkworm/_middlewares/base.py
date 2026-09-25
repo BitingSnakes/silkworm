@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Protocol
 
 from ..request import Request
@@ -32,7 +32,7 @@ class ExceptionMiddleware(Protocol):
 
 
 def _utc_timestamp() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _timeout_seconds(timeout: float | timedelta | None) -> float | None:

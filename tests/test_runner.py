@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from silkworm.runner import run_spider, run_spider_uvloop, _install_uvloop
+from silkworm.runner import _install_uvloop, run_spider, run_spider_uvloop
 from silkworm.spiders import Spider
 
 
@@ -62,9 +62,11 @@ def test_install_uvloop_raises_when_not_installed():
                 raise ImportError("No module named 'uvloop'")
             return original_import(name, *args, **kwargs)
 
-        with patch("builtins.__import__", side_effect=mock_import):
-            with pytest.raises(ImportError, match="uvloop is not installed"):
-                _install_uvloop()
+        with (
+            patch("builtins.__import__", side_effect=mock_import),
+            pytest.raises(ImportError, match="uvloop is not installed"),
+        ):
+            _install_uvloop()
 
 
 def test_run_spider_without_uvloop():
@@ -74,14 +76,16 @@ def test_run_spider_without_uvloop():
         # Close coroutine to avoid unawaited coroutine warnings when mocking asyncio.run
         coro.close()
 
-    with patch("asyncio.run", side_effect=_run_and_close) as mock_run:
-        with patch("silkworm.runner._install_uvloop") as mock_install:
-            run_spider(SimpleSpider, concurrency=1)
+    with (
+        patch("asyncio.run", side_effect=_run_and_close) as mock_run,
+        patch("silkworm.runner._install_uvloop") as mock_install,
+    ):
+        run_spider(SimpleSpider, concurrency=1)
 
-            # Verify _install_uvloop was not called
-            mock_install.assert_not_called()
-            # Verify asyncio.run was called
-            mock_run.assert_called_once()
+        # Verify _install_uvloop was not called
+        mock_install.assert_not_called()
+        # Verify asyncio.run was called
+        mock_run.assert_called_once()
 
 
 def test_run_spider_with_uvloop_enabled():
@@ -121,6 +125,8 @@ def test_run_spider_with_uvloop_not_installed():
                 raise ImportError("No module named 'uvloop'")
             return original_import(name, *args, **kwargs)
 
-        with patch("builtins.__import__", side_effect=mock_import):
-            with pytest.raises(ImportError, match="uvloop is not installed"):
-                run_spider_uvloop(SimpleSpider, concurrency=1)
+        with (
+            patch("builtins.__import__", side_effect=mock_import),
+            pytest.raises(ImportError, match="uvloop is not installed"),
+        ):
+            run_spider_uvloop(SimpleSpider, concurrency=1)

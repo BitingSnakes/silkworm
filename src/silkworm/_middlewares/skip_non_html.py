@@ -8,6 +8,7 @@ from ..response import HTMLResponse, Response
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+
     from ..spiders import Spider
 
 

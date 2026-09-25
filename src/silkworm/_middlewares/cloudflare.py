@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from .._types import JSONValue
 from ..exceptions import HttpError
-from ..http import HttpClient, MOCK_RESPONSE_META_KEY
+from ..http import MOCK_RESPONSE_META_KEY, HttpClient
 from ..logging import get_logger
 from ..request import Request
 
@@ -28,8 +28,8 @@ class CloudflareCrawlMiddleware:
 
     _TRIGGER_META_KEY = "cloudflare_crawl"
     _SKIP_META_KEY = "_cloudflare_crawl_applied"
-    _DONE_STATES = {"completed", "complete", "done", "finished", "success"}
-    _FAILED_STATES = {"cancelled", "canceled", "error", "failed"}
+    _DONE_STATES = frozenset({"completed", "complete", "done", "finished", "success"})
+    _FAILED_STATES = frozenset({"cancelled", "canceled", "error", "failed"})
 
     def __init__(
         self,

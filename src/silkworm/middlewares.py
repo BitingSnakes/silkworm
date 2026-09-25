@@ -5,37 +5,37 @@ the public API.
 """
 
 from ._middlewares.base import (
+    ExceptionMiddleware,
     RequestMiddleware,
     ResponseMiddleware,
-    ExceptionMiddleware,
 )
-from ._middlewares.stream import RequestResponseStreamMiddleware
-from ._middlewares.user_agent import UserAgentMiddleware
-from ._middlewares.proxy import ProxyMiddleware
+from ._middlewares.cloudflare import CloudflareCrawlMiddleware
 from ._middlewares.cookies import CookiesMiddleware
+from ._middlewares.delay import DelayMiddleware
+from ._middlewares.proxy import ProxyMiddleware
 from ._middlewares.retry import RetryMiddleware
 from ._middlewares.robots import (
-    RobotsTxtFetcher,
     RobotsOrigin,
     RobotsTxtDelayMiddleware,
+    RobotsTxtFetcher,
 )
-from ._middlewares.delay import DelayMiddleware
 from ._middlewares.skip_non_html import SkipNonHTMLMiddleware
-from ._middlewares.cloudflare import CloudflareCrawlMiddleware
+from ._middlewares.stream import RequestResponseStreamMiddleware
+from ._middlewares.user_agent import UserAgentMiddleware
 
 __all__ = [
-    "RequestMiddleware",
-    "ResponseMiddleware",
-    "ExceptionMiddleware",
-    "RequestResponseStreamMiddleware",
-    "UserAgentMiddleware",
-    "ProxyMiddleware",
+    "CloudflareCrawlMiddleware",
     "CookiesMiddleware",
+    "DelayMiddleware",
+    "ExceptionMiddleware",
+    "ProxyMiddleware",
+    "RequestMiddleware",
+    "RequestResponseStreamMiddleware",
+    "ResponseMiddleware",
     "RetryMiddleware",
-    "RobotsTxtFetcher",
     "RobotsOrigin",
     "RobotsTxtDelayMiddleware",
-    "DelayMiddleware",
+    "RobotsTxtFetcher",
     "SkipNonHTMLMiddleware",
-    "CloudflareCrawlMiddleware",
+    "UserAgentMiddleware",
 ]

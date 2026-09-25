@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 from silkworm import HTMLResponse, Response, Spider, run_spider
 from silkworm.declarative import Attr, Item, Text
 from silkworm.middlewares import RetryMiddleware, SkipNonHTMLMiddleware

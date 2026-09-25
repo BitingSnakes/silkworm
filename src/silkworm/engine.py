@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import asyncio
 import inspect
 import reprlib
@@ -23,7 +24,7 @@ except ImportError:  # pragma: no cover - platform dependent
 
 from ._types import JSONLike, JSONValue
 from ._validation import require_positive_int
-from .exceptions import SpiderError
+from .exceptions import SilkwormError, SpiderError
 from .http import HttpClient
 from .logging import LogLevel, complete_logs, get_logger, log_at_level
 from .request import CallbackOutput, CallbackResult, Request
@@ -384,7 +385,11 @@ class Engine:
                     if cause is not None:
                         error_context["cause"] = self._safe_repr(cause)
                         error_context["cause_type"] = cause.__class__.__name__
-                    self.logger.error("Request errback failed", **error_context)
+                    self.logger.error(
+                        "Request errback failed",
+                        **error_context,
+                        exc_info=not isinstance(errback_exc, SilkwormError),
+                    )
                     continue
 
                 cause = exc.__cause__ or exc.__context__
@@ -397,7 +402,14 @@ class Engine:
                 if cause is not None:
                     error_context["cause"] = self._safe_repr(cause)
                     error_context["cause_type"] = cause.__class__.__name__
-                self.logger.error("Failed to process request", **error_context)
+                # silkworm's own errors are self-explanatory (and callback
+                # failures are already logged with a traceback); only unexpected
+                # errors, e.g. bugs in middlewares or pipelines, get one here.
+                self.logger.error(
+                    "Failed to process request",
+                    **error_context,
+                    exc_info=not isinstance(exc, SilkwormError),
+                )
                 # Keep the worker alive so other requests can continue to be processed.
                 continue
             finally:
@@ -484,7 +496,7 @@ class Engine:
                     # JSONLike shapes, which are the same objects at runtime.
                     await self._process_item(cast(JSONValue, x))
         except Exception as exc:
-            self.logger.error(
+            self.logger.exception(
                 "Callback yielded invalid results",
                 callback=callback_name,
                 produced_type=type(produced).__name__,
@@ -494,7 +506,6 @@ class Engine:
                 url=url,
                 error=str(exc),
                 error_type=exc.__class__.__name__,
-                exc_info=True,
             )
             raise SpiderError(
                 f"Spider callback '{callback_name}' yielded invalid results",
@@ -662,10 +673,7 @@ class Engine:
         cb_self = getattr(callback, "__self__", None)
         cb_func = getattr(callback, "__func__", None)
         parse_func = getattr(self.spider.parse, "__func__", None)
-        if cb_self is self.spider and cb_func is parse_func:
-            return True
-
-        return False
+        return cb_self is self.spider and cb_func is parse_func
 
     def _ensure_html_response(self, resp: Response) -> HTMLResponse:
         if isinstance(resp, HTMLResponse):

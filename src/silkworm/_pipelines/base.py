@@ -1,21 +1,30 @@
 from __future__ import annotations
 
 import re
-from typing import Protocol, TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Protocol, cast
 
-from ..logging import LogLevel, log_at_level
+from ..logging import LogLevel, _Logger, log_at_level
 
 if TYPE_CHECKING:
     from .._types import JSONValue
     from ..spiders import Spider
 
 
+class _LoggingPipeline(Protocol):
+    @property
+    def logger(self) -> _Logger: ...
+
+
+class _LevelledPipeline(Protocol):
+    log_level: LogLevel
+
+
 def _log_pipeline_item(
-    pipeline: object,
+    pipeline: _LoggingPipeline,
     message: str,
     **context: object,
 ) -> None:
-    logger = getattr(pipeline, "logger")
+    logger = pipeline.logger
     log_level = cast("LogLevel", getattr(pipeline, "log_level", "DEBUG"))
     log_at_level(logger, log_level, message, **context)
 
@@ -47,8 +56,9 @@ class LoggedPipeline:
         self, pipeline: ItemPipeline, *, log_level: LogLevel = "DEBUG"
     ) -> None:
         self.pipeline = pipeline
-        self.log_level = log_level
-        setattr(self.pipeline, "log_level", log_level)
+        self.log_level: LogLevel = log_level
+        # Any pipeline may carry a log level; LoggedPipeline controls it.
+        cast("_LevelledPipeline", self.pipeline).log_level = log_level
 
     async def open(self, spider: Spider) -> None:
         await self.pipeline.open(spider)
@@ -57,5 +67,5 @@ class LoggedPipeline:
         await self.pipeline.close(spider)
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
-        setattr(self.pipeline, "log_level", self.log_level)
+        cast("_LevelledPipeline", self.pipeline).log_level = self.log_level
         return await self.pipeline.process_item(item, spider)

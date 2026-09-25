@@ -4,8 +4,12 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 try:
-    from google.oauth2.service_account import Credentials  # type: ignore[import-not-found]
-    from googleapiclient.discovery import build  # type: ignore[import-not-found, import-untyped]
+    from google.oauth2.service_account import (  # pyright: ignore[reportMissingImports]
+        Credentials,
+    )
+    from googleapiclient.discovery import (  # pyright: ignore[reportMissingImports]
+        build,
+    )
 
     GOOGLE_SHEETS_AVAILABLE = True
 except ImportError:

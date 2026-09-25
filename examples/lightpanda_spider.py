@@ -4,6 +4,7 @@ import asyncio
 
 from silkworm import HTMLResponse, Request, Response, Spider, get_logger
 from silkworm.cdp import CDPClient
+from silkworm.exceptions import HttpError
 from silkworm.pipelines import JsonLinesPipeline
 
 """
@@ -60,7 +61,7 @@ class LightpandaSpider(Spider):
         try:
             await self._cdp_client.connect()
             self.log.info("Connected to Lightpanda CDP endpoint")
-        except Exception as exc:
+        except HttpError as exc:
             self.log.error("Failed to connect to CDP endpoint", error=str(exc))
             self.log.info(
                 "Make sure Lightpanda is running with: lightpanda --remote-debugging-port=9222"
@@ -145,8 +146,3 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         print("\n\nSpider stopped by user.")
-    except Exception as exc:
-        print(f"\n\nError: {exc}")
-        import traceback
-
-        traceback.print_exc()

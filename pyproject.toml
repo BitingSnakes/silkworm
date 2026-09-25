@@ -179,9 +179,5 @@ executionEnvironments = [
   { root = "src" },
 ]
 
-[tool.ruff.lint]
-# Ruff 0.16 widened its default rule set; keep the rules this project was linted with.
-select = ["E4", "E7", "E9", "F"]
-
 [tool.pytest.ini_options]
 anyio_mode = "auto"

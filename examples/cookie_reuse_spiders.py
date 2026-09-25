@@ -3,9 +3,10 @@ from __future__ import annotations
 import argparse
 import json
 from collections.abc import Mapping
-from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from threading import Thread
+from typing import Self
 from urllib.parse import urlsplit
 
 from silkworm import CookiesMiddleware, Response, Spider, run_spider
@@ -99,7 +100,7 @@ class CookieDemoServer:
         port = self._server.server_address[1]
         return f"http://{host}:{port}"
 
-    def __enter__(self) -> CookieDemoServer:
+    def __enter__(self) -> Self:
         self._thread.start()
         return self
 

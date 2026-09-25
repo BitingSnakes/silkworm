@@ -206,7 +206,7 @@ class SitemapSpider(Spider):
                         dont_filter=True,
                     )
 
-        except Exception as exc:
+        except ValueError as exc:
             self.log.error(
                 "Failed to parse sitemap XML",
                 url=response.url,

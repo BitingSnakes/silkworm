@@ -1,27 +1,27 @@
 import asyncio
+import io
+import json
 import sys
 import tempfile
-import json
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, cast
 
+import anyio
 import pytest
 
 from silkworm.pipelines import (
+    GOOGLE_SHEETS_AVAILABLE,
+    SNOWFLAKE_AVAILABLE,
     CallbackPipeline,
     CSVPipeline,
+    GoogleSheetsPipeline,
     RssPipeline,
+    SnowflakePipeline,
     SQLitePipeline,
     XMLPipeline,
 )
 from silkworm.spiders import Spider
-
-# SnowflakePipeline tests - skip if snowflake-connector-python not installed
-from silkworm.pipelines import SNOWFLAKE_AVAILABLE, SnowflakePipeline  # type: ignore
-
-# GoogleSheetsPipeline tests - skip if google-api-python-client not installed
-from silkworm.pipelines import GOOGLE_SHEETS_AVAILABLE, GoogleSheetsPipeline  # type: ignore
 
 
 async def test_xml_pipeline_creates_valid_xml():
@@ -249,7 +249,6 @@ async def test_callback_pipeline_callback_returning_none():
     def process_item(item, spider):
         # Callback that doesn't return anything
         print(item)
-        return None
 
     pipeline = CallbackPipeline(callback=process_item)
     spider = Spider()
@@ -456,6 +455,7 @@ def test_sqlite_pipeline_invalid_table_name():
 # TaskiqPipeline tests - skip if taskiq not installed
 try:
     from taskiq import InMemoryBroker  # type: ignore
+
     from silkworm.pipelines import TaskiqPipeline
 
     TASKIQ_AVAILABLE = True
@@ -549,8 +549,9 @@ def test_taskiq_pipeline_without_taskiq_raises_import_error():
 # MsgPackPipeline to work (for writing), but we use msgpack for reading in tests
 # because ormsgpack doesn't have an Unpacker class to read multiple objects from a stream.
 try:
-    import ormsgpack  # type: ignore  # noqa: F401
     import msgpack  # type: ignore
+    import ormsgpack  # type: ignore  # noqa: F401
+
     from silkworm.pipelines import MsgPackPipeline
 
     ORMSGPACK_AVAILABLE = True
@@ -571,8 +572,8 @@ async def test_msgpack_pipeline_writes_items():
         await pipeline.close(spider)
 
         # Read and verify MsgPack data
-        with open(msgpack_path, "rb") as f:
-            data = f.read()
+        f = io.BytesIO(await anyio.Path(msgpack_path).read_bytes())
+        data = f.read()
 
         # Unpack both items using msgpack.Unpacker
         unpacker = msgpack.Unpacker()
@@ -603,8 +604,8 @@ async def test_msgpack_pipeline_append_mode():
         await pipeline2.close(spider)
 
         # Read and verify both items
-        with open(msgpack_path, "rb") as f:
-            data = f.read()
+        f = io.BytesIO(await anyio.Path(msgpack_path).read_bytes())
+        data = f.read()
 
         unpacker = msgpack.Unpacker()
         unpacker.feed(data)
@@ -629,8 +630,8 @@ async def test_msgpack_pipeline_handles_nested_data():
         await pipeline.close(spider)
 
         # Read and verify
-        with open(msgpack_path, "rb") as f:
-            data = f.read()
+        f = io.BytesIO(await anyio.Path(msgpack_path).read_bytes())
+        data = f.read()
 
         unpacker = msgpack.Unpacker()
         unpacker.feed(data)
@@ -661,6 +662,7 @@ def test_msgpack_pipeline_invalid_mode_raises_error():
 # PolarsPipeline tests - skip if polars not installed
 try:
     import polars as pl  # type: ignore
+
     from silkworm.pipelines import PolarsPipeline
 
     POLARS_AVAILABLE = True
@@ -720,6 +722,7 @@ def test_polars_pipeline_invalid_mode_raises_error():
 # ExcelPipeline tests - skip if openpyxl not installed
 try:
     import openpyxl  # type: ignore
+
     from silkworm.pipelines import ExcelPipeline
 
     OPENPYXL_AVAILABLE = True
@@ -787,6 +790,7 @@ async def test_excel_pipeline_flattens_nested_dict():
 # YAMLPipeline tests - skip if pyyaml not installed
 try:
     import yaml  # type: ignore
+
     from silkworm.pipelines import YAMLPipeline
 
     YAML_AVAILABLE = True
@@ -807,8 +811,8 @@ async def test_yaml_pipeline_writes_yaml():
         await pipeline.close(spider)
 
         # Read and verify YAML data
-        with open(yaml_path, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
+        f = io.StringIO((await anyio.Path(yaml_path).read_bytes()).decode("utf-8"))
+        data = yaml.safe_load(f)
 
         assert len(data) == 2
         assert data[0] == {"text": "Hello", "author": "John"}
@@ -829,8 +833,8 @@ async def test_yaml_pipeline_handles_nested_data():
         await pipeline.close(spider)
 
         # Read and verify
-        with open(yaml_path, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
+        f = io.StringIO((await anyio.Path(yaml_path).read_bytes()).decode("utf-8"))
+        data = yaml.safe_load(f)
 
         assert len(data) == 1
         assert data[0] == {
@@ -842,6 +846,7 @@ async def test_yaml_pipeline_handles_nested_data():
 # AvroPipeline tests - skip if fastavro not installed
 try:
     import fastavro  # type: ignore
+
     from silkworm.pipelines import AvroPipeline
 
     FASTAVRO_AVAILABLE = True
@@ -870,9 +875,9 @@ async def test_avro_pipeline_writes_with_schema():
         await pipeline.close(spider)
 
         # Read and verify Avro data
-        with open(avro_path, "rb") as f:
-            reader = fastavro.reader(f)
-            records = list(reader)
+        f = io.BytesIO(await anyio.Path(avro_path).read_bytes())
+        reader = fastavro.reader(f)
+        records = list(reader)
 
         assert len(records) == 2
         assert records[0] == {"text": "Hello", "author": "John"}
@@ -893,9 +898,9 @@ async def test_avro_pipeline_infers_schema():
         await pipeline.close(spider)
 
         # Read and verify Avro data
-        with open(avro_path, "rb") as f:
-            reader = fastavro.reader(f)
-            records = [cast("dict[str, Any]", record) for record in reader]
+        f = io.BytesIO(await anyio.Path(avro_path).read_bytes())
+        reader = fastavro.reader(f)
+        records = [cast("dict[str, Any]", record) for record in reader]
 
         assert len(records) == 1
         assert records[0]["text"] == "Hello"
@@ -905,7 +910,10 @@ async def test_avro_pipeline_infers_schema():
 
 # ElasticsearchPipeline tests - skip if elasticsearch not installed
 try:
-    from elasticsearch import AsyncElasticsearch  # type: ignore[import-not-found]  # noqa: F401
+    from elasticsearch import (  # pyright: ignore[reportMissingImports]
+        AsyncElasticsearch,  # noqa: F401
+    )
+
     from silkworm.pipelines import ElasticsearchPipeline
 
     ELASTICSEARCH_AVAILABLE = True
@@ -928,6 +936,7 @@ def test_elasticsearch_pipeline_initialization():
 # MongoDBPipeline tests - skip if motor not installed
 try:
     import motor.motor_asyncio  # type: ignore[import-not-found]  # noqa: F401
+
     from silkworm.pipelines import MongoDBPipeline
 
     MOTOR_AVAILABLE = True
@@ -951,6 +960,7 @@ def test_mongodb_pipeline_initialization():
 # S3JsonLinesPipeline tests - skip if opendal not installed
 try:
     import opendal  # type: ignore[import-not-found]  # noqa: F401
+
     from silkworm.pipelines import S3JsonLinesPipeline
 
     OPENDAL_AVAILABLE = True
@@ -1000,7 +1010,8 @@ async def test_jsonlines_pipeline_appends_with_opendal():
 
 # VortexPipeline tests - skip if vortex not installed
 try:
-    import vortex  # type: ignore[import-not-found]  # noqa: F401
+    import vortex  # type: ignore[import-not-found]
+
     from silkworm.pipelines import VortexPipeline
 
     VORTEX_AVAILABLE = True
@@ -1118,6 +1129,7 @@ async def test_vortex_pipeline_handles_various_types():
 # MySQLPipeline tests - skip if aiomysql not installed
 try:
     import aiomysql  # type: ignore[import-not-found]  # noqa: F401
+
     from silkworm.pipelines import MySQLPipeline
 
     AIOMYSQL_AVAILABLE = True
@@ -1160,6 +1172,7 @@ def test_mysql_pipeline_invalid_table_name():
 # PostgreSQLPipeline tests - skip if asyncpg not installed
 try:
     import asyncpg  # type: ignore[import-not-found]  # noqa: F401
+
     from silkworm.pipelines import PostgreSQLPipeline
 
     ASYNCPG_AVAILABLE = True
@@ -1335,7 +1348,8 @@ async def test_snowflake_pipeline_not_opened_raises_error():
 
 # FTPPipeline tests - skip if aioftp not installed
 try:
-    import aioftp  # type: ignore[import-not-found]  # noqa: F401
+    import aioftp  # type: ignore[import-not-found]
+
     from silkworm.pipelines import FTPPipeline
 
     AIOFTP_AVAILABLE = True
@@ -1395,6 +1409,7 @@ async def test_ftp_pipeline_uploads_items():
 # SFTPPipeline tests - skip if asyncssh not installed
 try:
     import asyncssh  # type: ignore[import-not-found]  # noqa: F401
+
     from silkworm.pipelines import SFTPPipeline
 
     ASYNCSSH_AVAILABLE = True
@@ -1454,7 +1469,10 @@ if sys.platform == "win32":
     CassandraPipeline = None  # type: ignore
 else:
     try:
-        from cassandra.cluster import Cluster  # type: ignore[import-not-found]  # noqa: F401
+        from cassandra.cluster import (  # pyright: ignore[reportMissingImports]
+            Cluster,  # noqa: F401
+        )
+
         from silkworm.pipelines import CassandraPipeline
 
         CASSANDRA_AVAILABLE = True
@@ -1520,6 +1538,7 @@ async def test_cassandra_pipeline_not_opened_raises_error():
 # CouchDBPipeline tests - skip if aiocouch not installed
 try:
     import aiocouch  # type: ignore[import-not-found]  # noqa: F401
+
     from silkworm.pipelines import CouchDBPipeline
 
     AIOCOUCH_AVAILABLE = True
@@ -1558,6 +1577,7 @@ async def test_couchdb_pipeline_not_opened_raises_error():
 # DynamoDBPipeline tests - skip if aioboto3 not installed
 try:
     import aioboto3  # type: ignore[import-not-found]  # noqa: F401
+
     from silkworm.pipelines import DynamoDBPipeline
 
     AIOBOTO3_AVAILABLE = True
@@ -1597,7 +1617,8 @@ async def test_dynamodb_pipeline_not_opened_raises_error():
 
 # DuckDBPipeline tests - skip if duckdb not installed
 try:
-    import duckdb  # type: ignore[import-not-found]  # noqa: F401
+    import duckdb  # type: ignore[import-not-found]
+
     from silkworm.pipelines import DuckDBPipeline
 
     DUCKDB_AVAILABLE = True

@@ -15,6 +15,7 @@ from ..response import Response
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+
     from ..spiders import Spider
 
 
@@ -204,9 +205,7 @@ class CookiesMiddleware:
     def _jar_for_request(self, request: Request) -> CookieJar:
         raw_key = request.meta.get(self._COOKIEJAR_META_KEY, self._DEFAULT_JAR_KEY)
         key: str | int
-        if isinstance(raw_key, int):
-            key = raw_key
-        elif isinstance(raw_key, str) and raw_key:
+        if isinstance(raw_key, int) or isinstance(raw_key, str) and raw_key:
             key = raw_key
         else:
             key = self._DEFAULT_JAR_KEY

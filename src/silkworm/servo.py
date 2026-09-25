@@ -58,7 +58,7 @@ class ServoFetchClient:
             raise ImportError(msg) from err
 
         try:
-            browser_cls = getattr(servofetch, "AsyncBrowser")
+            browser_cls = servofetch.AsyncBrowser
         except AttributeError as err:
             msg = (
                 "servofetch>=0.1.4 is required for ServoFetchClient. Install a wheel from this page: "
@@ -171,7 +171,9 @@ class ServoFetchClient:
             if inspect.isawaitable(result):
                 await result
         except Exception as exc:
-            self.logger.debug("Failed to close Servo browser cleanly", error=str(exc))
+            self.logger.debug(
+                "Failed to close Servo browser cleanly", error=str(exc), exc_info=True
+            )
 
     def _response_headers(self, page: object, *, screenshot: bool) -> dict[str, str]:
         headers = {

@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-from .request import Request
-from .response import Response, HTMLResponse
-from .spiders import Spider
-from .exceptions import (
-    SilkwormError,
-    HttpError,
-    SpiderError,
-    SelectorError,
-    MarkdownConversionError,
-)
+from .api import fetch_html, fetch_html_cdp, fetch_html_servo
 from .engine import DedupKey, Engine, EngineLogger, default_dedup_key
+from .exceptions import (
+    HttpError,
+    MarkdownConversionError,
+    SelectorError,
+    SilkwormError,
+    SpiderError,
+)
+from .logging import get_logger
 from .markdown import (
     MarkdownStream,
     convert_html_to_markdown,
@@ -18,58 +17,59 @@ from .markdown import (
     stream_html_to_markdown,
     stream_html_to_markdown_async,
 )
-from .onionlink import OnionLinkClient
-from .runner import (
-    crawl,
-    run_spider,
-    run_spider_rsloop,
-    run_spider_uvloop,
-    run_spider_winloop,
-    run_spider_trio,
-)
-from .api import fetch_html, fetch_html_cdp, fetch_html_servo
-from .logging import get_logger
 from .middlewares import (
     CookiesMiddleware,
     RequestResponseStreamMiddleware,
     RobotsTxtDelayMiddleware,
 )
+from .onionlink import OnionLinkClient
+from .request import Request
+from .response import HTMLResponse, Response
+from .runner import (
+    crawl,
+    run_spider,
+    run_spider_rsloop,
+    run_spider_trio,
+    run_spider_uvloop,
+    run_spider_winloop,
+)
 from .servo import ServoFetchClient
+from .spiders import Spider
 
 __all__ = [
-    "Request",
-    "Response",
-    "HTMLResponse",
-    "SilkwormError",
-    "HttpError",
-    "SpiderError",
-    "Spider",
-    "SelectorError",
-    "MarkdownConversionError",
+    "CookiesMiddleware",
+    "DedupKey",
     "Engine",
     "EngineLogger",
-    "DedupKey",
-    "default_dedup_key",
+    "HTMLResponse",
+    "HttpError",
+    "MarkdownConversionError",
     "MarkdownStream",
-    "convert_html_to_markdown",
-    "html_to_markdown",
-    "stream_html_to_markdown",
-    "stream_html_to_markdown_async",
     "OnionLinkClient",
+    "Request",
+    "RequestResponseStreamMiddleware",
+    "Response",
+    "RobotsTxtDelayMiddleware",
+    "SelectorError",
+    "ServoFetchClient",
+    "SilkwormError",
+    "Spider",
+    "SpiderError",
+    "convert_html_to_markdown",
     "crawl",
-    "run_spider",
-    "run_spider_rsloop",
-    "run_spider_uvloop",
-    "run_spider_winloop",
-    "run_spider_trio",
+    "default_dedup_key",
     "fetch_html",
     "fetch_html_cdp",
     "fetch_html_servo",
     "get_logger",
-    "CookiesMiddleware",
-    "RequestResponseStreamMiddleware",
-    "RobotsTxtDelayMiddleware",
-    "ServoFetchClient",
+    "html_to_markdown",
+    "run_spider",
+    "run_spider_rsloop",
+    "run_spider_trio",
+    "run_spider_uvloop",
+    "run_spider_winloop",
+    "stream_html_to_markdown",
+    "stream_html_to_markdown_async",
 ]
 
 # Optional CDP support

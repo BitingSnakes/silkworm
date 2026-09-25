@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from collections import deque
-from datetime import date, datetime, timezone
-from email.utils import format_datetime
 import json
 import xml.etree.ElementTree as ET
+from collections import deque
 from collections.abc import Mapping
+from datetime import UTC, date, datetime
+from email.utils import format_datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -167,9 +167,9 @@ class RssPipeline:
         if value is None:
             return None
         if isinstance(value, datetime):
-            dt = value if value.tzinfo else value.replace(tzinfo=timezone.utc)
+            dt = value if value.tzinfo else value.replace(tzinfo=UTC)
             return format_datetime(dt)
         if isinstance(value, date):
-            dt = datetime(value.year, value.month, value.day, tzinfo=timezone.utc)
+            dt = datetime(value.year, value.month, value.day, tzinfo=UTC)
             return format_datetime(dt)
         return str(value)

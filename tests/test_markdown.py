@@ -9,7 +9,6 @@ from silkworm import (
     stream_html_to_markdown_async,
 )
 
-
 HTML = """
 <html>
   <head><title>Example Page</title></head>

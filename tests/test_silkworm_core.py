@@ -1,18 +1,18 @@
 import asyncio
-from datetime import timedelta
 import json
 import sys
 import types
+from datetime import timedelta
+from typing import Any, ClassVar
 from unittest.mock import AsyncMock, Mock
 from urllib.parse import parse_qsl, urlsplit
-from typing import Any
 
 import pytest
 
 import silkworm.api as api_module
 import silkworm.response as response_module
-from silkworm.http import HttpClient
 from silkworm.engine import Engine
+from silkworm.http import HttpClient
 from silkworm.middlewares import (
     CloudflareCrawlMiddleware,
     CookiesMiddleware,
@@ -107,8 +107,8 @@ class _RecordingOnionSession:
 
 @pytest.fixture
 def onionlink_session(monkeypatch: pytest.MonkeyPatch) -> type[_RecordingOnionSession]:
-    module = types.ModuleType("onionlink")
-    setattr(module, "AsyncSession", _RecordingOnionSession)
+    module: Any = types.ModuleType("onionlink")
+    module.AsyncSession = _RecordingOnionSession
     monkeypatch.setitem(sys.modules, "onionlink", module)
     return _RecordingOnionSession
 
@@ -129,7 +129,7 @@ class _FakeServoPage:
 
 
 class _FakeServoAsyncBrowser:
-    instances: list["_FakeServoAsyncBrowser"] = []
+    instances: ClassVar[list["_FakeServoAsyncBrowser"]] = []
     active = 0
     max_active = 0
 
@@ -163,8 +163,8 @@ def servofetch_module(monkeypatch: pytest.MonkeyPatch) -> type[_FakeServoAsyncBr
     _FakeServoAsyncBrowser.instances = []
     _FakeServoAsyncBrowser.active = 0
     _FakeServoAsyncBrowser.max_active = 0
-    module = types.ModuleType("servofetch")
-    setattr(module, "AsyncBrowser", _FakeServoAsyncBrowser)
+    module: Any = types.ModuleType("servofetch")
+    module.AsyncBrowser = _FakeServoAsyncBrowser
     monkeypatch.setitem(sys.modules, "servofetch", module)
     return _FakeServoAsyncBrowser
 
@@ -309,7 +309,6 @@ async def test_engine_uses_servo_fetch_client(
 
         async def parse(self, response: Response):
             self.seen_html = isinstance(response, HTMLResponse)
-            return None
 
     spider = RenderedSpider()
     client = ServoFetchClient()
@@ -867,8 +866,8 @@ def test_http_client_rejects_non_positive_concurrency() -> None:
 def test_onionlink_client_requires_async_session(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    module = types.ModuleType("onionlink")
-    setattr(module, "Session", _RecordingOnionSession)
+    module: Any = types.ModuleType("onionlink")
+    module.Session = _RecordingOnionSession
     monkeypatch.setitem(sys.modules, "onionlink", module)
 
     with pytest.raises(ImportError, match=r"onionlink>=0\.1\.2"):
@@ -1842,7 +1841,6 @@ async def test_cloudflare_crawl_middleware_runs_inside_engine(
 
         async def parse(self, response: Response):
             self.payload = json.loads(response.text)
-            return None
 
     spider = CrawlSpider()
     middleware = CloudflareCrawlMiddleware(account_id="acct", api_token="token")

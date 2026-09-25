@@ -28,6 +28,9 @@ class _SpyLogger:
     def error(self, message: str, **context: object) -> None:
         self.calls.append(("error", message, context))
 
+    def exception(self, message: str, **context: object) -> None:
+        self.calls.append(("exception", message, context))
+
     def configure(
         self,
         *,
@@ -35,7 +38,7 @@ class _SpyLogger:
     ) -> None:
         return None
 
-    def bind(self, **context: object) -> "_SpyLogger":
+    def bind(self, **context: object) -> _SpyLogger:
         return self
 
     def complete(self) -> None:

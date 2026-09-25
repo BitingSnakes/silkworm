@@ -172,17 +172,17 @@ def main() -> None:
         JsonLinesPipeline(args.output, use_opendal=False),
     ]
 
-    kwargs: dict[str, Any] = dict(
-        concurrency=128,
-        request_middlewares=request_mw,
-        response_middlewares=response_mw,
-        item_pipelines=pipelines,
-        request_timeout=5,
-        log_stats_interval=10,
-        html_max_size_bytes=1_000_000,
-        keep_alive=True,
-        urls_file=args.urls_file,
-    )
+    kwargs: dict[str, Any] = {
+        "concurrency": 128,
+        "request_middlewares": request_mw,
+        "response_middlewares": response_mw,
+        "item_pipelines": pipelines,
+        "request_timeout": 5,
+        "log_stats_interval": 10,
+        "html_max_size_bytes": 1_000_000,
+        "keep_alive": True,
+        "urls_file": args.urls_file,
+    }
 
     if args.use_trio:
         run_spider_trio(

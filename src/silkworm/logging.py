@@ -44,6 +44,7 @@ class _Logger(Protocol):
     def debug(self, message: str, **context: object) -> None: ...
     def warning(self, message: str, **context: object) -> None: ...
     def error(self, message: str, **context: object) -> None: ...
+    def exception(self, message: str, **context: object) -> None: ...
     def complete(self) -> None: ...
 
 
@@ -216,6 +217,11 @@ class _LoggerAdapter:
         self._log(stdlib_logging.WARNING, message, **context)
 
     def error(self, message: str, **context: object) -> None:
+        self._log(stdlib_logging.ERROR, message, **context)
+
+    def exception(self, message: str, **context: object) -> None:
+        """Log at ERROR level with the active exception's traceback."""
+        context.setdefault("exc_info", True)
         self._log(stdlib_logging.ERROR, message, **context)
 
     def complete(self) -> None:

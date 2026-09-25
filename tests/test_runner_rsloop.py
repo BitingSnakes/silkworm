@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from silkworm.runner import run_spider_rsloop, _install_rsloop
+from silkworm.runner import _install_rsloop, run_spider_rsloop
 from silkworm.spiders import Spider
 
 
@@ -57,9 +57,11 @@ def test_install_rsloop_raises_when_not_installed():
                 raise ImportError("No module named 'rsloop'")
             return original_import(name, *args, **kwargs)
 
-        with patch("builtins.__import__", side_effect=mock_import):
-            with pytest.raises(ImportError, match="rsloop is not installed"):
-                _install_rsloop()
+        with (
+            patch("builtins.__import__", side_effect=mock_import),
+            pytest.raises(ImportError, match="rsloop is not installed"),
+        ):
+            _install_rsloop()
 
 
 def test_run_spider_with_rsloop_enabled():
@@ -97,6 +99,8 @@ def test_run_spider_with_rsloop_not_installed():
                 raise ImportError("No module named 'rsloop'")
             return original_import(name, *args, **kwargs)
 
-        with patch("builtins.__import__", side_effect=mock_import):
-            with pytest.raises(ImportError, match="rsloop is not installed"):
-                run_spider_rsloop(SimpleSpider, concurrency=1)
+        with (
+            patch("builtins.__import__", side_effect=mock_import),
+            pytest.raises(ImportError, match="rsloop is not installed"),
+        ):
+            run_spider_rsloop(SimpleSpider, concurrency=1)

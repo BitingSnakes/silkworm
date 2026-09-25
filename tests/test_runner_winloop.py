@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from silkworm.runner import run_spider_winloop, _install_winloop
+from silkworm.runner import _install_winloop, run_spider_winloop
 from silkworm.spiders import Spider
 
 
@@ -43,9 +43,11 @@ def test_install_winloop_raises_when_not_installed():
             raise ImportError("No module named 'winloop'")
         return original_import(name, *args, **kwargs)
 
-    with patch("builtins.__import__", side_effect=mock_import):
-        with pytest.raises(ImportError, match="winloop is not installed"):
-            _install_winloop()
+    with (
+        patch("builtins.__import__", side_effect=mock_import),
+        pytest.raises(ImportError, match="winloop is not installed"),
+    ):
+        _install_winloop()
 
 
 def test_run_spider_with_winloop_enabled():
@@ -84,6 +86,8 @@ def test_run_spider_with_winloop_not_installed():
             raise ImportError("No module named 'winloop'")
         return original_import(name, *args, **kwargs)
 
-    with patch("builtins.__import__", side_effect=mock_import):
-        with pytest.raises(ImportError, match="winloop is not installed"):
-            run_spider_winloop(SimpleSpider, concurrency=1)
+    with (
+        patch("builtins.__import__", side_effect=mock_import),
+        pytest.raises(ImportError, match="winloop is not installed"),
+    ):
+        run_spider_winloop(SimpleSpider, concurrency=1)

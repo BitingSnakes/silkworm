@@ -7,7 +7,7 @@ from silkworm.exceptions import HttpError
 
 websockets = pytest.importorskip("websockets")
 
-from silkworm.cdp import CDPClient  # noqa: E402
+from silkworm.cdp import CDPClient
 
 
 async def _cdp_server(ws) -> None:

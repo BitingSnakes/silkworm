@@ -80,19 +80,21 @@ class MySQLPipeline:
         )
 
         # Create table if it doesn't exist
-        async with self._pool.acquire() as conn:  # type: ignore[union-attr, attr-defined]
-            async with conn.cursor() as cur:
-                await cur.execute(
-                    f"""
-                    CREATE TABLE IF NOT EXISTS {self.table} (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        spider VARCHAR(255) NOT NULL,
-                        data JSON NOT NULL,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    )
-                    """,
+        async with (
+            self._pool.acquire() as conn,  # type: ignore[union-attr, attr-defined]
+            conn.cursor() as cur,
+        ):
+            await cur.execute(
+                f"""
+                CREATE TABLE IF NOT EXISTS {self.table} (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    spider VARCHAR(255) NOT NULL,
+                    data JSON NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
-                await conn.commit()
+                """,
+            )
+            await conn.commit()
 
         self.logger.info(
             "Opened MySQL pipeline",
@@ -112,13 +114,15 @@ class MySQLPipeline:
         if not self._pool:
             raise RuntimeError("MySQLPipeline not opened")
 
-        async with self._pool.acquire() as conn:  # type: ignore[union-attr, attr-defined]
-            async with conn.cursor() as cur:
-                await cur.execute(
-                    f"INSERT INTO {self.table} (spider, data) VALUES (%s, %s)",
-                    (spider.name, json.dumps(item, ensure_ascii=False)),
-                )
-                await conn.commit()
+        async with (
+            self._pool.acquire() as conn,  # type: ignore[union-attr, attr-defined]
+            conn.cursor() as cur,
+        ):
+            await cur.execute(
+                f"INSERT INTO {self.table} (spider, data) VALUES (%s, %s)",
+                (spider.name, json.dumps(item, ensure_ascii=False)),
+            )
+            await conn.commit()
 
         _log_pipeline_item(
             self,

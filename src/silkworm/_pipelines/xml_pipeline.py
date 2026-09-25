@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import io
-import rxml
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+import rxml
 
 from ..logging import get_logger
 from .base import _log_pipeline_item

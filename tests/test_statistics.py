@@ -131,6 +131,9 @@ class _SpyLogger:
     def error(self, *_args, **_kwargs):  # pragma: no cover - unused here
         return None
 
+    def exception(self, *_args, **_kwargs):  # pragma: no cover - unused here
+        return None
+
     def complete(self) -> None:  # pragma: no cover - unused here
         return None
 

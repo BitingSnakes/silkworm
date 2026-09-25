@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
@@ -95,10 +96,13 @@ class WebhookPipeline:
             if closer and callable(closer):
                 try:
                     result = closer()
-                    if hasattr(result, "__await__"):
-                        await result  # type: ignore
+                    if inspect.isawaitable(result):
+                        await result
                 except Exception:
-                    pass
+                    # Best-effort cleanup; a failed close must not fail the pipeline.
+                    self.logger.debug(
+                        "Failed to close webhook client cleanly", exc_info=True
+                    )
             self._client = None
 
         self.logger.info("Closed Webhook pipeline", url=self.url)
@@ -172,10 +176,13 @@ class WebhookPipeline:
             if closer and callable(closer):
                 try:
                     result = closer()
-                    if hasattr(result, "__await__"):
-                        await result  # type: ignore
+                    if inspect.isawaitable(result):
+                        await result
                 except Exception:
-                    pass
+                    # Best-effort cleanup; a failed close must not fail the pipeline.
+                    self.logger.debug(
+                        "Failed to close webhook client cleanly", exc_info=True
+                    )
 
             _log_pipeline_item(
                 self,

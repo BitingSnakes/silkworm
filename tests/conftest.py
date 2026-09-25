@@ -107,7 +107,7 @@ def _mock_async_document(
     html: str,
     *,
     max_size_bytes: int | None = None,
-    truncate_on_limit: bool = False,  # noqa: ARG001
+    truncate_on_limit: bool = False,
 ) -> Mock:
     doc = Mock()
     doc.html = html
@@ -139,8 +139,8 @@ class _DummyRxmlNode:
 def _dummy_write_string(
     node: "_DummyRxmlNode",
     *,
-    indent: int = 0,  # noqa: ARG001
-    default_xml_def: bool = True,  # noqa: ARG001
+    indent: int = 0,
+    default_xml_def: bool = True,
 ) -> str:
     content = "".join(
         _dummy_write_string(child, indent=indent, default_xml_def=default_xml_def)

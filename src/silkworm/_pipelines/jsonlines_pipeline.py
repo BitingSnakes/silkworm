@@ -79,6 +79,7 @@ class JsonLinesPipeline:
                     "OpenDAL write failed, falling back to local file handle",
                     path=str(self.path),
                     error=str(exc),
+                    exc_info=True,
                 )
                 self._operator = None
                 self._object_path = None

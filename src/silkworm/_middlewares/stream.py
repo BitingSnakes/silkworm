@@ -284,6 +284,7 @@ class RequestResponseStreamMiddleware:
                 url=self.url,
                 error=str(exc),
                 error_type=exc.__class__.__name__,
+                exc_info=True,
             )
         finally:
             if response is not None:

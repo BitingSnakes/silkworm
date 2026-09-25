@@ -16,6 +16,7 @@ from .base import _log_pipeline_item
 
 if TYPE_CHECKING:
     from openpyxl.worksheet.worksheet import Worksheet  # type: ignore[import-untyped]
+
     from .._types import JSONValue
     from ..spiders import Spider
 

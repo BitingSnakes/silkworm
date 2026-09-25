@@ -99,7 +99,7 @@ class Item(metaclass=_ItemMeta):
         """Recursively convert this item into a pipeline-compatible mapping."""
         converted = _to_json_value(self, path=type(self).__name__)
         if not isinstance(converted, dict):
-            raise AssertionError("Item serialization must produce a mapping")
+            raise TypeError("Item serialization must produce a mapping")
         return converted
 
     def __repr__(self) -> str:

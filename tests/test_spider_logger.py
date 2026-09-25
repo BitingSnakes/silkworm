@@ -2,8 +2,8 @@
 
 import pytest
 
-from silkworm.spiders import Spider
 import silkworm.logging as logging_mod
+from silkworm.spiders import Spider
 
 
 class _RecordingLogger:
@@ -24,6 +24,7 @@ class _RecordingLogger:
     def debug(self, *args: object, **kwargs: object) -> None: ...
     def warning(self, *args: object, **kwargs: object) -> None: ...
     def error(self, *args: object, **kwargs: object) -> None: ...
+    def exception(self, *args: object, **kwargs: object) -> None: ...
     def complete(self) -> None: ...
 
 
@@ -107,7 +108,6 @@ def test_spider_subclass_respects_passed_logger():
         def __init__(self, **kwargs) -> None:
             super().__init__(**kwargs)
             # Subclass can add additional setup after super().__init__
-            pass
 
     custom_logger = _RecordingLogger()
     spider = CustomSpider(logger=custom_logger)

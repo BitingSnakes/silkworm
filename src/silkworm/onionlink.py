@@ -54,7 +54,7 @@ class OnionLinkClient(HttpClient):
             raise ImportError(msg) from err
 
         try:
-            session_cls = getattr(module, "AsyncSession")
+            session_cls = module.AsyncSession
         except AttributeError as err:
             msg = (
                 "onionlink>=0.1.2 is required for OnionLinkClient. Install it with: "

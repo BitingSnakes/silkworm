@@ -9,8 +9,12 @@ try:
     if sys.platform == "win32":
         msg = "cassandra-driver not supported on Windows"
         raise ImportError(msg)
-    from cassandra.cluster import Cluster  # type: ignore[import-not-found, import-untyped]
-    from cassandra.auth import PlainTextAuthProvider  # type: ignore[import-not-found, import-untyped]
+    from cassandra.auth import (  # pyright: ignore[reportMissingImports]
+        PlainTextAuthProvider,
+    )
+    from cassandra.cluster import (  # pyright: ignore[reportMissingImports]
+        Cluster,
+    )
 
     CASSANDRA_AVAILABLE = True
 except ImportError:
@@ -140,7 +144,7 @@ class CassandraPipeline:
             raise RuntimeError("CassandraPipeline not opened")
 
         import uuid
-        from datetime import datetime
+        from datetime import UTC, datetime
 
         # Insert item into Cassandra
         self._session.execute(
@@ -152,7 +156,7 @@ class CassandraPipeline:
                 uuid.uuid4(),
                 spider.name,
                 json.dumps(item, ensure_ascii=False),
-                datetime.now(),
+                datetime.now(UTC),
             ),
         )
 

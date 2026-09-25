@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ValidationError, field_validator
 
 from silkworm import HTMLResponse, Response, Spider, run_spider
 from silkworm.logging import get_logger
@@ -12,16 +12,16 @@ from silkworm.middlewares import (
     RetryMiddleware,
     UserAgentMiddleware,
 )
+from silkworm.pipelines import ORMSGPACK_AVAILABLE as MSGPACK_AVAILABLE
+
+# MsgPackPipeline needs the optional ormsgpack dependency (silkworm-rs[msgpack]).
 from silkworm.pipelines import (
     CSVPipeline,
     ItemPipeline,
     JsonLinesPipeline,
+    MsgPackPipeline,
     XMLPipeline,
 )
-
-# MsgPackPipeline needs the optional ormsgpack dependency (silkworm-rs[msgpack]).
-from silkworm.pipelines import MsgPackPipeline
-from silkworm.pipelines import ORMSGPACK_AVAILABLE as MSGPACK_AVAILABLE
 
 
 class Quote(BaseModel):
@@ -80,7 +80,7 @@ class ExportFormatsSpider(Spider):
                 )
                 self.log.debug("Scraped quote", author=quote.author)
                 yield quote.model_dump()
-            except Exception as exc:
+            except ValidationError as exc:
                 self.log.warning("Skipping invalid quote", error=str(exc))
                 continue
 

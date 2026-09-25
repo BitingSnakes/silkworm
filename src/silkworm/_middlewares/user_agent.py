@@ -8,6 +8,7 @@ from ..request import Request
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
     from ..spiders import Spider
 
 

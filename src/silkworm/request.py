@@ -1,7 +1,8 @@
 from __future__ import annotations
+
+from collections.abc import AsyncIterable, AsyncIterator, Awaitable, Callable, Iterable
 from dataclasses import dataclass, field, replace
 from datetime import timedelta
-from collections.abc import AsyncIterable, AsyncIterator, Awaitable, Callable, Iterable
 from typing import TYPE_CHECKING, Self
 
 from ._types import BodyData, Headers, JSONLike, JSONValue, MetaData, QueryParams

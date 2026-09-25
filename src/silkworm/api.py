@@ -4,8 +4,8 @@ import inspect
 from datetime import timedelta
 from typing import Any, cast
 
-from wreq import Client, Emulation  # type: ignore[import]
 from scraper_rs.asyncio import AsyncDocument, parse  # type: ignore[import]
+from wreq import Client, Emulation  # type: ignore[import]
 
 
 async def fetch_html(
@@ -104,8 +104,8 @@ async def fetch_html_servo(
 
     Returns a tuple of (text, AsyncDocument) with awaitable selector helpers.
     """
-    from .request import Request
     from ._types import MetaData
+    from .request import Request
     from .servo import SERVO_JAVASCRIPT_META_KEY, ServoFetchClient
 
     client = ServoFetchClient(

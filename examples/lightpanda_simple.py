@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 
 from silkworm import fetch_html_cdp
+from silkworm.exceptions import HttpError
 
 """
 Simple example using Lightpanda CDP client - similar to the Node.js example.
@@ -57,7 +58,7 @@ async def main():
     except ImportError:
         print("\nError: websockets package not installed.")
         print("Install with: pip install silkworm-rs[cdp]")
-    except Exception as exc:
+    except HttpError as exc:
         print(f"\nError: {exc}")
         print("\nMake sure Lightpanda is running:")
         print("  lightpanda --remote-debugging-port=9222")

@@ -1,6 +1,7 @@
 """Tests for trio runner functionality."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 import pytest
 
 from silkworm.runner import run_spider_trio
@@ -28,9 +29,11 @@ def test_run_spider_trio_raises_when_trio_not_installed():
             raise ImportError("No module named 'trio'")
         return original_import(name, *args, **kwargs)
 
-    with patch("builtins.__import__", side_effect=mock_import):
-        with pytest.raises(ImportError, match="trio is not installed"):
-            run_spider_trio(SimpleSpider, concurrency=1)
+    with (
+        patch("builtins.__import__", side_effect=mock_import),
+        pytest.raises(ImportError, match="trio is not installed"),
+    ):
+        run_spider_trio(SimpleSpider, concurrency=1)
 
 
 def test_run_spider_trio_raises_when_trio_asyncio_not_installed():
@@ -48,9 +51,11 @@ def test_run_spider_trio_raises_when_trio_asyncio_not_installed():
             raise ImportError("No module named 'trio_asyncio'")
         return original_import(name, *args, **kwargs)
 
-    with patch("builtins.__import__", side_effect=mock_import):
-        with pytest.raises(ImportError, match="trio-asyncio is required"):
-            run_spider_trio(SimpleSpider, concurrency=1)
+    with (
+        patch("builtins.__import__", side_effect=mock_import),
+        pytest.raises(ImportError, match="trio-asyncio is required"),
+    ):
+        run_spider_trio(SimpleSpider, concurrency=1)
 
 
 def test_run_spider_trio_with_trio_installed():
@@ -70,10 +75,12 @@ def test_run_spider_trio_with_trio_installed():
             return mock_trio_asyncio
         return original_import(name, *args, **kwargs)
 
-    with patch("builtins.__import__", side_effect=mock_import):
-        with patch("silkworm.runner.crawl") as mock_crawl:
-            mock_crawl.return_value = None
-            run_spider_trio(SimpleSpider, concurrency=1)
+    with (
+        patch("builtins.__import__", side_effect=mock_import),
+        patch("silkworm.runner.crawl") as mock_crawl,
+    ):
+        mock_crawl.return_value = None
+        run_spider_trio(SimpleSpider, concurrency=1)
 
-            # Verify trio.run was called
-            assert mock_trio.run.called
+        # Verify trio.run was called
+        assert mock_trio.run.called

@@ -3,6 +3,7 @@ from __future__ import annotations
 import codecs
 import sys
 from types import SimpleNamespace
+from typing import ClassVar
 
 from silkworm.request import Request
 from silkworm.response import HTMLResponse, Response
@@ -78,7 +79,7 @@ def test_response_falls_back_to_charset_detection():
 def test_response_charset_detection_uses_bounded_sample(monkeypatch):
     class _Match:
         encoding = "utf-8"
-        alphabets: list[str] = []
+        alphabets: ClassVar[list[str]] = []
         language = "unknown"
 
     seen_sizes: list[int] = []

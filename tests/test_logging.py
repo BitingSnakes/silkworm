@@ -23,6 +23,7 @@ class _RecordingLogger:
     def debug(self, *args: object, **kwargs: object) -> None: ...
     def warning(self, *args: object, **kwargs: object) -> None: ...
     def error(self, *args: object, **kwargs: object) -> None: ...
+    def exception(self, *args: object, **kwargs: object) -> None: ...
     def complete(self) -> None: ...
 
 
@@ -98,3 +99,20 @@ def test_adapter_filters_messages_below_handler_level() -> None:
     output = stream.getvalue()
     assert "Hidden" not in output
     assert "WARNING | Visible" in output
+
+
+def test_adapter_exception_logs_error_with_traceback() -> None:
+    stream = io.StringIO()
+    adapter = logging_mod._LoggerAdapter(logging.getLogger("silkworm.test.exception"))
+    adapter.configure(handlers=[{"sink": stream, "level": "INFO"}])
+
+    try:
+        raise ValueError("boom")
+    except ValueError:
+        adapter.exception("Operation failed", step="parse")
+
+    output = stream.getvalue()
+    assert "ERROR | Operation failed" in output
+    assert "step='parse'" in output
+    assert "Traceback (most recent call last)" in output
+    assert "ValueError: boom" in output

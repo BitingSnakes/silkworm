@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import AsyncIterator, Callable, Iterable, Mapping, Sequence
 from contextlib import asynccontextmanager
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, AsyncIterator, cast
+from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit
 
 from wreq import Client, Emulation, Method, Proxy  # type: ignore[import]
@@ -21,6 +21,14 @@ if TYPE_CHECKING:
 
 
 MOCK_RESPONSE_META_KEY = "_silkworm_mock_response"
+
+
+@runtime_checkable
+class _HeaderEntry(Protocol):
+    """A header object exposing ``name`` and ``value`` attributes."""
+
+    name: object
+    value: object
 
 
 class HttpClient:
@@ -111,12 +119,12 @@ class HttpClient:
                     headers = {**self._default_headers, **current_req.headers}
                     if self._keep_alive and not self._has_connection_header(headers):
                         headers["Connection"] = "keep-alive"
-                    request_kwargs: dict[str, object] = dict(
-                        headers=headers,
-                        data=current_req.data,
-                        json=current_req.json,
-                        proxy=proxy,
-                    )
+                    request_kwargs: dict[str, object] = {
+                        "headers": headers,
+                        "data": current_req.data,
+                        "json": current_req.json,
+                        "proxy": proxy,
+                    }
                     client_timeout = self._as_timedelta(timeout_raw)
                     if client_timeout is not None:
                         request_kwargs["timeout"] = client_timeout
@@ -323,7 +331,7 @@ class HttpClient:
             return b""
         try:
             return bytes(data)  # type: ignore[call-overload]
-        except Exception:
+        except (TypeError, ValueError):
             return str(data).encode("utf-8", errors="replace")
 
     def _normalize_proxy(self, proxy: object) -> Proxy | None:
@@ -412,9 +420,9 @@ class HttpClient:
                     if ":" not in text:
                         continue
                     k, v = text.split(":", 1)
-                elif hasattr(entry, "name") and hasattr(entry, "value"):
-                    k = getattr(entry, "name")
-                    v = getattr(entry, "value")
+                elif isinstance(entry, _HeaderEntry):
+                    k = entry.name
+                    v = entry.value
                 else:
                     continue
                 headers[self._textify(k).strip().lower()] = self._textify(v).strip()
@@ -427,7 +435,7 @@ class HttpClient:
                 self._textify(k).strip().lower(): self._textify(v).strip()
                 for k, v in mapping.items()
             }
-        except Exception:
+        except (AttributeError, TypeError, ValueError):
             return {}
 
     def _normalize_header_map(self, raw_headers: object) -> dict[str, str]:
@@ -441,7 +449,7 @@ class HttpClient:
         headers: Headers = {}
         try:
             raw_keys = cast("Iterable[object]", keys())
-        except Exception:
+        except (TypeError, ValueError):
             return {}
 
         for key in raw_keys:
@@ -451,10 +459,10 @@ class HttpClient:
 
             try:
                 raw_values = getter(key)
-            except Exception:
+            except (KeyError, TypeError, ValueError):
                 try:
                     raw_values = getter(name)
-                except Exception:
+                except (KeyError, TypeError, ValueError):
                     continue
 
             if isinstance(raw_values, Sequence) and not isinstance(
@@ -488,7 +496,7 @@ class HttpClient:
             if callable(converter):
                 try:
                     candidate = converter()
-                except Exception:
+                except (TypeError, ValueError, OverflowError):
                     continue
                 if isinstance(candidate, int):
                     return candidate
@@ -523,7 +531,7 @@ class HttpClient:
 
         try:
             return Method[upper]  # type: ignore[index]
-        except Exception:
+        except (KeyError, TypeError):
             # Fallback to the uppercased string for test doubles or alternative
             # Method implementations that are not subscriptable.
             return upper
@@ -586,4 +594,6 @@ class HttpClient:
                 await result
         except Exception as exc:
             # Best-effort cleanup; suppress shutdown errors so the engine can exit.
-            self.logger.debug("Failed to close HTTP client cleanly", error=str(exc))
+            self.logger.debug(
+                "Failed to close HTTP client cleanly", error=str(exc), exc_info=True
+            )

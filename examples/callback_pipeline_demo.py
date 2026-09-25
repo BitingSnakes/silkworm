@@ -9,9 +9,9 @@ from __future__ import annotations
 from typing import override
 
 from silkworm import HTMLResponse, Response, Spider, run_spider
-from silkworm.request import CallbackOutput
 from silkworm.middlewares import UserAgentMiddleware
 from silkworm.pipelines import CallbackPipeline
+from silkworm.request import CallbackOutput
 
 
 class QuotesSpider(Spider):

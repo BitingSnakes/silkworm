@@ -17,6 +17,7 @@ import os
 from pathlib import Path
 
 from silkworm import HTMLResponse, Response, Spider, run_spider
+from silkworm.exceptions import SilkwormError
 from silkworm.logging import get_logger
 
 
@@ -235,7 +236,7 @@ def demo_3_run_spider_with_hybrid_logger():
 
     except KeyboardInterrupt:
         print("\n\nCrawl interrupted by user")
-    except Exception as e:
+    except (SilkwormError, OSError) as e:
         print(f"\n\nError during crawl: {e}")
 
 
@@ -284,7 +285,7 @@ def show_json_log_analysis():
         print(f"\nSample INFO message: {info_logs[0].get('message', 'N/A')}")
 
     # Show unique components
-    components = set(log.get("component") for log in logs if "component" in log)
+    components = {log.get("component") for log in logs if "component" in log}
     if components:
         print(f"\nComponents logging: {', '.join(components)}")
 

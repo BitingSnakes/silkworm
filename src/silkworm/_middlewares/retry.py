@@ -9,6 +9,7 @@ from ..response import Response
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+
     from ..spiders import Spider
 
 

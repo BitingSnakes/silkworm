@@ -22,15 +22,17 @@ if TYPE_CHECKING:
     from .request import Callback, Request
 
 
-_CHARSET_RE = re.compile(r"charset=([^\s;\"'>]+)", re.I)
-_META_CHARSET_RE = re.compile(rb"<meta\s+charset\s*=\s*['\"]?([a-zA-Z0-9._:-]+)", re.I)
+_CHARSET_RE = re.compile(r"charset=([^\s;\"'>]+)", re.IGNORECASE)
+_META_CHARSET_RE = re.compile(
+    rb"<meta\s+charset\s*=\s*['\"]?([a-zA-Z0-9._:-]+)", re.IGNORECASE
+)
 _META_CONTENT_TYPE_RE = re.compile(
     rb"<meta\s+http-equiv\s*=\s*['\"]?content-type['\"]?[^>]*charset\s*=\s*['\"]?([a-zA-Z0-9._:-]+)",
-    re.I,
+    re.IGNORECASE,
 )
 _XML_DECLARATION_RE = re.compile(
     rb"<\?xml[^>]+encoding\s*=\s*['\"]([a-zA-Z0-9._:-]+)['\"]",
-    re.I,
+    re.IGNORECASE,
 )
 _CHARSET_DETECTION_SAMPLE_BYTES = 128 * 1024
 _BOM_SEQUENCE = (
@@ -169,10 +171,7 @@ class Response:
         if encoding is None:
             return None
         if isinstance(encoding, bytes):
-            try:
-                encoding = encoding.decode("ascii", errors="ignore")
-            except Exception:
-                return None
+            encoding = encoding.decode("ascii", errors="ignore")
         normalized = encoding.strip().strip("\"'").lower()
         normalized = normalized.replace("_", "-")
         if not normalized:
@@ -189,9 +188,8 @@ class Response:
             return None
         try:
             return body.decode(normalized), normalized
-        except (LookupError, UnicodeDecodeError):
-            return None
-        except Exception:
+        except (LookupError, ValueError):
+            # ValueError covers UnicodeError from codecs such as idna.
             return None
 
     def _encoding_from_headers(self) -> str | None:
@@ -222,7 +220,7 @@ class Response:
     def _decode_with_charset_normalizer(self, body: bytes) -> tuple[str, str] | None:
         try:
             from charset_normalizer import from_bytes
-        except Exception:
+        except ImportError:
             return None
 
         # Charset detection is heuristic; a bounded prefix is typically enough and
@@ -235,7 +233,7 @@ class Response:
 
         try:
             matches = from_bytes(sample)
-        except Exception:
+        except (LookupError, ValueError):
             return None
 
         best_scores: dict[str, float] = {}

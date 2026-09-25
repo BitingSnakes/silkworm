@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from importlib import import_module
-from typing import TYPE_CHECKING, Any, AsyncIterator
+from typing import TYPE_CHECKING, Any
 
 from ._validation import require_positive_int
 from .exceptions import HttpError
@@ -134,21 +135,26 @@ class CDPClient:
 
                     # Handle CDP events
                     method = data.get("method")
-                    if method == "Page.loadEventFired":
+                    if (
+                        method == "Page.loadEventFired"
+                        and self._page_load_future
+                        and not self._page_load_future.done()
+                    ):
                         # Page has finished loading
-                        if self._page_load_future and not self._page_load_future.done():
-                            self._page_load_future.set_result(None)
+                        self._page_load_future.set_result(None)
 
                 except json.JSONDecodeError:
                     self.logger.warning(
                         "Received invalid JSON from CDP", json_message=message[:200]
                     )
                 except Exception as exc:
-                    self.logger.warning("Error processing CDP message", error=str(exc))
+                    self.logger.warning(
+                        "Error processing CDP message", error=str(exc), exc_info=True
+                    )
         except asyncio.CancelledError:
             pass
         except Exception as exc:
-            self.logger.error("CDP receive loop error", error=str(exc))
+            self.logger.exception("CDP receive loop error", error=str(exc))
             self._fail_pending(HttpError(f"CDP connection error: {exc}"))
         finally:
             # If the socket closed unexpectedly, unblock any waiters.
@@ -199,7 +205,7 @@ class CDPClient:
             if self._timeout:
                 return await asyncio.wait_for(future, timeout=self._timeout)
             return await future
-        except asyncio.TimeoutError as exc:
+        except TimeoutError as exc:
             self._pending_responses.pop(msg_id, None)
             raise HttpError(f"CDP command {method} timed out") from exc
         except Exception as exc:
@@ -266,7 +272,7 @@ class CDPClient:
                     # The receive loop will set the load_future when Page.loadEventFired is received
                     try:
                         await asyncio.wait_for(load_future, timeout=timeout or 30.0)
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         # Page didn't finish loading, but proceed anyway
                         self.logger.debug(
                             "Page load timeout, proceeding with content extraction",
@@ -349,7 +355,7 @@ class CDPClient:
                         doc_max_size_bytes=self._html_max_size_bytes,
                     )
 
-            except asyncio.TimeoutError as exc:
+            except TimeoutError as exc:
                 suffix = f" after {timeout} seconds" if timeout else ""
                 raise HttpError(f"CDP request to {url} timed out{suffix}") from exc
             except HttpError:
@@ -393,14 +399,15 @@ class CDPClient:
                     {"targetId": self._target_id},
                 )
             except Exception:
-                pass
+                # Best-effort cleanup; the browser may already have dropped the target.
+                self.logger.debug("Failed to close CDP target", exc_info=True)
 
         # Close WebSocket
         if self._ws:
             try:
                 await self._ws.close()
             except Exception:
-                pass
+                self.logger.debug("Failed to close CDP WebSocket", exc_info=True)
             self._ws = None
 
         self._target_id = None

@@ -12,6 +12,7 @@ This ensures all pipelines work end-to-end in a realistic scenario.
 """
 
 import csv
+import io
 import json
 import platform
 import sqlite3
@@ -21,6 +22,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any, cast
 
+import anyio
 import pytest
 
 from silkworm import HTMLResponse, Request, Response, Spider
@@ -99,8 +101,8 @@ async def test_jsonlines_pipeline_integration():
         # Verify the file exists and has correct content
         assert output_path.exists()
 
-        with open(output_path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
+        f = io.StringIO((await anyio.Path(output_path).read_bytes()).decode("utf-8"))
+        lines = f.readlines()
 
         assert len(lines) == len(SAMPLE_QUOTES)
 
@@ -121,9 +123,9 @@ async def test_csv_pipeline_integration():
         # Verify the file exists and has correct content
         assert output_path.exists()
 
-        with open(output_path, "r", encoding="utf-8", newline="") as f:
-            reader = csv.DictReader(f)
-            rows = list(reader)
+        f = io.StringIO((await anyio.Path(output_path).read_bytes()).decode("utf-8"))
+        reader = csv.DictReader(f)
+        rows = list(reader)
 
         assert len(rows) == len(SAMPLE_QUOTES)
 
@@ -247,18 +249,18 @@ async def test_csv_pipeline_custom_fieldnames():
         # Verify the file exists and has correct field order
         assert output_path.exists()
 
-        with open(output_path, "r", encoding="utf-8", newline="") as f:
-            reader = csv.reader(f)
-            header = next(reader)
-            assert header == ["author", "text"]
+        f = io.StringIO((await anyio.Path(output_path).read_bytes()).decode("utf-8"))
+        reader = csv.reader(f)
+        header = next(reader)
+        assert header == ["author", "text"]
 
-            rows = list(reader)
-            assert len(rows) == len(SAMPLE_QUOTES)
+        rows = list(reader)
+        assert len(rows) == len(SAMPLE_QUOTES)
 
-            # Verify data is in correct order
-            for i, row in enumerate(rows):
-                assert row[0] == SAMPLE_QUOTES[i]["author"]
-                assert row[1] == SAMPLE_QUOTES[i]["text"]
+        # Verify data is in correct order
+        for i, row in enumerate(rows):
+            assert row[0] == SAMPLE_QUOTES[i]["author"]
+            assert row[1] == SAMPLE_QUOTES[i]["text"]
 
 
 async def test_sqlite_pipeline_custom_table():
@@ -290,12 +292,12 @@ async def test_sqlite_pipeline_custom_table():
 # Optional pipeline tests - skip if dependencies not installed
 
 try:
-    from silkworm.pipelines import MsgPackPipeline
-
     # Note: We use msgpack for reading because ormsgpack (used by MsgPackPipeline
     # for writing) doesn't have an Unpacker class to read multiple objects from a stream.
     # The two libraries are compatible for reading/writing MessagePack data.
     import msgpack  # type: ignore[import-not-found, import-untyped]  # For reading back the data
+
+    from silkworm.pipelines import MsgPackPipeline
 
     MSGPACK_AVAILABLE = True
 except ImportError:
@@ -314,8 +316,8 @@ async def test_msgpack_pipeline_integration():
         # Verify the file exists and has correct content
         assert output_path.exists()
 
-        with open(output_path, "rb") as f:
-            data = f.read()
+        f = io.BytesIO(await anyio.Path(output_path).read_bytes())
+        data = f.read()
 
         # Unpack all items
         unpacker = msgpack.Unpacker()
@@ -330,8 +332,9 @@ async def test_msgpack_pipeline_integration():
 
 
 try:
-    from silkworm.pipelines import PolarsPipeline
     import polars as pl  # type: ignore[import-not-found, import-untyped]
+
+    from silkworm.pipelines import PolarsPipeline
 
     POLARS_AVAILABLE = True
 except ImportError:
@@ -363,8 +366,9 @@ async def test_polars_pipeline_integration():
 
 
 try:
-    from silkworm.pipelines import ExcelPipeline
     import openpyxl  # type: ignore[import-not-found, import-untyped]
+
+    from silkworm.pipelines import ExcelPipeline
 
     EXCEL_AVAILABLE = True
 except ImportError:
@@ -398,8 +402,9 @@ async def test_excel_pipeline_integration():
 
 
 try:
-    from silkworm.pipelines import YAMLPipeline
     import yaml  # type: ignore[import-not-found, import-untyped]
+
+    from silkworm.pipelines import YAMLPipeline
 
     YAML_AVAILABLE = True
 except ImportError:
@@ -418,8 +423,8 @@ async def test_yaml_pipeline_integration():
         # Verify the file exists and has correct content
         assert output_path.exists()
 
-        with open(output_path, "r", encoding="utf-8") as f:
-            data = yaml.safe_load(f)
+        f = io.StringIO((await anyio.Path(output_path).read_bytes()).decode("utf-8"))
+        data = yaml.safe_load(f)
 
         assert len(data) == len(SAMPLE_QUOTES)
 
@@ -429,8 +434,9 @@ async def test_yaml_pipeline_integration():
 
 
 try:
-    from silkworm.pipelines import AvroPipeline
     import fastavro  # type: ignore[import-not-found, import-untyped]
+
+    from silkworm.pipelines import AvroPipeline
 
     AVRO_AVAILABLE = True
 except ImportError:
@@ -449,9 +455,9 @@ async def test_avro_pipeline_integration():
         # Verify the file exists and has correct content
         assert output_path.exists()
 
-        with open(output_path, "rb") as f:
-            reader = fastavro.reader(f)
-            records = [cast("dict[str, Any]", record) for record in reader]
+        f = io.BytesIO(await anyio.Path(output_path).read_bytes())
+        reader = fastavro.reader(f)
+        records = [cast("dict[str, Any]", record) for record in reader]
 
         assert len(records) == len(SAMPLE_QUOTES)
 
@@ -463,8 +469,9 @@ async def test_avro_pipeline_integration():
 
 
 try:
-    from silkworm.pipelines import VortexPipeline
     import vortex  # type: ignore[import-not-found, import-untyped]
+
+    from silkworm.pipelines import VortexPipeline
 
     VORTEX_AVAILABLE = True
 except ImportError:
@@ -532,14 +539,14 @@ async def test_multiple_pipelines_simultaneously():
         assert xml_path.exists()
 
         # Quick verification of JSON Lines
-        with open(jl_path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
+        f = io.StringIO((await anyio.Path(jl_path).read_bytes()).decode("utf-8"))
+        lines = f.readlines()
         assert len(lines) == len(SAMPLE_QUOTES)
 
         # Quick verification of CSV
-        with open(csv_path, "r", encoding="utf-8", newline="") as f:
-            reader = csv.DictReader(f)
-            rows = list(reader)
+        f = io.StringIO((await anyio.Path(csv_path).read_bytes()).decode("utf-8"))
+        reader = csv.DictReader(f)
+        rows = list(reader)
         assert len(rows) == len(SAMPLE_QUOTES)
 
         # Quick verification of XML
@@ -555,9 +562,12 @@ IS_WINDOWS = platform.system() == "Windows"
 
 if not IS_WINDOWS:
     try:
-        from silkworm.pipelines import MySQLPipeline
-        from testcontainers.community.mysql import MySqlContainer  # type: ignore[import-not-found, import-untyped]  # noqa: F401
         import aiomysql  # type: ignore[import-not-found, import-untyped]
+        from testcontainers.community.mysql import (
+            MySqlContainer,  # noqa: F401
+        )
+
+        from silkworm.pipelines import MySQLPipeline
 
         MYSQL_AVAILABLE = True
     except ImportError:
@@ -599,25 +609,24 @@ async def test_mysql_pipeline_integration(mysql_container):
         db=database,
     )
 
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute("SELECT COUNT(*) FROM test_quotes")
-            result = await cur.fetchone()
-            assert result[0] == len(SAMPLE_QUOTES)
+    async with pool.acquire() as conn, conn.cursor() as cur:
+        await cur.execute("SELECT COUNT(*) FROM test_quotes")
+        result = await cur.fetchone()
+        assert result[0] == len(SAMPLE_QUOTES)
 
-            # Verify data content
-            await cur.execute("SELECT spider, data FROM test_quotes")
-            rows = await cur.fetchall()
-            for row in rows:
-                spider_name, data_json = row
-                assert spider_name == "test"
-                item_data = json.loads(data_json)
-                # Verify item exists in SAMPLE_QUOTES
-                matching_quote = next(
-                    (q for q in SAMPLE_QUOTES if q["text"] == item_data["text"]), None
-                )
-                assert matching_quote is not None
-                assert item_data["author"] == matching_quote["author"]
+        # Verify data content
+        await cur.execute("SELECT spider, data FROM test_quotes")
+        rows = await cur.fetchall()
+        for row in rows:
+            spider_name, data_json = row
+            assert spider_name == "test"
+            item_data = json.loads(data_json)
+            # Verify item exists in SAMPLE_QUOTES
+            matching_quote = next(
+                (q for q in SAMPLE_QUOTES if q["text"] == item_data["text"]), None
+            )
+            assert matching_quote is not None
+            assert item_data["author"] == matching_quote["author"]
 
     pool.close()
     await pool.wait_closed()
@@ -625,9 +634,12 @@ async def test_mysql_pipeline_integration(mysql_container):
 
 if not IS_WINDOWS:
     try:
-        from silkworm.pipelines import PostgreSQLPipeline
-        from testcontainers.community.postgres import PostgresContainer  # type: ignore[import-not-found, import-untyped]  # noqa: F401
         import asyncpg  # type: ignore[import-not-found, import-untyped]
+        from testcontainers.community.postgres import (
+            PostgresContainer,  # noqa: F401
+        )
+
+        from silkworm.pipelines import PostgreSQLPipeline
 
         POSTGRESQL_AVAILABLE = True
     except ImportError:
@@ -691,9 +703,12 @@ async def test_postgresql_pipeline_integration(postgres_container):
 
 if not IS_WINDOWS:
     try:
-        from silkworm.pipelines import MongoDBPipeline
-        from testcontainers.community.mongodb import MongoDbContainer  # type: ignore[import-not-found, import-untyped]  # noqa: F401
         import motor.motor_asyncio  # type: ignore[import-not-found, import-untyped]
+        from testcontainers.community.mongodb import (
+            MongoDbContainer,  # noqa: F401
+        )
+
+        from silkworm.pipelines import MongoDBPipeline
 
         MONGODB_AVAILABLE = True
     except ImportError:
@@ -748,9 +763,14 @@ async def test_mongodb_pipeline_integration(mongodb_container):
 
 if not IS_WINDOWS:
     try:
+        from elasticsearch import (  # pyright: ignore[reportMissingImports]
+            AsyncElasticsearch,
+        )
+        from testcontainers.community.elasticsearch import (
+            ElasticSearchContainer,  # noqa: F401
+        )
+
         from silkworm.pipelines import ElasticsearchPipeline
-        from testcontainers.community.elasticsearch import ElasticSearchContainer  # type: ignore[import-not-found, import-untyped]  # noqa: F401
-        from elasticsearch import AsyncElasticsearch  # type: ignore[import-not-found, import-untyped]
 
         ELASTICSEARCH_AVAILABLE = True
     except ImportError:
@@ -811,9 +831,14 @@ async def test_elasticsearch_pipeline_integration(elasticsearch_container):
 
 if not IS_WINDOWS:
     try:
+        from cassandra.cluster import (  # pyright: ignore[reportMissingImports]
+            Cluster,
+        )
+        from testcontainers.community.cassandra import (
+            CassandraContainer,  # noqa: F401
+        )
+
         from silkworm.pipelines import CassandraPipeline
-        from testcontainers.community.cassandra import CassandraContainer  # type: ignore[import-not-found, import-untyped]  # noqa: F401
-        from cassandra.cluster import Cluster  # type: ignore[import-not-found, import-untyped]
 
         CASSANDRA_AVAILABLE = True
     except ImportError:
@@ -871,9 +896,12 @@ async def test_cassandra_pipeline_integration(cassandra_container):
 
 if not IS_WINDOWS:
     try:
-        from silkworm.pipelines import CouchDBPipeline
-        from testcontainers.couchdb import CouchDbContainer  # type: ignore[import-not-found, import-untyped]  # noqa: F401
         import aiocouch  # type: ignore[import-not-found, import-untyped]
+        from testcontainers.couchdb import (  # pyright: ignore[reportMissingImports]
+            CouchDbContainer,  # noqa: F401
+        )
+
+        from silkworm.pipelines import CouchDBPipeline
 
         COUCHDB_AVAILABLE = True
     except ImportError:

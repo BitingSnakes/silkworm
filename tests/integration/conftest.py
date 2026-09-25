@@ -9,6 +9,7 @@ import os
 import platform
 import sys
 from pathlib import Path
+
 import pytest
 
 # Add src to path
@@ -61,7 +62,9 @@ def mysql_container():
         pytest.skip("testcontainers not installed")
 
     try:
-        from testcontainers.community.mysql import MySqlContainer  # type: ignore[import-untyped]
+        from testcontainers.community.mysql import (
+            MySqlContainer,
+        )
     except ImportError:
         pytest.skip("mysql testcontainer dependencies not installed")
 
@@ -89,7 +92,9 @@ def postgres_container():
         pytest.skip("testcontainers not installed")
 
     try:
-        from testcontainers.community.postgres import PostgresContainer  # type: ignore[import-untyped]
+        from testcontainers.community.postgres import (
+            PostgresContainer,
+        )
     except ImportError:
         pytest.skip("postgres testcontainer dependencies not installed")
 
@@ -117,7 +122,9 @@ def mongodb_container():
         pytest.skip("testcontainers not installed")
 
     try:
-        from testcontainers.community.mongodb import MongoDbContainer  # type: ignore[import-untyped]
+        from testcontainers.community.mongodb import (
+            MongoDbContainer,
+        )
     except ImportError:
         pytest.skip("mongodb testcontainer dependencies not installed")
 
@@ -145,7 +152,9 @@ def elasticsearch_container():
         pytest.skip("testcontainers not installed")
 
     try:
-        from testcontainers.community.elasticsearch import ElasticSearchContainer  # type: ignore[import-untyped]
+        from testcontainers.community.elasticsearch import (
+            ElasticSearchContainer,
+        )
     except ImportError:
         pytest.skip("elasticsearch testcontainer dependencies not installed")
 
@@ -173,7 +182,9 @@ def cassandra_container():
         pytest.skip("testcontainers not installed")
 
     try:
-        from testcontainers.community.cassandra import CassandraContainer  # type: ignore[import-untyped]
+        from testcontainers.community.cassandra import (
+            CassandraContainer,
+        )
     except ImportError:
         pytest.skip("cassandra testcontainer dependencies not installed")
 
@@ -201,7 +212,9 @@ def couchdb_container():
         pytest.skip("testcontainers not installed")
 
     try:
-        from testcontainers.couchdb import CouchDbContainer  # type: ignore[import-not-found, import-untyped]
+        from testcontainers.couchdb import (  # pyright: ignore[reportMissingImports]
+            CouchDbContainer,
+        )
     except ImportError:
         pytest.skip("couchdb testcontainer dependencies not installed")
 
