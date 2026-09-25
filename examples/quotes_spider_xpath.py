@@ -59,7 +59,7 @@ class QuotesSpiderXPath(Spider):
             try:
                 # Use XPath on elements to get nested data
                 text_el = await el.xpath_first(".//span[@class='text']")
-                author_el = await el.xpath_first(".//span[@class='author']")
+                author_el = await el.xpath_first(".//small[@class='author']")
 
                 if text_el is None or author_el is None:
                     self.log.warning("Skipping quote with missing fields")

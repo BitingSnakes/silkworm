@@ -260,3 +260,40 @@ async def test_xpath_works_alongside_css():
     # Both should find the same elements (in terms of content)
     assert css_results[0].text == xpath_results[0].text
     assert css_results[1].text == xpath_results[1].text
+
+
+async def test_xpath_handles_doctype_documents():
+    """Test that xpath works on documents with a DOCTYPE, like most real pages."""
+    html = """<!DOCTYPE html>
+    <html lang="en">
+        <head><meta charset="UTF-8"><title>Quotes</title></head>
+        <body>
+            <div class="quote">
+                <span class="text">Quote 1</span>
+                <small class="author">Author 1</small>
+            </div>
+            <div class="quote">
+                <span class="text">Quote 2</span>
+                <small class="author">Author 2</small>
+            </div>
+        </body>
+    </html>
+    """
+    req = Request(url="http://example.com")
+    resp = HTMLResponse(
+        url=req.url,
+        status=200,
+        headers={},
+        body=html.encode("utf-8"),
+        request=req,
+    )
+
+    quotes = await resp.xpath("//div[@class='quote']")
+    assert len(quotes) == 2
+
+    authors = []
+    for quote in quotes:
+        author = await quote.xpath_first(".//small[@class='author']")
+        assert author is not None
+        authors.append(author.text)
+    assert authors == ["Author 1", "Author 2"]

@@ -51,7 +51,7 @@ classifiers = [
 
 dependencies = [
   "charset-normalizer==3.5.1",
-  "scraper-rust>=0.9.0",
+  "scraper-rust>=0.10.0",
   "rxml==3.0.0",
   "wreq>=0.12.2",
   "fast-h2m==0.4.4",
