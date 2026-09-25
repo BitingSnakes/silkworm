@@ -255,7 +255,7 @@ async def test_client_context_preserves_body_error_when_cleanup_fails() -> None:
 
 async def test_cdp_context_connects_and_closes() -> None:
     events: list[str] = []
-    client = CDPClient()
+    client = object.__new__(CDPClient)
 
     async def connect() -> None:
         events.append("connect")
