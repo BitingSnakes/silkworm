@@ -916,7 +916,7 @@ async def test_retry_middleware_returns_retry_request(monkeypatch: pytest.Monkey
     async def fake_sleep(delay: float) -> None:
         sleep_calls.append(delay)
 
-    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr("silkworm._middlewares.retry.asyncio.sleep", fake_sleep)
 
     middleware = RetryMiddleware(max_times=2, backoff_base=0.1)
     request = Request(url="http://example.com")
@@ -939,7 +939,7 @@ async def test_retry_middleware_does_not_mutate_original_request_meta(
     async def fake_sleep(_: float) -> None:
         return None
 
-    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr("silkworm._middlewares.retry.asyncio.sleep", fake_sleep)
 
     middleware = RetryMiddleware(max_times=2, backoff_base=0.0)
     request = Request(url="http://example.com", meta={"trace": "root"})
@@ -963,7 +963,7 @@ async def test_retry_middleware_sleep_codes_extend_retry(
     async def fake_sleep(delay: float) -> None:
         sleep_calls.append(delay)
 
-    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr("silkworm._middlewares.retry.asyncio.sleep", fake_sleep)
 
     middleware = RetryMiddleware(max_times=1, sleep_http_codes=[403], backoff_base=0.2)
     request = Request(url="http://example.com")
@@ -984,7 +984,7 @@ async def test_retry_middleware_retry_without_sleep(monkeypatch: pytest.MonkeyPa
     async def fake_sleep(delay: float) -> None:
         sleep_calls.append(delay)
 
-    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr("silkworm._middlewares.retry.asyncio.sleep", fake_sleep)
 
     middleware = RetryMiddleware(
         max_times=1, retry_http_codes=[500], sleep_http_codes=[]
@@ -1007,7 +1007,7 @@ async def test_retry_middleware_empty_retry_codes_disable_retry(
     async def fake_sleep(_: float) -> None:
         return None
 
-    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr("silkworm._middlewares.retry.asyncio.sleep", fake_sleep)
 
     middleware = RetryMiddleware(
         max_times=1,
@@ -1066,7 +1066,7 @@ async def test_retry_middleware_stops_after_max_times(monkeypatch: pytest.Monkey
     async def fake_sleep(_: float) -> None:
         return None
 
-    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr("silkworm._middlewares.retry.asyncio.sleep", fake_sleep)
     middleware = RetryMiddleware(max_times=1)
     request = Request(url="http://example.com", meta={"retry_times": 1})
     response = Response(
@@ -1084,7 +1084,7 @@ async def test_engine_retries_requests_even_if_url_seen(
     async def fake_sleep(_: float) -> None:
         return None
 
-    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr("silkworm._middlewares.retry.asyncio.sleep", fake_sleep)
 
     class DummySpider(Spider):
         name = "retryer"
@@ -1124,7 +1124,7 @@ async def test_delay_middleware_fixed_delay(monkeypatch: pytest.MonkeyPatch):
     async def fake_sleep(delay: float) -> None:
         sleep_calls.append(delay)
 
-    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr("silkworm._middlewares.delay.asyncio.sleep", fake_sleep)
 
     middleware = DelayMiddleware(delay=1.5)
     request = Request(url="http://example.com")
@@ -1141,7 +1141,7 @@ async def test_delay_middleware_random_delay(monkeypatch: pytest.MonkeyPatch):
     async def fake_sleep(delay: float) -> None:
         sleep_calls.append(delay)
 
-    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr("silkworm._middlewares.delay.asyncio.sleep", fake_sleep)
 
     middleware = DelayMiddleware(min_delay=0.5, max_delay=2.0)
     request = Request(url="http://example.com")
@@ -1159,7 +1159,7 @@ async def test_delay_middleware_custom_function(monkeypatch: pytest.MonkeyPatch)
     async def fake_sleep(delay: float) -> None:
         sleep_calls.append(delay)
 
-    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr("silkworm._middlewares.delay.asyncio.sleep", fake_sleep)
 
     def custom_delay(request: Request, spider: Spider) -> float:
         return 3.0 if "slow" in request.url else 0.5
@@ -1225,7 +1225,7 @@ async def test_delay_middleware_zero_delay(monkeypatch: pytest.MonkeyPatch):
     async def fake_sleep(delay: float) -> None:
         sleep_calls.append(delay)
 
-    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr("silkworm._middlewares.delay.asyncio.sleep", fake_sleep)
 
     middleware = DelayMiddleware(delay=0.0)
     request = Request(url="http://example.com")
@@ -1253,7 +1253,7 @@ User-agent: *
 Crawl-delay: 2
 """
 
-    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr("silkworm._middlewares.robots.asyncio.sleep", fake_sleep)
 
     middleware = RobotsTxtDelayMiddleware(
         "https://example.com/articles",
@@ -1286,7 +1286,7 @@ User-agent: silkworm
 Request-rate: 3/12
 """
 
-    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr("silkworm._middlewares.robots.asyncio.sleep", fake_sleep)
 
     middleware = RobotsTxtDelayMiddleware(
         "http://example.com",
@@ -1316,7 +1316,7 @@ User-agent: *
 Crawl-delay: 1
 """
 
-    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr("silkworm._middlewares.robots.asyncio.sleep", fake_sleep)
 
     middleware = RobotsTxtDelayMiddleware("https://example.com", fetcher=fetcher)
     spider = Spider()
@@ -1338,7 +1338,7 @@ async def test_robots_txt_delay_middleware_uses_fallback_after_fetch_error(
     async def fetcher(url: str) -> str:
         raise RuntimeError(f"failed: {url}")
 
-    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr("silkworm._middlewares.robots.asyncio.sleep", fake_sleep)
 
     middleware = RobotsTxtDelayMiddleware(
         "https://example.com",
@@ -1802,7 +1802,7 @@ async def test_cloudflare_crawl_middleware_polls_until_completion(
         sleep_calls.append(delay)
 
     monkeypatch.setattr(middleware, "_api_request", fake_api_request)
-    monkeypatch.setattr("silkworm.middlewares.asyncio.sleep", fake_sleep)
+    monkeypatch.setattr("silkworm._middlewares.cloudflare.asyncio.sleep", fake_sleep)
 
     payload = await middleware._run_crawl("https://example.com", {})
 
@@ -1874,8 +1874,8 @@ async def test_request_response_stream_middleware_connects_events(
     monkeypatch: pytest.MonkeyPatch,
 ):
     client = _RecordingClient()
-    monkeypatch.setattr("silkworm.middlewares.Client", lambda: client)
-    monkeypatch.setattr("silkworm.middlewares.Method", _MethodStub)
+    monkeypatch.setattr("silkworm._middlewares.stream.Client", lambda: client)
+    monkeypatch.setattr("silkworm._middlewares.stream.Method", _MethodStub)
 
     middleware = RequestResponseStreamMiddleware(
         "https://collector.example.com/events",
@@ -1921,8 +1921,8 @@ async def test_request_response_stream_middleware_batches_and_adds_auth_header(
     monkeypatch: pytest.MonkeyPatch,
 ):
     client = _RecordingClient()
-    monkeypatch.setattr("silkworm.middlewares.Client", lambda: client)
-    monkeypatch.setattr("silkworm.middlewares.Method", _MethodStub)
+    monkeypatch.setattr("silkworm._middlewares.stream.Client", lambda: client)
+    monkeypatch.setattr("silkworm._middlewares.stream.Method", _MethodStub)
 
     middleware = RequestResponseStreamMiddleware(
         "https://collector.example.com/events",
