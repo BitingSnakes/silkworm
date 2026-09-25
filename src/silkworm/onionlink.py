@@ -1,3 +1,5 @@
+"""Optional HTTP client for direct Tor v3 onion-service requests."""
+
 from __future__ import annotations
 
 import asyncio
@@ -23,11 +25,24 @@ ONIONLINK_RESPONSE_LIMIT_META_KEY = "onionlink_response_limit"
 
 
 class OnionLinkClient(HttpClient):
-    """
-    HTTP client adapter that fetches Tor v3 onion services through onionlink.
+    """Fetch Tor v3 onion services through ``onionlink``.
 
-    onionlink exposes an AsyncSession API whose request methods use native
-    awaitables when available and fall back to an executor internally.
+    Args:
+        concurrency: Maximum simultaneous requests.
+        default_headers: Headers merged into every request.
+        timeout: Default request timeout.
+        html_max_size_bytes: Maximum HTML size accepted by selectors.
+        follow_redirects: Follow HTTP redirect responses when true.
+        max_redirects: Maximum redirects before raising an error.
+        bootstrap: Tor directory authority bootstrap endpoint.
+        consensus_file: Optional consensus cache path.
+        verbose: Enable verbose onionlink output.
+        response_limit: Default maximum response body size in bytes. Override it
+            per request with ``onionlink_response_limit`` metadata.
+
+    Raises:
+        ImportError: If a compatible ``onionlink`` extra is unavailable.
+        ValueError: If ``max_redirects`` is negative.
     """
 
     def __init__(
@@ -84,6 +99,15 @@ class OnionLinkClient(HttpClient):
         self.logger: Logger = get_logger(component="onionlink")
 
     async def fetch(self, req: Request) -> Response:
+        """Fetch one HTTP(S) ``.onion`` URL.
+
+        Query parameters, redirects, timeouts, bodies, and response type
+        detection follow the standard client contract.
+
+        Raises:
+            TypeError: If the response-limit metadata is not an integer.
+            HttpError: If the URL is not an onion service or fetching fails.
+        """
         mocked_response = self._build_mock_response(req)
         if mocked_response is not None:
             self.logger.debug(
@@ -287,7 +311,7 @@ class OnionLinkClient(HttpClient):
         return max(0, int(seconds * 1000))
 
     async def close(self) -> None:
-        return None
+        """Complete client cleanup; onionlink sessions need no close operation."""
 
 
 @dataclass(slots=True)

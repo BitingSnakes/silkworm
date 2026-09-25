@@ -22,6 +22,15 @@ class FTPPipeline:
     """
     Pipeline that writes items to an FTP server in JSON Lines format.
 
+    Args:
+        host: FTP server hostname.
+        user: Login username.
+        password: Login password.
+        remote_path: Destination object path.
+        port: FTP control port.
+
+    Items are buffered locally and replace the remote file during close.
+
     Example:
         from silkworm.pipelines import FTPPipeline
 
@@ -67,6 +76,7 @@ class FTPPipeline:
         self.logger: Logger = get_logger(component="FTPPipeline")
 
     async def open(self, spider: Spider) -> None:
+        """Reset the in-memory JSON Lines buffer without connecting yet."""
         self._items = []
         self.logger.info(
             "Opened FTP pipeline",
@@ -76,6 +86,7 @@ class FTPPipeline:
         )
 
     async def close(self, spider: Spider) -> None:
+        """Upload all buffered lines and close the FTP connection."""
         if self._items:
             # Connect to FTP server and upload all buffered items
             self._client = aioftp.Client()  # type: ignore[attr-defined]
@@ -103,6 +114,7 @@ class FTPPipeline:
         self.logger.info("Closed FTP pipeline", remote_path=self.remote_path)
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Serialize and buffer one JSON line for upload during :meth:`close`."""
         line = json.dumps(item, ensure_ascii=False)
         self._items.append(line)
         log_pipeline_item(

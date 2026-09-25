@@ -21,6 +21,14 @@ if TYPE_CHECKING:
 
 
 class JsonLinesPipeline:
+    """Append one JSON value per line to a local file.
+
+    Args:
+        path: Destination JSON Lines file.
+        use_opendal: Use OpenDAL async appends when true and available. ``None``
+            selects OpenDAL automatically when installed.
+    """
+
     def __init__(
         self,
         path: str | Path = "items.jl",
@@ -42,6 +50,7 @@ class JsonLinesPipeline:
         self.logger: Logger = get_logger(component="JsonLinesPipeline")
 
     async def open(self, spider: Spider) -> None:
+        """Create parent directories and initialize the selected writer."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
         if self._use_opendal:
             self._operator = opendal.AsyncOperator("fs", root=str(self.path.parent))  # pyright: ignore[reportPossiblyUnboundVariable]
@@ -56,6 +65,7 @@ class JsonLinesPipeline:
             self.logger.info("Opened JSONL pipeline", path=str(self.path))
 
     async def close(self, spider: Spider) -> None:
+        """Flush and close the active local writer."""
         if self._operator:
             self._operator = None
             self._object_path = None
@@ -70,6 +80,7 @@ class JsonLinesPipeline:
             self.logger.info("Closed JSONL pipeline", path=str(self.path))
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Serialize and append one item, then return it unchanged."""
         line = json.dumps(item, ensure_ascii=False)
         if self._operator:
             try:

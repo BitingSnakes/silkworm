@@ -34,6 +34,15 @@ class CassandraPipeline:
     """
     Pipeline that sends items to an Apache Cassandra database.
 
+    Args:
+        hosts: Cassandra cluster hosts.
+        keyspace: Keyspace created with a single-node replication strategy when
+            absent.
+        table: Table storing UUID, spider, JSON data, and creation timestamp.
+        username: Optional authentication username.
+        password: Optional authentication password.
+        port: Cassandra native protocol port.
+
     Example:
         from silkworm.pipelines import CassandraPipeline
 
@@ -84,6 +93,7 @@ class CassandraPipeline:
         self.logger: Logger = get_logger(component="CassandraPipeline")
 
     async def open(self, spider: Spider) -> None:
+        """Connect and create the keyspace and JSON-document table if absent."""
         # Setup authentication if credentials provided
         auth_provider = None
         if self.username and self.password:
@@ -133,6 +143,7 @@ class CassandraPipeline:
         )
 
     async def close(self, spider: Spider) -> None:
+        """Shut down the Cassandra cluster connection."""
         if self._cluster:
             self._cluster.shutdown()
             self._cluster = None
@@ -140,6 +151,7 @@ class CassandraPipeline:
             self.logger.info("Closed Cassandra pipeline", table=self.table)
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Insert one item with a UUID, spider name, and timestamp."""
         if not self._session:
             raise RuntimeError("CassandraPipeline not opened")
 

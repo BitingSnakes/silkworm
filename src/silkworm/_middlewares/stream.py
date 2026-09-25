@@ -48,6 +48,18 @@ class RequestResponseStreamMiddleware:
             request_middlewares=[stream],
             response_middlewares=[stream],
         )
+
+    Args:
+        url: Remote event collector endpoint.
+        method: HTTP method used for delivery.
+        headers: Collector request headers.
+        timeout: Delivery timeout.
+        max_body_bytes: Maximum request or response body bytes serialized.
+        queue_size: Bounded in-memory event queue capacity.
+        auth_token: Optional authorization credential.
+        auth_scheme: Authorization scheme prepended to ``auth_token``.
+        batch_size: Events per delivery request.
+        batch_envelope_key: JSON key containing batched events.
     """
 
     _EXCHANGE_ID_META_KEY = "_stream_exchange_id"
@@ -114,6 +126,7 @@ class RequestResponseStreamMiddleware:
             )
 
     async def open(self, spider: Spider) -> None:
+        """Create the sender client, bounded queue, and background task."""
         await self._ensure_started()
         self.logger.info(
             "Opened request/response stream middleware",
@@ -125,6 +138,7 @@ class RequestResponseStreamMiddleware:
         )
 
     async def close(self, spider: Spider) -> None:
+        """Flush queued events, stop the sender, and close its HTTP client."""
         queue = self._queue
         sender_task = self._sender_task
 
@@ -152,6 +166,7 @@ class RequestResponseStreamMiddleware:
         )
 
     async def process_request(self, request: Request, spider: Spider) -> Request:
+        """Assign an exchange ID and enqueue a serialized request event."""
         previous_exchange_id = request.meta.get(self._EXCHANGE_ID_META_KEY)
         exchange_id = uuid4().hex
         request.meta[self._EXCHANGE_ID_META_KEY] = exchange_id
@@ -169,6 +184,7 @@ class RequestResponseStreamMiddleware:
         response: Response,
         spider: Spider,
     ) -> Response | Request:
+        """Enqueue a response event linked to its request exchange ID."""
         exchange_id = response.request.meta.get(self._EXCHANGE_ID_META_KEY)
         if not isinstance(exchange_id, str):
             exchange_id = uuid4().hex
@@ -183,6 +199,7 @@ class RequestResponseStreamMiddleware:
         exception: Exception,
         spider: Spider,
     ) -> Request | None:
+        """Enqueue a request-error event without handling the exception."""
         exchange_id = request.meta.get(self._EXCHANGE_ID_META_KEY)
         if not isinstance(exchange_id, str):
             exchange_id = uuid4().hex

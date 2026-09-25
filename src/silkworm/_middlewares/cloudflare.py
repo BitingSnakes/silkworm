@@ -17,13 +17,21 @@ if TYPE_CHECKING:
 
 
 class CloudflareCrawlMiddleware:
-    """
-    Route opt-in requests through Cloudflare Browser Rendering's crawl API.
+    """Route opt-in requests through Cloudflare Browser Rendering's crawl API.
 
     Set `request.meta["cloudflare_crawl"] = True` to crawl a URL with the
     middleware defaults, or assign a dict to provide per-request crawl options.
     The spider callback receives a synthetic JSON `Response` containing the
     final Cloudflare API payload.
+
+    Args:
+        account_id: Cloudflare account identifier.
+        api_token: API token authorized for Browser Rendering.
+        crawl_options: Default crawl API fields merged into each submission.
+        api_base_url: Cloudflare API root, overridable for testing.
+        poll_interval: Seconds between job-status polls.
+        timeout: Overall crawl job timeout in seconds.
+        api_timeout: Timeout for each Cloudflare API request.
     """
 
     _TRIGGER_META_KEY = "cloudflare_crawl"
@@ -68,6 +76,12 @@ class CloudflareCrawlMiddleware:
         self.logger: Logger = get_logger(component="CloudflareCrawlMiddleware")
 
     async def process_request(self, request: Request, spider: Spider) -> Request:
+        """Replace opted-in network work with a synthetic crawl API response.
+
+        Raises:
+            TypeError: If ``cloudflare_crawl`` metadata is not a supported value.
+            HttpError: If submission, polling, or result retrieval fails.
+        """
         crawl_settings = self._resolve_crawl_settings(request)
         if crawl_settings is None:
             return request
@@ -102,6 +116,7 @@ class CloudflareCrawlMiddleware:
         return request.replace(meta=meta)
 
     async def close(self, spider: Spider) -> None:
+        """Close the internal client used for Cloudflare API calls."""
         await self._client.close()
 
     def _resolve_crawl_settings(self, request: Request) -> dict[str, JSONValue] | None:

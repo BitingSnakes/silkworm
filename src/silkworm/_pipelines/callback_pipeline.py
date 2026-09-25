@@ -28,6 +28,12 @@ class CallbackPipeline:
     The callback function can be either synchronous or asynchronous and receives the item
     and spider as arguments.
 
+    Args:
+        callback: Synchronous or asynchronous callable receiving ``(item, spider)``.
+            Returning ``None`` preserves the original item; any other result is
+            forwarded to the next pipeline.
+        log_level: Severity used for per-item processing logs.
+
     Example:
         from silkworm.pipelines import CallbackPipeline
 

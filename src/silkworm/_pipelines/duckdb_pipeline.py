@@ -26,6 +26,10 @@ class DuckDBPipeline:
     DuckDB is an embedded analytical database with excellent performance for OLAP queries.
     This pipeline stores items in a DuckDB table as JSON.
 
+    Args:
+        database: Embedded DuckDB database file.
+        table: Valid unquoted destination table name.
+
     Example:
         from silkworm.pipelines import DuckDBPipeline
 
@@ -60,6 +64,7 @@ class DuckDBPipeline:
         self.logger: Logger = get_logger(component="DuckDBPipeline")
 
     async def open(self, spider: Spider) -> None:
+        """Open DuckDB and create the sequence and JSON table if absent."""
         self.database.parent.mkdir(parents=True, exist_ok=True)
         self._conn = duckdb.connect(str(self.database))  # type: ignore[attr-defined]
         assert self._conn is not None
@@ -89,12 +94,14 @@ class DuckDBPipeline:
         )
 
     async def close(self, spider: Spider) -> None:
+        """Close the embedded DuckDB connection."""
         if self._conn:
             self._conn.close()
             self._conn = None
             self.logger.info("Closed DuckDB pipeline", database=str(self.database))
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Insert one JSON item with its spider name."""
         if not self._conn:
             raise RuntimeError("DuckDBPipeline not opened")
 

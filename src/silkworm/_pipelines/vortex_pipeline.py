@@ -28,6 +28,12 @@ class VortexPipeline:
     faster scans, and similar compression ratios. It provides zero-copy compatibility
     with Apache Arrow.
 
+    Items are buffered in memory and converted to an Arrow table during
+    :meth:`close`.
+
+    Args:
+        path: Destination Vortex file.
+
     Example:
         from silkworm.pipelines import VortexPipeline
 
@@ -65,11 +71,13 @@ class VortexPipeline:
         self.logger: Logger = get_logger(component="VortexPipeline")
 
     async def open(self, spider: Spider) -> None:
+        """Create parent directories and reset the Vortex item buffer."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._items = []
         self.logger.info("Opened Vortex pipeline", path=str(self.path))
 
     async def close(self, spider: Spider) -> None:
+        """Convert buffered mappings to Arrow and write the Vortex file."""
         if self._items:
             # Convert items list to PyArrow Table
             # Vortex can directly accept PyArrow tables for efficient writing
@@ -89,6 +97,7 @@ class VortexPipeline:
             self.logger.info("Closed Vortex pipeline (no items)", path=str(self.path))
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Buffer one item for Vortex serialization during :meth:`close`."""
         self._items.append(item)
         log_pipeline_item(
             self,

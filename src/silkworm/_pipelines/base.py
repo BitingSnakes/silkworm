@@ -40,9 +40,19 @@ def validate_table_name(table: str) -> str:
 
 
 class ItemPipeline(Protocol):
-    async def open(self, spider: Spider) -> None: ...
-    async def close(self, spider: Spider) -> None: ...
-    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue: ...
+    """Protocol implemented by ordered item-processing stages."""
+
+    async def open(self, spider: Spider) -> None:
+        """Allocate resources once before the first item is processed."""
+        ...
+
+    async def close(self, spider: Spider) -> None:
+        """Flush buffered data and release resources after the crawl."""
+        ...
+
+    async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Process and return the item passed to the next pipeline."""
+        ...
 
 
 class LoggedPipeline:
@@ -61,11 +71,14 @@ class LoggedPipeline:
         cast("_LevelledPipeline", self.pipeline).log_level = log_level
 
     async def open(self, spider: Spider) -> None:
+        """Open the wrapped pipeline."""
         await self.pipeline.open(spider)
 
     async def close(self, spider: Spider) -> None:
+        """Close the wrapped pipeline."""
         await self.pipeline.close(spider)
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Apply the configured log level and delegate item processing."""
         cast("_LevelledPipeline", self.pipeline).log_level = self.log_level
         return await self.pipeline.process_item(item, spider)

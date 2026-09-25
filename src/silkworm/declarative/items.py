@@ -30,11 +30,22 @@ class _SelectorSource(Protocol):
 
 @dataclass_transform(field_specifiers=(Field, Text, Attr))
 class _ItemMeta(type):
-    pass
+    """Advertise declarative field specifiers to static type checkers."""
 
 
 class Item(metaclass=_ItemMeta):
-    """Base class for a compiled declarative extraction item."""
+    """Base class for typed, declaratively extracted records.
+
+    Set ``__selector__`` to extract one item per matching root, then annotate
+    attributes assigned with :func:`~silkworm.declarative.Text` or
+    :func:`~silkworm.declarative.Attr`.
+
+    Example:
+        >>> class Quote(Item):
+        ...     __selector__ = ".quote"
+        ...     text: str = Text(".text", strip=True)
+        ...     author: str = Text(".author")
+    """
 
     __selector__: ClassVar[str | None] = None
     __slots__ = ("_values",)
@@ -53,12 +64,24 @@ class Item(metaclass=_ItemMeta):
 
     @classmethod
     def extraction_plan(cls) -> ExtractionPlan:
-        """Return the cached extraction plan for this item class."""
+        """Return the cached extraction plan for this item class.
+
+        Raises:
+            DeclarativeConfigurationError: If class declarations are invalid.
+        """
         return get_extraction_plan(cls)
 
     @classmethod
     async def extract(cls, response: HTMLResponse) -> AsyncIterator[Self]:
-        """Extract every matching item from an HTML response."""
+        """Yield one validated item per matching root in ``response``.
+
+        Raises:
+            DeclarativeConfigurationError: If the compiled declaration is
+                invalid or ``after_extract`` is not asynchronous.
+            FieldExtractionError: If selector evaluation fails.
+            MissingFieldError: If a required scalar value is absent.
+            FieldTransformError: If conversion fails or returns the wrong type.
+        """
         plan = cls.extraction_plan()
         source = response  # HTMLResponse satisfies the internal selector protocol.
         if plan.root_selector is None:
@@ -93,10 +116,18 @@ class Item(metaclass=_ItemMeta):
             yield item
 
     async def after_extract(self, response: HTMLResponse) -> None:
-        """Hook invoked after all fields have been extracted."""
+        """Customize an item after extraction and before it is yielded.
+
+        Subclasses may mutate fields or perform asynchronous enrichment.
+        """
 
     def to_dict(self) -> dict[str, JSONValue]:
-        """Recursively convert this item into a pipeline-compatible mapping."""
+        """Recursively convert this item into a pipeline-compatible mapping.
+
+        Raises:
+            DeclarativeSerializationError: If a nested value is not
+                JSON-compatible or a mapping key is not a string.
+        """
         converted = _to_json_value(self, path=type(self).__name__)
         if not isinstance(converted, dict):
             raise TypeError("Item serialization must produce a mapping")

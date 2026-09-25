@@ -24,6 +24,20 @@ class SFTPPipeline:
     """
     Pipeline that writes items to an SFTP server in JSON Lines format.
 
+    Items are buffered until :meth:`close`, when a single upload is performed.
+
+    Args:
+        host: SFTP server hostname.
+        user: Account name used for authentication.
+        password: Password authentication secret. Either this or ``private_key``
+            must be provided.
+        remote_path: Destination path on the SFTP server.
+        port: SFTP server port.
+        private_key: Path to a private key used for authentication.
+        known_hosts: Alternate OpenSSH known-hosts file. By default AsyncSSH uses
+            the current user's standard known-hosts file.
+        verify_host_key: Whether to reject servers whose host key is untrusted.
+
     Example:
         from silkworm.pipelines import SFTPPipeline
 
@@ -92,6 +106,7 @@ class SFTPPipeline:
         self.logger: Logger = get_logger(component="SFTPPipeline")
 
     async def open(self, spider: Spider) -> None:
+        """Reset the in-memory JSON Lines buffer without connecting yet."""
         self._items = []
         self.logger.info(
             "Opened SFTP pipeline",
@@ -101,6 +116,7 @@ class SFTPPipeline:
         )
 
     async def close(self, spider: Spider) -> None:
+        """Connect, upload all buffered lines, and close SFTP resources."""
         if self._items:
             # Connect to SFTP server and upload all buffered items
             conn: Any | None = None
@@ -158,6 +174,7 @@ class SFTPPipeline:
         self.logger.info("Closed SFTP pipeline", remote_path=self.remote_path)
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Serialize and buffer one JSON line for upload during :meth:`close`."""
         line = json.dumps(item, ensure_ascii=False)
         self._items.append(line)
         log_pipeline_item(

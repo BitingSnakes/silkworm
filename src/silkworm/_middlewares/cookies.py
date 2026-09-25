@@ -27,6 +27,15 @@ class CookiesMiddleware:
     to a string or integer to isolate sessions, set `request.meta["cookies"]` to
     add per-request cookies, and set `request.meta["dont_merge_cookies"] = True`
     to bypass cookie handling for a request/response pair.
+
+    Args:
+        cookies: Initial cookies placed in the default jar.
+        enabled: Whether request and response cookie processing is active.
+        allow_domains: Optional domain allowlist passed to the cookie policy.
+        block_domains: Optional domain blocklist passed to the cookie policy.
+        rfc2965: Enable RFC 2965 cookie handling in addition to Netscape cookies.
+        hide_cookie_header: Hide generated cookie headers from redirect handling
+            performed by the underlying HTTP client.
     """
 
     _COOKIEJAR_META_KEY = "cookiejar"
@@ -72,6 +81,11 @@ class CookiesMiddleware:
                 )
 
     async def process_request(self, request: Request, spider: Spider) -> Request:
+        """Merge explicit and stored cookies into the outgoing request.
+
+        The request is returned unchanged when cookie handling is disabled or
+        ``dont_merge_cookies`` metadata is true.
+        """
         if not self.enabled or self._dont_merge(request):
             return request
 
@@ -93,6 +107,7 @@ class CookiesMiddleware:
         response: Response,
         spider: Spider,
     ) -> Response | Request:
+        """Store response ``Set-Cookie`` values in the selected cookie jar."""
         if not self.enabled or self._dont_merge(response.request):
             return response
 

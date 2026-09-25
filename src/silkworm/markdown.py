@@ -1,3 +1,5 @@
+"""Convert complete or streaming HTML into Markdown with ``fast-h2m``."""
+
 from __future__ import annotations
 
 from collections.abc import AsyncIterable, Iterable, Mapping
@@ -33,11 +35,23 @@ def html_to_markdown(
     mode: MarkdownMode = "full",
     options: MarkdownOptions | None = None,
 ) -> str:
-    """
-    Convert HTML to Markdown.
+    """Convert HTML to a Markdown string.
 
     ``full`` uses fast-h2m's default rich converter, ``minimal`` uses the lean
     Fast DOM path, and ``mdream`` exposes the mdream-backed lean path.
+
+    Args:
+        html: Complete HTML input.
+        mode: Conversion strategy.
+        options: Additional ``fast-h2m`` conversion options. Explicit values
+            override defaults supplied by the selected mode.
+
+    Returns:
+        The converted Markdown text.
+
+    Raises:
+        ValueError: If ``mode`` is unsupported.
+        MarkdownConversionError: If conversion fails.
     """
     try:
         import fast_h2m
@@ -58,8 +72,20 @@ def convert_html_to_markdown(
     mode: MarkdownMode = "full",
     options: MarkdownOptions | None = None,
 ) -> MarkdownResult:
-    """
-    Convert HTML to Markdown and return fast-h2m's structured result.
+    """Convert HTML and return ``fast-h2m``'s structured result.
+
+    Args:
+        html: Complete HTML input.
+        mode: Conversion strategy.
+        options: Additional ``fast-h2m`` conversion options.
+
+    Returns:
+        A mapping containing Markdown and converter metadata.
+
+    Raises:
+        ValueError: If ``mode`` is unsupported.
+        MarkdownConversionError: If conversion fails or returns an invalid
+            result.
     """
     try:
         import fast_h2m
@@ -79,8 +105,16 @@ def convert_html_to_markdown(
 
 
 class MarkdownStream:
-    """
-    Incrementally convert HTML chunks to Markdown with fast-h2m's stream processor.
+    """Incrementally convert HTML chunks with ``fast-h2m``.
+
+    Args:
+        mode: Streaming conversion strategy. ``minimal`` is the default to
+            favor low-overhead incremental conversion.
+        options: Additional ``fast-h2m`` stream options.
+
+    Raises:
+        ValueError: If ``mode`` is unsupported.
+        MarkdownConversionError: If the stream processor cannot be created.
     """
 
     def __init__(
@@ -103,6 +137,12 @@ class MarkdownStream:
             ) from exc
 
     def process_chunk(self, html: str) -> str:
+        """Feed one HTML chunk to the converter and return available Markdown.
+
+        Raises:
+            MarkdownConversionError: If conversion fails or returns a
+                non-string value.
+        """
         try:
             markdown = self._processor.process_chunk(html)
         except Exception as exc:
@@ -114,6 +154,12 @@ class MarkdownStream:
         return markdown
 
     def finish(self) -> str:
+        """Finalize the stream and return any buffered Markdown.
+
+        Raises:
+            MarkdownConversionError: If finalization fails or returns a
+                non-string value.
+        """
         try:
             markdown = self._processor.finish()
         except Exception as exc:
@@ -131,6 +177,16 @@ def stream_html_to_markdown(
     mode: MarkdownMode = "minimal",
     options: MarkdownOptions | None = None,
 ) -> str:
+    """Convert an iterable of HTML chunks and concatenate all Markdown output.
+
+    Args:
+        chunks: Ordered HTML fragments.
+        mode: Streaming conversion strategy.
+        options: Additional ``fast-h2m`` stream options.
+
+    Returns:
+        Markdown emitted while consuming and finalizing the stream.
+    """
     stream = MarkdownStream(mode=mode, options=options)
     markdown: list[str] = []
     for chunk in chunks:
@@ -145,6 +201,16 @@ async def stream_html_to_markdown_async(
     mode: MarkdownMode = "minimal",
     options: MarkdownOptions | None = None,
 ) -> str:
+    """Convert an async iterable of HTML chunks into one Markdown string.
+
+    Args:
+        chunks: Asynchronously produced, ordered HTML fragments.
+        mode: Streaming conversion strategy.
+        options: Additional ``fast-h2m`` stream options.
+
+    Returns:
+        Markdown emitted while consuming and finalizing the stream.
+    """
     stream = MarkdownStream(mode=mode, options=options)
     markdown: list[str] = []
     async for chunk in chunks:

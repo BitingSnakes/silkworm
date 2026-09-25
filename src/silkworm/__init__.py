@@ -1,3 +1,11 @@
+"""Public entry point for building and running asynchronous web spiders.
+
+The package root exposes the core request, response, spider, engine, runner,
+browser-backed client, middleware, logging, and HTML-to-Markdown APIs most
+applications need. Specialized middleware and pipeline implementations are
+available from :mod:`silkworm.middlewares` and :mod:`silkworm.pipelines`.
+"""
+
 from __future__ import annotations
 
 from .api import fetch_html, fetch_html_cdp, fetch_html_servo

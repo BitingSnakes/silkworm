@@ -21,6 +21,11 @@ class MongoDBPipeline:
     """
     Pipeline that sends items to a MongoDB collection.
 
+    Args:
+        connection_string: MongoDB connection URI.
+        database: Database name.
+        collection: Collection receiving documents.
+
     Example:
         from silkworm.pipelines import MongoDBPipeline
 
@@ -60,6 +65,7 @@ class MongoDBPipeline:
         self.logger: Logger = get_logger(component="MongoDBPipeline")
 
     async def open(self, spider: Spider) -> None:
+        """Create the Motor client and select the database and collection."""
         self._client = motor.motor_asyncio.AsyncIOMotorClient(self.connection_string)  # type: ignore[assignment]
         self._db = self._client[self.database]
         self._coll = self._db[self.collection]
@@ -70,6 +76,7 @@ class MongoDBPipeline:
         )
 
     async def close(self, spider: Spider) -> None:
+        """Close the MongoDB client and release collection references."""
         if self._client:
             self._client.close()
             self._client = None
@@ -78,6 +85,7 @@ class MongoDBPipeline:
             self.logger.info("Closed MongoDB pipeline", collection=self.collection)
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Insert a shallow copy so MongoDB cannot add ``_id`` to the item."""
         if self._coll is None:
             raise RuntimeError("MongoDBPipeline not opened")
 

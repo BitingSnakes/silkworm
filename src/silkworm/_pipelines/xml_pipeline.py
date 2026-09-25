@@ -15,6 +15,14 @@ if TYPE_CHECKING:
 
 
 class XMLPipeline:
+    """Stream mapping items into one XML document.
+
+    Args:
+        path: Destination XML file.
+        root_element: Document root tag.
+        item_element: Tag wrapping each item.
+    """
+
     def __init__(
         self,
         path: str | Path = "items.xml",
@@ -29,6 +37,7 @@ class XMLPipeline:
         self.logger: Logger = get_logger(component="XMLPipeline")
 
     async def open(self, spider: Spider) -> None:
+        """Open the destination and write the XML declaration and root tag."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._fp = self.path.open("w", encoding="utf-8")
         self._fp.write(
@@ -38,6 +47,7 @@ class XMLPipeline:
         self.logger.info("Opened XML pipeline", path=str(self.path))
 
     async def close(self, spider: Spider) -> None:
+        """Write the closing root tag and close the XML file."""
         if self._fp:
             self._fp.write(f"</{self.root_element}>\n")
             self._fp.close()
@@ -45,6 +55,7 @@ class XMLPipeline:
             self.logger.info("Closed XML pipeline", path=str(self.path))
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Append one mapping as an XML element and return it unchanged."""
         if not self._fp:
             raise RuntimeError("XMLPipeline not opened")
 

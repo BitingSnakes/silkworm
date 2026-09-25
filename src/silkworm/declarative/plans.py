@@ -22,17 +22,38 @@ class FieldSpec(Protocol):
     """
 
     @property
-    def name(self) -> str: ...
+    def name(self) -> str:
+        """Bound item attribute name."""
+        ...
+
     @property
-    def selector(self) -> str: ...
+    def selector(self) -> str:
+        """CSS selector evaluated for this field."""
+        ...
+
     @property
-    def transform(self) -> Callable[[str], object] | None: ...
+    def transform(self) -> Callable[[str], object] | None:
+        """Optional conversion applied to the selected string."""
+        ...
+
     @property
-    def default(self) -> object: ...
+    def default(self) -> object:
+        """Fallback value or the internal missing-value sentinel."""
+        ...
 
 
 @dataclass(frozen=True, slots=True)
 class FieldPlan:
+    """Compiled extraction rules for one declarative field.
+
+    Attributes:
+        name: Item attribute name.
+        field: Field descriptor supplying selector and conversion settings.
+        cardinality: Whether extraction expects one, optional, or many values.
+        value_type: Runtime type accepted for each extracted value.
+        annotation: Original resolved item annotation.
+    """
+
     name: str
     field: FieldSpec
     cardinality: Cardinality
@@ -42,6 +63,14 @@ class FieldPlan:
 
 @dataclass(frozen=True, slots=True)
 class ExtractionPlan:
+    """Immutable compiled plan shared by all instances of an item class.
+
+    Attributes:
+        item_type: Item subclass described by the plan.
+        root_selector: Optional selector producing repeated item roots.
+        fields: Field plans in declaration order.
+    """
+
     item_type: type[Item]
     root_selector: str | None
     fields: tuple[FieldPlan, ...]
@@ -52,6 +81,12 @@ _PLAN_LOCK = RLock()
 
 
 def get_extraction_plan(item_type: type[Item]) -> ExtractionPlan:
+    """Return the cached plan for ``item_type``, compiling it on first use.
+
+    Raises:
+        DeclarativeConfigurationError: If declarations and annotations are
+            inconsistent or unsupported.
+    """
     with _PLAN_LOCK:
         cached = _PLAN_CACHE.get(item_type)
         if cached is not None:

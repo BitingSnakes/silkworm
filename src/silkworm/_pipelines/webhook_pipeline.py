@@ -28,6 +28,14 @@ class WebhookPipeline:
     This pipeline uses the same HTTP client (wreq) as the spider itself for
     sending data to webhooks, ensuring consistent behavior and browser impersonation.
 
+    Args:
+        url: Webhook endpoint URL.
+        method: HTTP method used for deliveries.
+        headers: Headers included with every delivery.
+        timeout: Per-delivery timeout, either in seconds or as a duration.
+        batch_size: Number of items per request. A value of ``1`` sends items
+            immediately; a partial final batch is sent by :meth:`close`.
+
     Example:
         from silkworm.pipelines import WebhookPipeline
 
@@ -73,6 +81,7 @@ class WebhookPipeline:
         self.logger: Logger = get_logger(component="WebhookPipeline")
 
     async def open(self, spider: Spider) -> None:
+        """Create the webhook client and reset the item batch."""
         self._client = Client()  # type: ignore[misc]
         self._batch = []
         self.logger.info(
@@ -83,6 +92,7 @@ class WebhookPipeline:
         )
 
     async def close(self, spider: Spider) -> None:
+        """Send a partial batch and close the webhook client."""
         # Send any remaining batched items
         if self._batch:
             await self._send_batch()
@@ -108,6 +118,7 @@ class WebhookPipeline:
         self.logger.info("Closed Webhook pipeline", url=self.url)
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Buffer one item and send when ``batch_size`` is reached."""
         if not self._client:
             raise RuntimeError("WebhookPipeline not opened")
 

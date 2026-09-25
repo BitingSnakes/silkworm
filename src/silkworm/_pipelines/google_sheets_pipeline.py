@@ -31,6 +31,12 @@ class GoogleSheetsPipeline:
 
     Requires Google Sheets API credentials (service account JSON file).
 
+    Args:
+        spreadsheet_id: Spreadsheet identifier from its URL.
+        credentials_file: Service-account credentials JSON file.
+        sheet_name: Worksheet receiving rows.
+        batch_size: Items flattened and appended per API batch.
+
     Example:
         from silkworm.pipelines import GoogleSheetsPipeline
 
@@ -75,6 +81,7 @@ class GoogleSheetsPipeline:
         self.logger: Logger = get_logger(component="GoogleSheetsPipeline")
 
     async def open(self, spider: Spider) -> None:
+        """Authenticate the Sheets service and reset batching state."""
         # Initialize Google Sheets API client
         creds = Credentials.from_service_account_file(  # type: ignore[union-attr]
             self.credentials_file,
@@ -91,6 +98,7 @@ class GoogleSheetsPipeline:
         )
 
     async def close(self, spider: Spider) -> None:
+        """Write any partial batch and release the Sheets service reference."""
         # Write any remaining batched items
         if self._batch:
             await self._write_batch()
@@ -103,6 +111,7 @@ class GoogleSheetsPipeline:
         )
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Buffer one item and append a batch when ``batch_size`` is reached."""
         if not self._service:
             raise RuntimeError("GoogleSheetsPipeline not opened")
 

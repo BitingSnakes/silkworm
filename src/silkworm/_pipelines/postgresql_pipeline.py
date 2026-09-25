@@ -22,6 +22,14 @@ class PostgreSQLPipeline:
     """
     Pipeline that sends items to a PostgreSQL database.
 
+    Args:
+        host: Database host.
+        port: Database port.
+        user: Login user.
+        password: Login password.
+        database: Existing database name.
+        table: Valid unquoted table created automatically when absent.
+
     Example:
         from silkworm.pipelines import PostgreSQLPipeline
 
@@ -71,6 +79,7 @@ class PostgreSQLPipeline:
         self.logger: Logger = get_logger(component="PostgreSQLPipeline")
 
     async def open(self, spider: Spider) -> None:
+        """Create the async pool and JSONB table if absent."""
         self._pool = await asyncpg.create_pool(  # pyright: ignore[reportPossiblyUnboundVariable]
             host=self.host,
             port=self.port,
@@ -100,12 +109,14 @@ class PostgreSQLPipeline:
         )
 
     async def close(self, spider: Spider) -> None:
+        """Close the PostgreSQL connection pool."""
         if self._pool:
             await self._pool.close()
             self._pool = None
             self.logger.info("Closed PostgreSQL pipeline", table=self.table)
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Insert one JSONB item with its spider name."""
         if not self._pool:
             raise RuntimeError("PostgreSQLPipeline not opened")
 

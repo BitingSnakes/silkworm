@@ -26,6 +26,11 @@ class MsgPackPipeline:
     MessagePack is a binary serialization format that is more compact and faster
     than JSON. This pipeline uses ormsgpack for fast serialization.
 
+    Args:
+        path: Destination MessagePack file.
+        mode: ``"write"`` to replace the file or ``"append"`` to retain and
+            extend an existing stream of MessagePack values.
+
     Example:
         from silkworm.pipelines import MsgPackPipeline
 
@@ -74,18 +79,21 @@ class MsgPackPipeline:
         self.logger: Logger = get_logger(component="MsgPackPipeline")
 
     async def open(self, spider: Spider) -> None:
+        """Open the binary destination in overwrite or append mode."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
         file_mode = "ab" if self.mode == "append" else "wb"
         self._fp = self.path.open(file_mode)
         self.logger.info("Opened MsgPack pipeline", path=str(self.path), mode=self.mode)
 
     async def close(self, spider: Spider) -> None:
+        """Flush and close the MessagePack destination."""
         if self._fp:
             self._fp.close()
             self._fp = None
             self.logger.info("Closed MsgPack pipeline", path=str(self.path))
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Serialize and append one MessagePack value."""
         if not self._fp:
             raise RuntimeError("MsgPackPipeline not opened")
         packed = ormsgpack.packb(item)  # pyright: ignore[reportPossiblyUnboundVariable]

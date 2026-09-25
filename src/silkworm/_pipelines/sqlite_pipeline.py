@@ -14,6 +14,13 @@ if TYPE_CHECKING:
 
 
 class SQLitePipeline:
+    """Stream items into a SQLite table as JSON documents.
+
+    Args:
+        path: SQLite database path.
+        table: Valid unquoted table name created automatically when absent.
+    """
+
     def __init__(self, path: str | Path = "items.db", table: str = "items") -> None:
         self.path: Path = Path(path)
         self.table: str = validate_table_name(table)
@@ -21,6 +28,7 @@ class SQLitePipeline:
         self.logger: Logger = get_logger(component="SQLitePipeline")
 
     async def open(self, spider: Spider) -> None:
+        """Open the database and create the destination table if needed."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._conn = sqlite3.connect(self.path)
         cur = self._conn.cursor()
@@ -41,12 +49,14 @@ class SQLitePipeline:
         )
 
     async def close(self, spider: Spider) -> None:
+        """Commit outstanding writes and close the database connection."""
         if self._conn:
             self._conn.close()
             self._conn = None
             self.logger.info("Closed SQLite pipeline", path=str(self.path))
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Insert one JSON-serialized item and return it unchanged."""
         if not self._conn:
             raise RuntimeError("SQLitePipeline not opened")
         cur = self._conn.cursor()

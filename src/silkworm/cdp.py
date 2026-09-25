@@ -1,3 +1,5 @@
+"""Minimal asynchronous Chrome DevTools Protocol rendered-page client."""
+
 from __future__ import annotations
 
 import asyncio
@@ -25,16 +27,25 @@ except ImportError:
 
 
 class CDPClient:
-    """
-    Chrome DevTools Protocol client for connecting to Lightpanda or other CDP-compatible browsers.
+    """Fetch rendered pages through a CDP-compatible browser.
 
-    Usage:
-        client = CDPClient(ws_endpoint="ws://127.0.0.1:9222")
-        await client.connect()
-        try:
-            response = await client.fetch(request)
-        finally:
-            await client.close()
+    Args:
+        ws_endpoint: Browser WebSocket endpoint.
+        concurrency: Maximum simultaneous page fetches.
+        timeout: Default command and navigation timeout in seconds.
+        html_max_size_bytes: Maximum rendered document size accepted by the
+            HTML parser and WebSocket transport.
+
+    Raises:
+        ImportError: If the ``cdp`` extra is not installed.
+
+    Example:
+        >>> client = CDPClient(ws_endpoint="ws://127.0.0.1:9222")
+        >>> await client.connect()
+        >>> try:
+        ...     response = await client.fetch(request)
+        ... finally:
+        ...     await client.close()
     """
 
     def __init__(
@@ -66,14 +77,22 @@ class CDPClient:
 
     @property
     def concurrency(self) -> int:
+        """Return the maximum number of simultaneous page fetches."""
         return self._concurrency
 
     @property
     def html_max_size_bytes(self) -> int:
+        """Return the rendered HTML size limit in bytes."""
         return self._html_max_size_bytes
 
     async def connect(self) -> None:
-        """Establish WebSocket connection to CDP endpoint."""
+        """Connect to the browser and create an isolated page target.
+
+        Calling this method more than once is harmless.
+
+        Raises:
+            HttpError: If connection or target initialization fails.
+        """
         if self._ws is not None:
             return
 
@@ -238,11 +257,15 @@ class CDPClient:
         await self._send_command("Network.enable")
 
     async def fetch(self, req: Request) -> Response:
-        """
-        Fetch a URL using CDP and return an HTMLResponse.
+        """Navigate to a URL and return its rendered HTML.
 
-        This navigates to the URL and waits for the page to load, then extracts
-        the HTML content and creates an HTMLResponse.
+        The response status is reported as 200 because CDP does not reliably
+        expose the navigation status. The final document URL is detected after
+        redirects when supported by the browser.
+
+        Raises:
+            HttpError: If the client is disconnected, navigation times out, or
+                rendered HTML cannot be retrieved.
         """
         if self._ws is None or self._session_id is None:
             raise HttpError("CDP client not connected")
@@ -364,7 +387,7 @@ class CDPClient:
                 raise HttpError(f"CDP request to {url} failed{suffix}") from exc
 
     async def close(self) -> None:
-        """Close the CDP connection and cleanup resources."""
+        """Cancel background work and close the page target and WebSocket."""
         # Cancel receive task
         if self._recv_task:
             self._recv_task.cancel()

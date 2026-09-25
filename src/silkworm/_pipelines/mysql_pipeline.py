@@ -22,6 +22,14 @@ class MySQLPipeline:
     """
     Pipeline that sends items to a MySQL database.
 
+    Args:
+        host: Database host.
+        port: Database port.
+        user: Login user.
+        password: Login password.
+        database: Existing database name.
+        table: Valid unquoted table created automatically when absent.
+
     Example:
         from silkworm.pipelines import MySQLPipeline
 
@@ -71,6 +79,7 @@ class MySQLPipeline:
         self.logger: Logger = get_logger(component="MySQLPipeline")
 
     async def open(self, spider: Spider) -> None:
+        """Create the connection pool and JSON table if absent."""
         self._pool = await aiomysql.create_pool(  # pyright: ignore[reportPossiblyUnboundVariable]
             host=self.host,
             port=self.port,
@@ -104,6 +113,7 @@ class MySQLPipeline:
         )
 
     async def close(self, spider: Spider) -> None:
+        """Close the MySQL connection pool and wait for shutdown."""
         if self._pool:
             self._pool.close()
             await self._pool.wait_closed()
@@ -111,6 +121,7 @@ class MySQLPipeline:
             self.logger.info("Closed MySQL pipeline", table=self.table)
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Insert and commit one JSON item with its spider name."""
         if not self._pool:
             raise RuntimeError("MySQLPipeline not opened")
 

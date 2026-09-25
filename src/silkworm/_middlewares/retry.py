@@ -14,6 +14,19 @@ if TYPE_CHECKING:
 
 
 class RetryMiddleware:
+    """Retry selected HTTP statuses with optional exponential backoff.
+
+    Args:
+        max_times: Maximum retries after the initial request.
+        retry_http_codes: Status codes that produce a replacement request.
+        backoff_base: Base seconds for ``base * 2 ** (attempt - 1)``.
+        sleep_http_codes: Retry statuses that also wait before enqueueing. These
+            codes are automatically added to the retry set.
+
+    Attempts are stored in ``request.meta["retry_times"]`` and retry requests
+    bypass deduplication.
+    """
+
     def __init__(
         self,
         max_times: int = 3,
@@ -51,6 +64,7 @@ class RetryMiddleware:
         response: Response,
         spider: Spider,
     ) -> Response | Request:
+        """Return a retry request for eligible statuses until the limit is met."""
         request = response.request
         if response.status not in self.retry_http_codes:
             return response

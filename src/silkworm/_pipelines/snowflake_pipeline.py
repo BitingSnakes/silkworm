@@ -22,6 +22,16 @@ class SnowflakePipeline:
     """
     Pipeline that sends items to a Snowflake data warehouse.
 
+    Args:
+        account: Snowflake account identifier.
+        user: Login user.
+        password: Login password.
+        database: Database name.
+        schema: Schema name.
+        warehouse: Compute warehouse name.
+        table: Valid unquoted destination table.
+        role: Optional active role.
+
     Example:
         from silkworm.pipelines import SnowflakePipeline
 
@@ -80,6 +90,7 @@ class SnowflakePipeline:
         self.logger: Logger = get_logger(component="SnowflakePipeline")
 
     async def open(self, spider: Spider) -> None:
+        """Connect and create the VARIANT-backed table if absent."""
         # Connect to Snowflake
         conn_params = {
             "account": self.account,
@@ -118,6 +129,7 @@ class SnowflakePipeline:
         )
 
     async def close(self, spider: Spider) -> None:
+        """Close the Snowflake cursor and connection."""
         if self._cursor:
             self._cursor.close()
             self._cursor = None
@@ -129,6 +141,7 @@ class SnowflakePipeline:
         self.logger.info("Closed Snowflake pipeline", table=self.table)
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Insert and commit one JSON item with its spider name."""
         if not self._cursor or not self._conn:
             raise RuntimeError("SnowflakePipeline not opened")
 

@@ -21,6 +21,11 @@ class SkipNonHTMLMiddleware:
     execute a no-op callback so spider parse methods are skipped.
     Set `request.meta["allow_non_html"] = True` to bypass filtering for a request
     (useful for XML sitemaps, robots.txt fetches, etc.).
+
+    Args:
+        allowed_types: Lowercase tokens accepted in the Content-Type header.
+        sniff_bytes: Leading body bytes inspected for an HTML tag when headers
+            are inconclusive.
     """
 
     def __init__(
@@ -58,6 +63,7 @@ class SkipNonHTMLMiddleware:
         response: Response,
         spider: Spider,
     ) -> Response | Request:
+        """Replace the callback with a no-op when the payload is not HTML."""
         # Allow opt-out for requests that intentionally fetch non-HTML content
         if response.request.meta.get("allow_non_html"):
             return response

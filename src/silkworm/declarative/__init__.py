@@ -1,3 +1,10 @@
+"""Declarative item extraction from :class:`~silkworm.HTMLResponse` objects.
+
+Subclass :class:`Item` and assign :class:`Text` or :class:`Attr` descriptors to
+compile a reusable extraction plan with validation, transforms, and nested
+items.
+"""
+
 from __future__ import annotations
 
 from .exceptions import (

@@ -8,6 +8,8 @@ from .exceptions import DeclarativeConfigurationError
 
 
 class Cardinality(Enum):
+    """Number of values expected from a compiled declarative field."""
+
     ONE = auto()
     OPTIONAL = auto()
     MANY = auto()
@@ -19,6 +21,12 @@ def analyze_annotation(
     item_name: str,
     field_name: str,
 ) -> tuple[Cardinality, object]:
+    """Resolve a field annotation into extraction cardinality and value type.
+
+    Raises:
+        DeclarativeConfigurationError: If the annotation uses an unsupported or
+            ambiguous collection shape.
+    """
     origin = get_origin(annotation)
     if origin is list:
         arguments = get_args(annotation)
@@ -45,12 +53,14 @@ def analyze_annotation(
 
 
 def allows_none(annotation: object) -> bool:
+    """Return whether ``annotation`` accepts ``None`` at runtime."""
     if annotation in (Any, object, None, type(None)):
         return True
     return type(None) in get_args(annotation)
 
 
 def matches_annotation(value: object, annotation: object) -> bool:
+    """Return whether ``value`` satisfies the supported runtime annotation forms."""
     if annotation in (Any, object):
         return True
     if annotation in (None, type(None)):
@@ -81,6 +91,7 @@ def matches_annotation(value: object, annotation: object) -> bool:
 
 
 def annotation_label(annotation: object) -> str:
+    """Return a concise annotation name suitable for validation errors."""
     return getattr(annotation, "__name__", str(annotation).replace("typing.", ""))
 
 

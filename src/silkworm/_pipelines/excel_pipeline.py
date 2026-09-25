@@ -25,6 +25,12 @@ class ExcelPipeline:
     """
     Pipeline that writes items to an Excel file (.xlsx).
 
+    Items are buffered, flattened, and written when the pipeline closes.
+
+    Args:
+        path: Output workbook path.
+        sheet_name: Worksheet title.
+
     Example:
         from silkworm.pipelines import ExcelPipeline
 
@@ -55,11 +61,13 @@ class ExcelPipeline:
         self.logger: Logger = get_logger(component="ExcelPipeline")
 
     async def open(self, spider: Spider) -> None:
+        """Create parent directories and reset the workbook item buffer."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._items = []
         self.logger.info("Opened Excel pipeline", path=str(self.path))
 
     async def close(self, spider: Spider) -> None:
+        """Flatten buffered items and write the XLSX workbook."""
         if self._items:
             wb = openpyxl.Workbook()  # pyright: ignore[reportPossiblyUnboundVariable]
             ws = cast("Worksheet", wb.active)
@@ -91,6 +99,7 @@ class ExcelPipeline:
         self.logger.info("Closed Excel pipeline", path=str(self.path))
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Buffer one item for workbook creation during :meth:`close`."""
         self._items.append(item)
         log_pipeline_item(
             self,

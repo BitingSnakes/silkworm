@@ -13,6 +13,16 @@ if TYPE_CHECKING:
 
 
 class UserAgentMiddleware:
+    """Set a missing ``User-Agent`` header from a pool or fixed default.
+
+    Args:
+        user_agents: Values sampled independently for each request.
+        default: Value used when the pool is empty. Defaults to
+            ``"silkworm/0.1"``.
+
+    Existing request headers are never overwritten.
+    """
+
     def __init__(
         self,
         user_agents: Sequence[str] | None = None,
@@ -24,6 +34,7 @@ class UserAgentMiddleware:
         self.logger: Logger = get_logger(component="UserAgentMiddleware")
 
     async def process_request(self, request: Request, spider: Spider) -> Request:
+        """Set a user agent if the request does not already define one."""
         ua = None
         if self.user_agents:
             ua = random.choice(self.user_agents)

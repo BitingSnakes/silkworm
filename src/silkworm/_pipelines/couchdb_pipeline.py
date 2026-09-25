@@ -21,6 +21,12 @@ class CouchDBPipeline:
     """
     Pipeline that sends items to a CouchDB database.
 
+    Args:
+        url: CouchDB server URL.
+        database: Database opened or created during startup.
+        username: Optional authentication username.
+        password: Optional authentication password.
+
     Example:
         from silkworm.pipelines import CouchDBPipeline
 
@@ -64,6 +70,7 @@ class CouchDBPipeline:
         self.logger: Logger = get_logger(component="CouchDBPipeline")
 
     async def open(self, spider: Spider) -> None:
+        """Connect and open or create the configured CouchDB database."""
         # Connect to CouchDB
         if self.username and self.password:
             self._client = await aiocouch.CouchDB(  # type: ignore[attr-defined]
@@ -91,6 +98,7 @@ class CouchDBPipeline:
         )
 
     async def close(self, spider: Spider) -> None:
+        """Exit the CouchDB client context and release database references."""
         if self._client:
             await self._client.__aexit__(None, None, None)
             self._client = None
@@ -98,6 +106,7 @@ class CouchDBPipeline:
             self.logger.info("Closed CouchDB pipeline", database=self.database)
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Create a document containing the spider name and original item."""
         if not self._db:
             raise RuntimeError("CouchDBPipeline not opened")
 

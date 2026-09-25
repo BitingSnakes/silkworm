@@ -1,3 +1,9 @@
+"""Structured logging interfaces and configuration helpers for Silkworm.
+
+Log records accept arbitrary keyword context. The shared logger defaults to
+stderr and reads ``SILKWORM_LOG_LEVEL`` the first time it is requested.
+"""
+
 from __future__ import annotations
 
 import json
@@ -41,16 +47,42 @@ class Logger(Protocol):
         self,
         *,
         handlers: list[dict[str, object]] | None = None,
-    ) -> None: ...
+    ) -> None:
+        """Replace the logger's handlers with the supplied configurations.
 
-    def bind(self, **context: object) -> Logger: ...
+        Each handler mapping accepts ``sink``, ``level``, ``serialize``, and
+        ``colorize``. A sink may be ``"stderr"``, ``"stdout"``, a filesystem
+        path, or a writable text stream.
+        """
+        ...
 
-    def info(self, message: str, **context: object) -> None: ...
-    def debug(self, message: str, **context: object) -> None: ...
-    def warning(self, message: str, **context: object) -> None: ...
-    def error(self, message: str, **context: object) -> None: ...
-    def exception(self, message: str, **context: object) -> None: ...
-    def complete(self) -> None: ...
+    def bind(self, **context: object) -> Logger:
+        """Return a logger carrying ``context`` on every subsequent record."""
+        ...
+
+    def info(self, message: str, **context: object) -> None:
+        """Emit an informational record with structured context."""
+        ...
+
+    def debug(self, message: str, **context: object) -> None:
+        """Emit a diagnostic record with structured context."""
+        ...
+
+    def warning(self, message: str, **context: object) -> None:
+        """Emit a warning record with structured context."""
+        ...
+
+    def error(self, message: str, **context: object) -> None:
+        """Emit an error record with structured context."""
+        ...
+
+    def exception(self, message: str, **context: object) -> None:
+        """Emit an error record including the active exception traceback."""
+        ...
+
+    def complete(self) -> None:
+        """Flush all configured handlers."""
+        ...
 
 
 _LEVELS: tuple[_NormalizedLogLevel, ...] = (
@@ -268,8 +300,11 @@ def _configure_if_needed() -> Logger:
 
 
 def get_logger(**context: object) -> Logger:
-    """
-    Grab the shared logger with optional bound context fields.
+    """Return the shared structured logger, optionally bound to ``context``.
+
+    The first call configures stderr output using ``SILKWORM_LOG_LEVEL``.
+    Bound context is copied into every record without mutating the shared base
+    logger.
     """
     base = _configure_if_needed()
     return base.bind(**context) if context else base
@@ -305,9 +340,7 @@ def log_at_level(
 
 
 def complete_logs() -> None:
-    """
-    Flush configured log handlers.
-    """
+    """Flush configured log handlers if logging has been initialized."""
     if not _configured:
         return
     _typed_logger.complete()

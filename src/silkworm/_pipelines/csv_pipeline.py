@@ -15,6 +15,17 @@ if TYPE_CHECKING:
 
 
 class CSVPipeline:
+    """Stream flattened items to a UTF-8 CSV file.
+
+    Args:
+        path: Destination file path.
+        fieldnames: Fixed column order. When omitted, columns are inferred from
+            the first item.
+
+    Nested mappings use underscore-separated keys and list values are joined
+    with commas.
+    """
+
     def __init__(
         self,
         path: str | Path = "items.csv",
@@ -29,12 +40,14 @@ class CSVPipeline:
         self.logger: Logger = get_logger(component="CSVPipeline")
 
     async def open(self, spider: Spider) -> None:
+        """Create parent directories and open a fresh CSV destination."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._fp = self.path.open("w", encoding="utf-8", newline="")
         self._header_written = False
         self.logger.info("Opened CSV pipeline", path=str(self.path))
 
     async def close(self, spider: Spider) -> None:
+        """Flush and close the CSV file if it is open."""
         if self._fp:
             self._fp.close()
             self._fp = None
@@ -42,6 +55,7 @@ class CSVPipeline:
             self.logger.info("Closed CSV pipeline", path=str(self.path))
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Flatten and append one mapping item to the CSV file."""
         if not self._fp:
             raise RuntimeError("CSVPipeline not opened")
 

@@ -22,6 +22,16 @@ class S3JsonLinesPipeline:
     """
     Pipeline that writes items to S3 in JSON Lines format using async OpenDAL.
 
+    Args:
+        bucket: Destination bucket.
+        key: Destination object key.
+        region: AWS region.
+        endpoint: Optional S3-compatible service endpoint.
+        access_key_id: Explicit access key or ``None`` for provider discovery.
+        secret_access_key: Explicit secret paired with the access key.
+
+    Items are buffered and the object is written when the pipeline closes.
+
     Example:
         from silkworm.pipelines import S3JsonLinesPipeline
 
@@ -69,6 +79,7 @@ class S3JsonLinesPipeline:
         self.logger: Logger = get_logger(component="S3JsonLinesPipeline")
 
     async def open(self, spider: Spider) -> None:
+        """Create the asynchronous S3 operator and reset the item buffer."""
         # Configure OpenDAL operator for S3
         config = {
             "bucket": self.bucket,
@@ -91,6 +102,7 @@ class S3JsonLinesPipeline:
         )
 
     async def close(self, spider: Spider) -> None:
+        """Write buffered JSON Lines to the configured S3 object."""
         if self._items and self._operator:
             # Write all buffered items to S3
             content = "\n".join(self._items)
@@ -99,6 +111,7 @@ class S3JsonLinesPipeline:
         self.logger.info("Closed S3 JSON Lines pipeline", key=self.key)
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Serialize and buffer one JSON line for upload during :meth:`close`."""
         line = json.dumps(item, ensure_ascii=False)
         self._items.append(line)
         log_pipeline_item(

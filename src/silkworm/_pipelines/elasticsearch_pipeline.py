@@ -21,6 +21,11 @@ class ElasticsearchPipeline:
     """
     Pipeline that sends items to an Elasticsearch index.
 
+    Args:
+        hosts: One endpoint or a list of Elasticsearch endpoints.
+        index: Destination index name.
+        **es_kwargs: Additional ``AsyncElasticsearch`` client options.
+
     Example:
         from silkworm.pipelines import ElasticsearchPipeline
 
@@ -57,6 +62,7 @@ class ElasticsearchPipeline:
         self.logger: Logger = get_logger(component="ElasticsearchPipeline")
 
     async def open(self, spider: Spider) -> None:
+        """Create the asynchronous Elasticsearch client."""
         self._client = AsyncElasticsearch(self.hosts, **self.es_kwargs)  # pyright: ignore[reportPossiblyUnboundVariable]
         self.logger.info(
             "Opened Elasticsearch pipeline",
@@ -65,12 +71,14 @@ class ElasticsearchPipeline:
         )
 
     async def close(self, spider: Spider) -> None:
+        """Close the Elasticsearch transport and release the client."""
         if self._client:
             await self._client.close()
             self._client = None
             self.logger.info("Closed Elasticsearch pipeline", index=self.index)
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Index one item as a document in the configured index."""
         if not self._client:
             raise RuntimeError("ElasticsearchPipeline not opened")
 

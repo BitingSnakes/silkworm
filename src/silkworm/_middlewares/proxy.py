@@ -15,6 +15,18 @@ if TYPE_CHECKING:
 
 
 class ProxyMiddleware:
+    """Assign proxies to requests and rotate away from failed proxies.
+
+    Args:
+        proxies: Proxy URLs loaded directly.
+        proxy_file: UTF-8 file containing one proxy URL per non-empty line.
+        random_selection: Choose randomly instead of round-robin.
+
+    Exactly one proxy source is required. A pre-existing string in
+    ``request.meta["proxy"]`` takes precedence. Register the same instance as
+    exception middleware to retry failures through unused proxies.
+    """
+
     _FAILED_PROXIES_META_KEY = "_proxy_failed_proxies"
     _PROXY_RETRY_TIMES_META_KEY = "_proxy_retry_times"
 
@@ -54,6 +66,7 @@ class ProxyMiddleware:
         self.logger: Logger = get_logger(component="ProxyMiddleware")
 
     async def process_request(self, request: Request, spider: Spider) -> Request:
+        """Preserve an explicit proxy or assign the next configured proxy."""
         proxy = request.meta.get("proxy")
         if isinstance(proxy, str):
             self.logger.debug("Using existing proxy", proxy=proxy, url=request.url)
@@ -73,6 +86,7 @@ class ProxyMiddleware:
         exception: Exception,
         spider: Spider,
     ) -> Request | None:
+        """Retry with an unused proxy, or return ``None`` when none remain."""
         current_proxy = request.meta.get("proxy")
         if not isinstance(current_proxy, str):
             return None

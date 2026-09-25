@@ -1,3 +1,5 @@
+"""Spider base class and protected custom-statistics mapping."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, overload, override
@@ -33,6 +35,12 @@ _RESERVED_STATS_KEYS = frozenset(
 
 
 class StatsPayloadDict(dict[str, JSONValue]):
+    """Mutable user statistics merged into periodic and final crawl summaries.
+
+    Keys beginning with an underscore and keys reserved for engine statistics
+    are rejected to prevent collisions.
+    """
+
     __slots__ = ("_reserved_keys",)
 
     def __init__(self, reserved_keys: frozenset[str], /) -> None:
@@ -52,6 +60,7 @@ class StatsPayloadDict(dict[str, JSONValue]):
 
     @override
     def update(self, *args: object, **kwargs: JSONValue) -> None:
+        """Validate and merge statistics from a mapping, iterable, or keywords."""
         updates = dict(*args, **kwargs)
         for key, value in updates.items():
             self[key] = value
@@ -71,6 +80,35 @@ class StatsPayloadDict(dict[str, JSONValue]):
 
 
 class Spider:
+    """Base class defining a crawl's initial requests and response callback.
+
+    Subclasses usually set :attr:`name` and :attr:`start_urls`, then override
+    :meth:`parse`. They may yield requests, JSON-compatible items, iterables,
+    async iterables, or ``None`` from callbacks.
+
+    Args:
+        name: Per-instance name overriding the class attribute.
+        start_urls: Per-instance starting URLs.
+        custom_settings: JSON-compatible settings copied for this instance.
+        logger: Existing structured logger or context mapping used to create
+            one lazily.
+
+    Attributes:
+        stats_payload: User-defined statistics included in engine summaries.
+
+    Example:
+        >>> from silkworm import HTMLResponse, Response, Spider
+        >>> class TitlesSpider(Spider):
+        ...     name = "titles"
+        ...     start_urls = ("https://example.com",)
+        ...
+        ...     async def parse(self, response: Response):
+        ...         if isinstance(response, HTMLResponse):
+        ...             title = await response.select_first("title")
+        ...             if title is not None:
+        ...                 yield {"title": title.text}
+    """
+
     name: str = "spider"
     start_urls: tuple[str, ...] = ()
     custom_settings: MetaData = {}  # noqa: RUF012  # instances override this
@@ -107,22 +145,35 @@ class Spider:
 
     @property
     def log(self) -> Logger:
-        """
-        Convenience accessor that always returns a logger.
-        Falls back to a default logger bound to the spider name when none set.
-        """
+        """Return the spider logger, creating one bound to its name if needed."""
         if self.logger is None:
             self.logger = get_logger(spider=self.name)
         return self.logger
 
     async def start_requests(self) -> AsyncIterator[Request]:
+        """Yield one request per :attr:`start_urls` entry.
+
+        Override this hook to customize methods, headers, metadata, or callbacks
+        for initial requests.
+        """
         for url in self.start_urls:
             yield Request(url=url, callback=self.parse)
 
     def parse(self, response: Response) -> CallbackResult:
+        """Process a starting response and return supported callback output.
+
+        Subclasses must implement this method. It may be synchronous, async, or
+        an async generator as long as its result conforms to
+        :data:`~silkworm.types.CallbackOutput`.
+
+        Raises:
+            NotImplementedError: When the base implementation is called.
+        """
         raise NotImplementedError
 
     # hooks for pipelines / engine if desired later
-    async def open(self) -> None: ...
+    async def open(self) -> None:
+        """Run once after middleware setup and before initial requests enqueue."""
 
-    async def close(self) -> None: ...
+    async def close(self) -> None:
+        """Run once after pipelines close during normal engine shutdown."""

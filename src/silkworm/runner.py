@@ -75,7 +75,16 @@ async def crawl(
     spider: Spider | type[Spider],
     **options: Unpack[EngineOptions],
 ) -> None:
-    """Run ``spider`` to completion on the current event loop."""
+    """Run ``spider`` to completion on the current event loop.
+
+    Args:
+        spider: Spider instance, or a no-argument spider class.
+        **options: :class:`~silkworm.engine.EngineOptions` forwarded to the
+            engine.
+
+    Use this coroutine when the application already owns an event loop; use a
+    ``run_spider*`` function from synchronous code.
+    """
     await Engine(_as_spider(spider), **options).run()
 
 

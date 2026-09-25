@@ -22,6 +22,20 @@ class RssPipeline:
     Pipeline that writes items to an RSS 2.0 feed (buffered).
 
     Items must provide title, link, and description fields (configurable).
+
+    Args:
+        path: Destination RSS XML file.
+        channel_title: Feed title.
+        channel_link: Canonical feed or site URL.
+        channel_description: Feed description.
+        max_items: Maximum most-recent valid items retained, or ``None`` for no
+            limit.
+        item_title_field: Mapping key containing each item title.
+        item_link_field: Mapping key containing each item URL.
+        item_description_field: Mapping key containing each item description.
+        item_pub_date_field: Optional publication-date key.
+        item_guid_field: Optional GUID key.
+        item_author_field: Optional author key.
     """
 
     def __init__(
@@ -64,6 +78,7 @@ class RssPipeline:
         self.logger: Logger = get_logger(component="RssPipeline")
 
     async def open(self, spider: Spider) -> None:
+        """Create parent directories and reset the bounded item buffer."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._items = deque(maxlen=self.max_items)
         self.logger.info(
@@ -73,6 +88,7 @@ class RssPipeline:
         )
 
     async def close(self, spider: Spider) -> None:
+        """Build and write the RSS 2.0 document from buffered items."""
         rss = ET.Element("rss", {"version": "2.0"})
         channel = ET.SubElement(rss, "channel")
         ET.SubElement(channel, "title").text = self.channel_title
@@ -103,6 +119,11 @@ class RssPipeline:
         )
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Normalize and buffer a mapping containing required RSS fields.
+
+        Non-mapping items and mappings missing required fields are logged and
+        returned without being added to the feed.
+        """
         if not isinstance(item, Mapping):
             self.logger.warning(
                 "Skipping non-mapping item for RSS feed",

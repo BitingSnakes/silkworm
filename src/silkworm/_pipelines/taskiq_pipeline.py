@@ -30,6 +30,13 @@ class TaskiqPipeline:
     This allows you to process items asynchronously with Taskiq workers, enabling
     distributed processing, retries, and other Taskiq features.
 
+    Args:
+        broker: Taskiq broker whose lifecycle is managed by the pipeline.
+        task: Decorated Taskiq task to enqueue. When provided, ``task_name`` is
+            ignored.
+        task_name: Fully qualified name of a task registered with ``broker``.
+            Required when ``task`` is omitted.
+
     Example:
         from taskiq import InMemoryBroker
         from silkworm.pipelines import TaskiqPipeline

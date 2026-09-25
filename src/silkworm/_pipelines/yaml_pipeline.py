@@ -22,6 +22,10 @@ class YAMLPipeline:
     """
     Pipeline that writes items to a YAML file.
 
+    Args:
+        path: Output YAML path. Items are buffered and written as one sequence
+            when the pipeline closes.
+
     Example:
         from silkworm.pipelines import YAMLPipeline
 
@@ -48,17 +52,20 @@ class YAMLPipeline:
         self.logger: Logger = get_logger(component="YAMLPipeline")
 
     async def open(self, spider: Spider) -> None:
+        """Create parent directories and reset the YAML item buffer."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._items = []
         self.logger.info("Opened YAML pipeline", path=str(self.path))
 
     async def close(self, spider: Spider) -> None:
+        """Write all buffered items as a YAML sequence."""
         if self._items:
             with self.path.open("w", encoding="utf-8") as f:
                 yaml.dump(self._items, f, default_flow_style=False, allow_unicode=True)  # pyright: ignore[reportPossiblyUnboundVariable]
         self.logger.info("Closed YAML pipeline", path=str(self.path))
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Buffer one item for YAML serialization during :meth:`close`."""
         self._items.append(item)
         log_pipeline_item(
             self,

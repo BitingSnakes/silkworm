@@ -1,3 +1,5 @@
+"""Servo-backed rendered-page client and request metadata controls."""
+
 from __future__ import annotations
 
 import asyncio
@@ -25,12 +27,25 @@ SERVO_FULL_PAGE_META_KEY = "servo_full_page"
 
 
 class ServoFetchClient:
-    """
-    HTTP client adapter that renders pages with servofetch.
+    """Render pages with ``servofetch`` for use as an engine HTTP client.
 
-    servofetch embeds Servo and exposes an AsyncBrowser API for fetching rendered
-    page HTML. Silkworm keeps this integration opt-in; pass an instance as the
-    engine or runner ``http_client``.
+    Args:
+        concurrency: Maximum simultaneous renders.
+        timeout: Default render timeout.
+        settle_ms: Default delay after page load before capture.
+        user_agent: Default browser user agent.
+        allow_private_addresses: Permit navigation to private network addresses.
+        html_max_size_bytes: Maximum rendered document size parsed by selectors.
+        onion_bootstrap: Optional Tor bootstrap endpoint forwarded to Servo.
+        onion_consensus_file: Optional cached Tor consensus file.
+        onion_verbose: Enable verbose Tor integration output.
+        onion_response_limit: Maximum Tor response size in bytes.
+
+    Request metadata can override JavaScript, settle delay, user agent, and
+    screenshot behavior through the exported ``SERVO_*_META_KEY`` constants.
+
+    Raises:
+        ImportError: If a compatible ``servofetch`` build is unavailable.
     """
 
     def __init__(
@@ -91,13 +106,25 @@ class ServoFetchClient:
 
     @property
     def concurrency(self) -> int:
+        """Return the maximum number of simultaneous renders."""
         return self._concurrency
 
     @property
     def html_max_size_bytes(self) -> int:
+        """Return the rendered HTML parsing limit in bytes."""
         return self._html_max_size_bytes
 
     async def fetch(self, req: Request) -> HTMLResponse:
+        """Render ``req.url`` and return its HTML response.
+
+        Per-request timeout and supported Servo metadata override client
+        defaults. Screenshot requests still return the page HTML and expose
+        screenshot metadata through synthetic response headers.
+
+        Raises:
+            TypeError: If a recognized metadata value has the wrong type.
+            HttpError: If rendering fails or no HTML is returned.
+        """
         timeout_seconds = to_seconds(
             req.timeout if req.timeout is not None else self._timeout,
         )
@@ -159,6 +186,7 @@ class ServoFetchClient:
         )
 
     async def close(self) -> None:
+        """Close the underlying Servo browser using its available close hook."""
         closer = getattr(self._browser, "aclose", None) or getattr(
             self._browser,
             "close",

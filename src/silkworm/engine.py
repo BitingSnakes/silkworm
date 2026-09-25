@@ -1,3 +1,5 @@
+"""Asynchronous crawl scheduler, lifecycle manager, and callback dispatcher."""
+
 from __future__ import annotations
 
 import asyncio
@@ -63,6 +65,7 @@ class EngineLogger:
         request: Request,
         spider: Spider,
     ) -> None:
+        """Log that ``request`` is about to be sent."""
         context: dict[str, object] = {
             "method": request.method,
             "callback": getattr(request.callback, "__name__", None),
@@ -79,6 +82,7 @@ class EngineLogger:
         response: Response,
         spider: Spider,
     ) -> None:
+        """Log a completed response with status and optional request URL."""
         context: dict[str, object] = {
             "status": response.status,
             "spider": spider.name,
@@ -95,6 +99,7 @@ class EngineLogger:
         *,
         source: str,
     ) -> None:
+        """Log that a middleware or response requested another attempt."""
         context: dict[str, object] = {"source": source, "spider": spider.name}
         if self.include_request_url:
             context["url"] = request.url
@@ -111,6 +116,7 @@ class EngineLogger:
         pipeline: ItemPipeline,
         spider: Spider,
     ) -> None:
+        """Log item dispatch using the pipeline's effective log level."""
         log_level = cast(
             "LogLevel", getattr(pipeline, "log_level", self.item_pipeline_level)
         )
@@ -136,6 +142,11 @@ type PrioritizedRequest = tuple[int, int, Request]
 
 
 def default_dedup_key(req: Request) -> str:
+    """Return the request URL used by the engine's default deduplicator.
+
+    Method, body, headers, and query parameters stored separately in
+    :attr:`~silkworm.Request.params` do not affect this key.
+    """
     return req.url
 
 
@@ -143,7 +154,9 @@ class EngineOptions(TypedDict, total=False):
     """Keyword options for :class:`Engine`, also accepted by every runner.
 
     ``run_spider(MySpider, concurrency=32, request_timeout=10)`` forwards these
-    to ``Engine``; omitted keys use the ``Engine`` defaults.
+    to ``Engine``; omitted keys use the ``Engine`` defaults. Supply
+    ``http_client`` to inject a compatible client; its concurrency then controls
+    worker count and default queue capacity.
     """
 
     concurrency: int
@@ -162,6 +175,35 @@ class EngineOptions(TypedDict, total=False):
 
 
 class Engine:
+    """Coordinate request scheduling, HTTP I/O, callbacks, and item pipelines.
+
+    Args:
+        spider: Spider instance to execute.
+        concurrency: Maximum simultaneous HTTP requests for the default client.
+        max_pending_requests: Bounded queue capacity. Defaults to ten times the
+            effective HTTP client concurrency.
+        emulation: Browser profile used by the default ``wreq`` client; pass
+            ``None`` to disable impersonation.
+        request_timeout: Default per-request timeout.
+        html_max_size_bytes: Maximum document size parsed by HTML responses.
+        request_middlewares: Request processors applied in list order.
+        response_middlewares: Response processors applied in list order.
+        item_pipelines: Item processors applied in list order, passing each
+            returned value to the next pipeline.
+        log_stats_interval: Seconds between statistics messages, or ``None`` to
+            disable periodic summaries.
+        keep_alive: Request connection reuse from the default client when
+            supported by ``wreq``.
+        http_client: Preconfigured client replacing the default client.
+        engine_logger: Event logger customization.
+        dedup_key: Function mapping a request to its deduplication key. Defaults
+            to URL-only deduplication.
+
+    Requests with :attr:`~silkworm.Request.dont_filter` bypass deduplication.
+    Higher request priorities are dequeued before lower ones, while insertion
+    order breaks ties.
+    """
+
     def __init__(
         self,
         spider: Spider,
@@ -233,6 +275,11 @@ class Engine:
         }
 
     async def open_spider(self) -> None:
+        """Open middleware, spider, and pipelines, then enqueue initial requests.
+
+        Middleware opens before the spider; pipelines open afterward in their
+        configured order.
+        """
         self.logger.info("Opening spider", spider=self.spider.name)
         await self._open_middlewares()
         await self.spider.open()
@@ -243,6 +290,11 @@ class Engine:
             await self._enqueue(req)
 
     async def close_spider(self) -> None:
+        """Close pipelines, the spider, and middleware lifecycle hooks.
+
+        Pipelines close in configured order. Middleware instances close once in
+        reverse order, even when registered for both request and response work.
+        """
         self.logger.info("Closing spider", spider=self.spider.name)
         for pipe in self.item_pipelines:
             await pipe.close(self.spider)
@@ -660,6 +712,14 @@ class Engine:
                 )
 
     async def run(self) -> None:
+        """Run the crawl to queue exhaustion and release all resources.
+
+        Worker tasks, periodic statistics, and lifecycle hooks are managed as a
+        task group. The HTTP client and spider components are closed in a
+        ``finally`` block, and a final statistics record is always emitted.
+        Exceptions from requests, callbacks, middleware, pipelines, or cleanup
+        propagate to the caller after structured error logging.
+        """
         self.logger.info("Starting engine", spider=self.spider.name)
         self._start_time = time.time()
         self._event_loop_type = self._detect_event_loop()

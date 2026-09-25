@@ -25,6 +25,12 @@ class AvroPipeline:
     Pipeline that writes items to an Avro file.
 
     Avro is a row-oriented data serialization system with compact binary format.
+    Items are buffered until the pipeline closes.
+
+    Args:
+        path: Output Avro file.
+        schema: Explicit Avro schema. When omitted, a simple record schema is
+            inferred from the first item.
 
     Example:
         from silkworm.pipelines import AvroPipeline
@@ -65,11 +71,13 @@ class AvroPipeline:
         self.logger: Logger = get_logger(component="AvroPipeline")
 
     async def open(self, spider: Spider) -> None:
+        """Create parent directories and reset the in-memory item buffer."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._items = []
         self.logger.info("Opened Avro pipeline", path=str(self.path))
 
     async def close(self, spider: Spider) -> None:
+        """Infer or apply the schema and write all buffered items."""
         if self._items:
             if self.schema is None:
                 # Infer schema from first item
@@ -83,6 +91,7 @@ class AvroPipeline:
         self.logger.info("Closed Avro pipeline", path=str(self.path))
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Buffer one item for serialization during :meth:`close`."""
         self._items.append(item)
         log_pipeline_item(
             self,

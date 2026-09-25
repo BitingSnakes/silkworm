@@ -22,6 +22,14 @@ class DynamoDBPipeline:
     """
     Pipeline that sends items to AWS DynamoDB.
 
+    Args:
+        table_name: Table opened or created with a string ``id`` hash key.
+        region_name: AWS region.
+        aws_access_key_id: Explicit access key, or ``None`` for normal provider
+            discovery.
+        aws_secret_access_key: Explicit secret paired with the access key.
+        endpoint_url: Custom endpoint for DynamoDB Local or compatible services.
+
     Example:
         from silkworm.pipelines import DynamoDBPipeline
 
@@ -70,6 +78,7 @@ class DynamoDBPipeline:
         self.logger: Logger = get_logger(component="DynamoDBPipeline")
 
     async def open(self, spider: Spider) -> None:
+        """Open DynamoDB resources and create the keyed table if absent."""
         # Create aioboto3 session
         session_kwargs = {"region_name": self.region_name}
         if self.aws_access_key_id and self.aws_secret_access_key:
@@ -118,6 +127,7 @@ class DynamoDBPipeline:
         )
 
     async def close(self, spider: Spider) -> None:
+        """Exit the DynamoDB client and resource contexts."""
         if self._client:
             await self._client.__aexit__(None, None, None)
             self._client = None
@@ -128,6 +138,7 @@ class DynamoDBPipeline:
         self.logger.info("Closed DynamoDB pipeline", table_name=self.table_name)
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Store one item with a generated string ID and spider metadata."""
         if not self._table:
             raise RuntimeError("DynamoDBPipeline not opened")
 

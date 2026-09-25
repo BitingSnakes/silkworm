@@ -25,6 +25,13 @@ class PolarsPipeline:
     Parquet is a columnar storage format optimized for analytics workloads.
     This pipeline uses Polars for fast and efficient Parquet serialization.
 
+    Items are buffered in memory and written when :meth:`close` runs.
+
+    Args:
+        path: Destination Parquet file.
+        mode: ``"write"`` to replace the file or ``"append"`` to merge the
+            buffered items with an existing Parquet file.
+
     Example:
         from silkworm.pipelines import PolarsPipeline
 
@@ -70,11 +77,13 @@ class PolarsPipeline:
         self.logger: Logger = get_logger(component="PolarsPipeline")
 
     async def open(self, spider: Spider) -> None:
+        """Create parent directories and reset the Parquet item buffer."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self._items = []
         self.logger.info("Opened Polars pipeline", path=str(self.path), mode=self.mode)
 
     async def close(self, spider: Spider) -> None:
+        """Write buffered items, merging an existing file in append mode."""
         if self._items:
             df = pl.DataFrame(self._items)  # pyright: ignore[reportPossiblyUnboundVariable]
             if self.mode == "append" and self.path.exists():
@@ -85,6 +94,7 @@ class PolarsPipeline:
         self.logger.info("Closed Polars pipeline", path=str(self.path))
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
+        """Buffer one item for Parquet serialization during :meth:`close`."""
         self._items.append(item)
         log_pipeline_item(
             self,

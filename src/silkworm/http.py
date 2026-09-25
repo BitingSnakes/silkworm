@@ -1,3 +1,5 @@
+"""Concurrency-limited ``wreq`` client adapted to Silkworm responses."""
+
 from __future__ import annotations
 
 import asyncio
@@ -37,6 +39,25 @@ class _HeaderEntry(Protocol):
 
 
 class HttpClient:
+    """Send Silkworm requests through a browser-impersonating ``wreq`` client.
+
+    Args:
+        concurrency: Maximum requests in flight.
+        emulation: Browser profile to impersonate, or ``None`` to disable it.
+        default_headers: Headers merged below per-request headers.
+        timeout: Default request timeout.
+        html_max_size_bytes: Maximum document size parsed by HTML selectors.
+        follow_redirects: Follow redirect responses internally.
+        max_redirects: Maximum redirect hops.
+        keep_alive: Request connection reuse when the installed ``wreq``
+            version supports it.
+        **client_kwargs: Additional options forwarded to ``wreq.Client``.
+
+    Requests are converted to :class:`~silkworm.HTMLResponse` when headers or a
+    small body sniff indicate HTML; all other payloads become
+    :class:`~silkworm.Response`.
+    """
+
     def __init__(
         self,
         *,
@@ -77,13 +98,24 @@ class HttpClient:
 
     @property
     def concurrency(self) -> int:
+        """Return the maximum number of requests allowed in flight."""
         return self._concurrency
 
     @property
     def html_max_size_bytes(self) -> int:
+        """Return the HTML document parsing limit in bytes."""
         return self._html_max_size_bytes
 
     async def fetch(self, req: Request) -> Response:
+        """Send one request, follow redirects, and return a normalized response.
+
+        The per-request timeout and proxy metadata override client defaults.
+        Synthetic response metadata is honored for middleware integrations.
+
+        Raises:
+            HttpError: If the request times out, redirects loop or exceed the
+                configured limit, or the transport fails.
+        """
         mocked_response = self._build_mock_response(req)
         if mocked_response is not None:
             self.logger.debug(
@@ -575,6 +607,7 @@ class HttpClient:
         return updated
 
     async def close(self) -> None:
+        """Close the underlying transport, suppressing best-effort cleanup errors."""
         closer = getattr(self._client, "aclose", None) or getattr(
             self._client,
             "close",

@@ -31,6 +31,14 @@ class RobotsTxtDelayMiddleware:
     `Request-rate` when present. Delays are scoped to the origin that served the
     robots.txt file, and concurrent requests are serialized so the configured
     spacing is respected under engine concurrency.
+
+    Args:
+        website_url: Absolute HTTP(S) site URL whose origin is throttled.
+        user_agent: robots.txt group used to resolve directives.
+        fallback_delay: Delay used when no directive exists or loading fails.
+        timeout: robots.txt fetch timeout.
+        ignore_fetch_errors: Apply the fallback instead of propagating errors.
+        fetcher: Optional async robots.txt loader for custom transports or tests.
     """
 
     def __init__(
@@ -74,9 +82,11 @@ class RobotsTxtDelayMiddleware:
         self.logger: Logger = get_logger(component="RobotsTxtDelayMiddleware")
 
     async def open(self, spider: Spider) -> None:
+        """Load and parse robots.txt before crawl requests begin."""
         await self._ensure_loaded(spider)
 
     async def process_request(self, request: Request, spider: Spider) -> Request:
+        """Apply origin-scoped spacing from the loaded robots.txt directives."""
         await self._ensure_loaded(spider)
         delay = self._delay_seconds
         if delay is None or delay <= 0 or not self._matches_origin(request.url):

@@ -1,3 +1,5 @@
+"""One-shot helpers for fetching and parsing HTML without defining a spider."""
+
 from __future__ import annotations
 
 import inspect
@@ -19,10 +21,19 @@ async def fetch_html(
     emulation: Emulation | Profile | None = DEFAULT_EMULATION,
     timeout: float | timedelta | None = None,
 ) -> tuple[str, AsyncDocument]:
-    """
-    Fetch HTML from a URL using the wreq HTTP client.
+    """Fetch and asynchronously parse one HTML document with ``wreq``.
 
-    Returns a tuple of (text, AsyncDocument) with awaitable selector helpers.
+    Args:
+        url: Absolute URL to fetch.
+        emulation: Browser profile to impersonate, or ``None`` to disable it.
+        timeout: Request timeout in seconds or as a ``timedelta``.
+
+    Returns:
+        A ``(text, AsyncDocument)`` tuple with awaitable selector helpers.
+
+    Note:
+        This convenience API does not apply spider middleware, retries,
+        deduplication, or pipelines.
     """
     client = cast(Any, Client)(emulation=emulation)
     try:
@@ -104,10 +115,22 @@ async def fetch_html_servo(
     javascript: str | None = None,
     allow_private_addresses: bool = False,
 ) -> tuple[str, AsyncDocument]:
-    """
-    Fetch rendered HTML from a URL using servofetch/Servo.
+    """Fetch and parse rendered HTML with ``servofetch`` and Servo.
 
-    Returns a tuple of (text, AsyncDocument) with awaitable selector helpers.
+    Args:
+        url: Absolute URL to render.
+        timeout: Render timeout in seconds or as a ``timedelta``.
+        settle_ms: Delay after loading before capturing the document.
+        user_agent: Optional browser user agent override.
+        javascript: Optional JavaScript evaluated by the rendered-page client.
+        allow_private_addresses: Permit navigation to private network addresses.
+
+    Returns:
+        A ``(text, AsyncDocument)`` tuple with awaitable selector helpers.
+
+    Raises:
+        ImportError: If a compatible ``servofetch`` build is unavailable.
+        HttpError: If rendering fails.
     """
     from ._types import MetaData
     from .request import Request

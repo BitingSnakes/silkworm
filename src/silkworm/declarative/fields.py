@@ -5,6 +5,8 @@ from typing import Any, Protocol, Self, overload
 
 
 class _Missing:
+    """Sentinel distinguishing an omitted default from an explicit ``None``."""
+
     __slots__ = ()
 
     def __repr__(self) -> str:
@@ -15,11 +17,23 @@ MISSING = _Missing()
 
 
 class _ItemInstance(Protocol):
+    """Internal descriptor target exposing the storage used by declarative fields."""
+
     _values: dict[str, object]
 
 
 class Field[T = str]:
-    """Base descriptor for a field in a declarative item."""
+    """Base descriptor for a field in a declarative item.
+
+    Args:
+        selector: Non-empty CSS selector evaluated within the current item root.
+        transform: Synchronous conversion applied to extracted text.
+        default: Value used when a scalar field is absent. Without a default,
+            required fields raise :class:`MissingFieldError`.
+
+    ``Field`` is primarily a typing and extension point; applications normally
+    declare fields with :func:`Text` or :func:`Attr`.
+    """
 
     __slots__ = ("_name", "default", "selector", "transform")
 
@@ -42,12 +56,18 @@ class Field[T = str]:
 
     @property
     def name(self) -> str:
+        """Return the attribute name assigned by the owning item class.
+
+        Raises:
+            RuntimeError: If the descriptor has not been bound to an item class.
+        """
         if self._name is None:
             raise RuntimeError("field is not bound to an Item class")
         return self._name
 
     @property
     def kind(self) -> str:
+        """Return a human-readable field type used in validation errors."""
         return type(self).__name__.removeprefix("_").removesuffix("Field")
 
     def __set_name__(self, owner: type[object], name: str) -> None:
@@ -144,7 +164,17 @@ def Text(
     default: object | _Missing = MISSING,
     strip: bool = False,
 ) -> Any:
-    """Declare a field that extracts text with a CSS selector."""
+    """Declare a field that extracts element text with a CSS selector.
+
+    Args:
+        selector: CSS selector relative to the item root.
+        transform: Optional synchronous value converter.
+        default: Value used when a scalar match is absent.
+        strip: Strip leading and trailing whitespace before transforming.
+
+    The field annotation determines whether one value, an optional value, or a
+    list of matches is extracted.
+    """
     return _TextField(
         selector,
         transform=transform,
@@ -183,7 +213,17 @@ def Attr(
     transform: Callable[[str], object] | None = None,
     default: object | _Missing = MISSING,
 ) -> Any:
-    """Declare a field that extracts an HTML attribute with a CSS selector."""
+    """Declare a field that extracts an HTML attribute.
+
+    Args:
+        selector: CSS selector relative to the item root.
+        name: Attribute name to read from each selected element.
+        absolute: Resolve extracted URLs against the response URL.
+        transform: Optional synchronous value converter.
+        default: Value used when a scalar match or attribute is absent.
+
+    The field annotation determines scalar, optional, or list cardinality.
+    """
     return _AttrField(
         selector,
         name,

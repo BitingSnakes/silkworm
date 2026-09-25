@@ -1,3 +1,5 @@
+"""HTTP response containers, decoding, selectors, and link-following helpers."""
+
 from __future__ import annotations
 
 import asyncio
@@ -100,6 +102,20 @@ _PREFERRED_WEB_ENCODINGS = {
 
 @dataclass(slots=True)
 class Response:
+    """Represent a completed HTTP response and its originating request.
+
+    Args:
+        url: Final URL after redirects.
+        status: Integer HTTP status code.
+        headers: Normalized response headers with lowercase names.
+        body: Raw response payload.
+        request: Request that produced this response.
+
+    The decoded :attr:`text` and detected :attr:`encoding` are computed lazily
+    and cached. Call :meth:`close` when retaining response objects to release
+    their payload memory early.
+    """
+
     url: str
     status: int
     headers: dict[str, str]
@@ -121,17 +137,25 @@ class Response:
 
     @property
     def text(self) -> str:
+        """Return the response body decoded with the detected character set."""
         if self._decoded_text is None:
             self._decoded_text, self._detected_encoding = self._decode_text()
         return self._decoded_text
 
     @property
     def encoding(self) -> str:
+        """Return the normalized encoding used by :attr:`text`.
+
+        Detection checks byte-order marks, HTTP headers, HTML/XML declarations,
+        and finally ``charset-normalizer`` before falling back to UTF-8 with
+        replacement characters.
+        """
         if self._decoded_text is None:
             self._decoded_text, self._detected_encoding = self._decode_text()
         return self._detected_encoding or "utf-8"
 
     def url_join(self, href: str) -> str:
+        """Resolve ``href`` relative to the final response URL."""
         return urljoin(self.url, href)
 
     def _decode_text(self) -> tuple[str, str]:
@@ -286,6 +310,17 @@ class Response:
         callback: Callback | None = None,
         **kwargs: object,
     ) -> Request:
+        """Create a request for a link relative to this response.
+
+        Args:
+            href: Absolute or relative target URL.
+            callback: Response callback. The originating request's callback is
+                inherited when this is omitted.
+            **kwargs: Additional :class:`~silkworm.Request` fields.
+
+        Returns:
+            A new request with a resolved absolute URL.
+        """
         from .request import Request  # local import to avoid cycle
 
         url = self.url_join(href)
@@ -301,6 +336,11 @@ class Response:
         callback: Callback | None = None,
         **kwargs: object,
     ) -> list[Request]:
+        """Create requests for every non-``None`` link in ``hrefs``.
+
+        The callback and extra request fields are applied to every generated
+        request in input order.
+        """
         return [
             self.follow(href, callback=callback, **kwargs)
             for href in hrefs
@@ -308,8 +348,10 @@ class Response:
         ]
 
     def close(self) -> None:
-        """
-        Release payload references so responses don't pin memory if they linger.
+        """Release payload references so a retained response does not pin memory.
+
+        Closing is idempotent. It clears the body, headers, and cached decoded
+        text; callers should finish reading the response first.
         """
         if self._closed:
             return
@@ -323,6 +365,16 @@ class Response:
 
 @dataclass(slots=True)
 class HTMLResponse(Response):
+    """HTTP response with lazy asynchronous HTML selector helpers.
+
+    Args:
+        doc_max_size_bytes: Maximum source size accepted by ``scraper-rs`` when
+            the document is first parsed.
+
+    The parsed document is created once and shared by selector calls. Selector
+    and parsing failures are normalized to :class:`~silkworm.SelectorError`.
+    """
+
     doc_max_size_bytes: int = 5_000_000
     _document: AsyncDocument | None = field(
         default=None,
@@ -398,31 +450,60 @@ class HTMLResponse(Response):
         )
 
     async def select(self, selector: str) -> list[AsyncElement]:
+        """Return every element matching a CSS selector.
+
+        Raises:
+            SelectorError: If the document cannot be parsed or the selector is
+                invalid.
+        """
         document = await self._get_document()
         return await self._run_selector(document.select, selector, kind="CSS")
 
     async def select_first(self, selector: str) -> AsyncElement | None:
+        """Return the first CSS match, or ``None`` when no element matches.
+
+        Raises:
+            SelectorError: If parsing or selector evaluation fails.
+        """
         document = await self._get_document()
         return await self._run_selector(document.select_first, selector, kind="CSS")
 
     async def find(self, selector: str) -> AsyncElement | None:
+        """Return the first CSS match as an alias for :meth:`select_first`."""
         return await self.select_first(selector)
 
     async def css(self, selector: str) -> list[AsyncElement]:
+        """Return all CSS matches as an alias for :meth:`select`."""
         return await self.select(selector)
 
     async def css_first(self, selector: str) -> AsyncElement | None:
+        """Return the first CSS match as an alias for :meth:`select_first`."""
         return await self.select_first(selector)
 
     async def xpath(self, xpath: str) -> list[AsyncElement]:
+        """Return every element matching an XPath expression.
+
+        Raises:
+            SelectorError: If parsing or XPath evaluation fails.
+        """
         document = await self._get_document()
         return await self._run_selector(document.xpath, xpath, kind="XPath")
 
     async def xpath_first(self, xpath: str) -> AsyncElement | None:
+        """Return the first XPath match, or ``None`` when no element matches.
+
+        Raises:
+            SelectorError: If parsing or XPath evaluation fails.
+        """
         document = await self._get_document()
         return await self._run_selector(document.xpath_first, xpath, kind="XPath")
 
     async def prettify(self) -> str:
+        """Return the parsed document formatted as readable HTML.
+
+        Raises:
+            SelectorError: If parsing or serialization fails.
+        """
         document = await self._get_document()
         return await self._run_document_op(document.prettify, kind="HTML prettify")
 
@@ -432,6 +513,15 @@ class HTMLResponse(Response):
         mode: MarkdownMode = "full",
         options: MarkdownOptions | None = None,
     ) -> str:
+        """Convert the decoded HTML body to Markdown off the event-loop thread.
+
+        Args:
+            mode: ``fast-h2m`` conversion strategy.
+            options: Additional converter options.
+
+        Returns:
+            Converted Markdown text.
+        """
         from .markdown import html_to_markdown
 
         return await asyncio.to_thread(
@@ -447,6 +537,12 @@ class HTMLResponse(Response):
         mode: MarkdownMode = "full",
         options: MarkdownOptions | None = None,
     ) -> MarkdownResult:
+        """Return the structured ``fast-h2m`` conversion result.
+
+        Args:
+            mode: ``fast-h2m`` conversion strategy.
+            options: Additional converter options.
+        """
         from .markdown import convert_html_to_markdown
 
         return await asyncio.to_thread(
@@ -463,14 +559,13 @@ class HTMLResponse(Response):
         callback: Callback | None = None,
         **kwargs: object,
     ) -> Request:
+        """Create a request for a link relative to this HTML response."""
         # Explicit base call avoids zero-arg super issues with slotted dataclasses.
         return Response.follow(self, href, callback=callback, **kwargs)
 
     @override
     def close(self) -> None:
-        """
-        Release the underlying AsyncDocument when it is no longer needed.
-        """
+        """Close the parsed document and release response payload references."""
         if self._closed:
             return
 
