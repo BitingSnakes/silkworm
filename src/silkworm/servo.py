@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Any
 from ._timeouts import to_seconds
 from ._validation import require_positive_int
 from .exceptions import HttpError
-from .logging import get_logger
+from .logging import Logger, get_logger
 from .response import HTMLResponse
 
 if TYPE_CHECKING:
@@ -87,7 +87,7 @@ class ServoFetchClient:
         self._settle_ms = settle_ms
         self._user_agent = user_agent
         self._html_max_size_bytes = html_max_size_bytes
-        self.logger = get_logger(component="servo")
+        self.logger: Logger = get_logger(component="servo")
 
     @property
     def concurrency(self) -> int:

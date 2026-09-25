@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 try:
     import fastavro  # type: ignore[import-not-found]
@@ -10,7 +10,7 @@ try:
 except ImportError:
     FASTAVRO_AVAILABLE = False
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from .base import log_pipeline_item
 
 if TYPE_CHECKING:
@@ -43,7 +43,7 @@ class AvroPipeline:
         self,
         path: str | Path = "items.avro",
         *,
-        schema: dict | None = None,
+        schema: dict[str, Any] | None = None,
     ) -> None:
         """
         Initialize AvroPipeline.
@@ -57,10 +57,10 @@ class AvroPipeline:
                 "fastavro is required for AvroPipeline. Install it with: pip install silkworm-rs[avro]",
             )
 
-        self.path = Path(path)
+        self.path: Path = Path(path)
         self.schema = schema
         self._items: list[JSONValue] = []
-        self.logger = get_logger(component="AvroPipeline")
+        self.logger: Logger = get_logger(component="AvroPipeline")
 
     async def open(self, spider: Spider) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -88,7 +88,7 @@ class AvroPipeline:
         )
         return item
 
-    def _infer_schema(self, item: JSONValue) -> dict:
+    def _infer_schema(self, item: JSONValue) -> dict[str, Any]:
         """Infer a simple Avro schema from the first item."""
         fields = []
         if isinstance(item, dict):
@@ -102,7 +102,7 @@ class AvroPipeline:
             "fields": fields,
         }
 
-    def _infer_type(self, value: JSONValue) -> str | dict:
+    def _infer_type(self, value: JSONValue) -> str | dict[str, Any]:
         """Infer Avro type from Python value."""
         if isinstance(value, bool):
             return "boolean"

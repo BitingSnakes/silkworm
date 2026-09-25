@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import types
 from enum import Enum, auto
-from typing import Any, get_args, get_origin
+from typing import Any, cast, get_args, get_origin
 
 from .exceptions import DeclarativeConfigurationError
 
@@ -62,7 +62,8 @@ def matches_annotation(value: object, annotation: object) -> bool:
         return any(matches_annotation(value, argument) for argument in arguments)
     if origin is list:
         return isinstance(value, list) and all(
-            matches_annotation(element, arguments[0]) for element in value
+            matches_annotation(element, arguments[0])
+            for element in cast("list[object]", value)
         )
 
     if origin is not None:

@@ -10,7 +10,7 @@ try:
 except ImportError:
     AIOMYSQL_AVAILABLE = False
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from .base import log_pipeline_item, validate_table_name
 
 if TYPE_CHECKING:
@@ -66,9 +66,9 @@ class MySQLPipeline:
         self.user = user
         self.password = password
         self.database = database
-        self.table = validate_table_name(table)
+        self.table: str = validate_table_name(table)
         self._pool = None  # type: ignore[var-annotated]
-        self.logger = get_logger(component="MySQLPipeline")
+        self.logger: Logger = get_logger(component="MySQLPipeline")
 
     async def open(self, spider: Spider) -> None:
         self._pool = await aiomysql.create_pool(  # pyright: ignore[reportPossiblyUnboundVariable]

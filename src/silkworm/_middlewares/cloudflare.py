@@ -4,12 +4,12 @@ import asyncio
 import json
 import time
 from collections.abc import Mapping
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from .._types import JSONValue
 from ..exceptions import HttpError
 from ..http import MOCK_RESPONSE_META_KEY, HttpClient
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from ..request import Request
 
 if TYPE_CHECKING:
@@ -60,12 +60,12 @@ class CloudflareCrawlMiddleware:
 
         self.account_id = account_id
         self.api_token = api_token
-        self.crawl_options = dict(crawl_options or {})
-        self.api_base_url = api_base_url.rstrip("/")
+        self.crawl_options: dict[str, JSONValue] = dict(crawl_options or {})
+        self.api_base_url: str = api_base_url.rstrip("/")
         self.poll_interval = poll_interval
         self.timeout = timeout
         self._client = HttpClient(concurrency=1, timeout=api_timeout)
-        self.logger = get_logger(component="CloudflareCrawlMiddleware")
+        self.logger: Logger = get_logger(component="CloudflareCrawlMiddleware")
 
     async def process_request(self, request: Request, spider: Spider) -> Request:
         crawl_settings = self._resolve_crawl_settings(request)
@@ -202,12 +202,13 @@ class CloudflareCrawlMiddleware:
         if not isinstance(payload, dict):
             msg = "Cloudflare crawl API returned a non-object response"
             raise HttpError(msg)
-        if payload.get("success") is False:
-            errors = payload.get("errors")
-            detail = errors if isinstance(errors, list) else payload
+        data = cast("dict[str, JSONValue]", payload)
+        if data.get("success") is False:
+            errors = data.get("errors")
+            detail = errors if isinstance(errors, list) else data
             msg = f"Cloudflare crawl API reported an error: {detail}"
             raise HttpError(msg)
-        return payload
+        return data
 
     def _extract_job_id(self, payload: Mapping[str, JSONValue]) -> str | None:
         candidates = self._mapping_candidates(payload)

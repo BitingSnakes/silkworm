@@ -12,7 +12,7 @@ from wreq import Client, Emulation, Method, Proxy  # type: ignore[import]
 from ._timeouts import to_seconds
 from ._validation import require_positive_int
 from .exceptions import HttpError
-from .logging import get_logger
+from .logging import Logger, get_logger
 from .response import HTMLResponse, Response
 
 if TYPE_CHECKING:
@@ -73,7 +73,7 @@ class HttpClient:
             getattr(self._client, "request", None),
             "keep_alive",
         )
-        self.logger = get_logger(component="http")
+        self.logger: Logger = get_logger(component="http")
 
     @property
     def concurrency(self) -> int:
@@ -316,7 +316,7 @@ class HttpClient:
         if isinstance(data, str):
             return data.encode("utf-8", errors="replace")
         if isinstance(data, (bytearray, memoryview)):
-            return bytes(data)
+            return bytes(cast("bytearray | memoryview[int]", data))
         if data is None:
             return b""
         try:
@@ -388,9 +388,10 @@ class HttpClient:
             return {}
 
         if isinstance(raw_headers, Mapping):
+            mapping = cast("Mapping[object, object]", raw_headers)
             return {
                 self._textify(k).strip().lower(): self._textify(v).strip()
-                for k, v in raw_headers.items()
+                for k, v in mapping.items()
             }
 
         header_map = self._normalize_header_map(raw_headers)
@@ -402,9 +403,12 @@ class HttpClient:
             raw_headers,
             (str, bytes, bytearray),
         ):
-            for entry in raw_headers:
-                if isinstance(entry, Sequence) and len(entry) == 2:
-                    k, v = entry
+            for entry in cast("Sequence[object]", raw_headers):
+                k: object
+                v: object
+                pair = cast("Sequence[object]", entry)
+                if isinstance(entry, Sequence) and len(pair) == 2:
+                    k, v = pair
                 elif isinstance(entry, (bytes, str)):
                     text = self._textify(entry)
                     if ":" not in text:
@@ -460,7 +464,8 @@ class HttpClient:
                 (str, bytes, bytearray),
             ):
                 value = ", ".join(
-                    self._textify(raw_value).strip() for raw_value in raw_values
+                    self._textify(raw_value).strip()
+                    for raw_value in cast("Sequence[object]", raw_values)
                 )
             else:
                 value = self._textify(raw_values).strip()

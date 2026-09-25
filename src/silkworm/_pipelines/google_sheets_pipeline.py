@@ -17,7 +17,7 @@ except ImportError:
     build = None  # type: ignore
     GOOGLE_SHEETS_AVAILABLE = False
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from .base import log_pipeline_item
 
 if TYPE_CHECKING:
@@ -72,7 +72,7 @@ class GoogleSheetsPipeline:
         self._batch: list[JSONValue] = []
         self._fieldnames: list[str] | None = None
         self._header_written = False
-        self.logger = get_logger(component="GoogleSheetsPipeline")
+        self.logger: Logger = get_logger(component="GoogleSheetsPipeline")
 
     async def open(self, spider: Spider) -> None:
         # Initialize Google Sheets API client

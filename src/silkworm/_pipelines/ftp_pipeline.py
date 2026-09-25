@@ -10,7 +10,7 @@ try:
 except ImportError:
     AIOFTP_AVAILABLE = False
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from .base import log_pipeline_item
 
 if TYPE_CHECKING:
@@ -64,7 +64,7 @@ class FTPPipeline:
         self.port = port
         self._items: list[str] = []
         self._client: aioftp.Client | None = None  # type: ignore[name-defined]
-        self.logger = get_logger(component="FTPPipeline")
+        self.logger: Logger = get_logger(component="FTPPipeline")
 
     async def open(self, spider: Spider) -> None:
         self._items = []

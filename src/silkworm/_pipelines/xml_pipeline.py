@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import rxml
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from .base import log_pipeline_item
 
 if TYPE_CHECKING:
@@ -22,11 +22,11 @@ class XMLPipeline:
         root_element: str = "items",
         item_element: str = "item",
     ) -> None:
-        self.path = Path(path)
+        self.path: Path = Path(path)
         self.root_element = root_element
         self.item_element = item_element
         self._fp: io.TextIOWrapper | None = None
-        self.logger = get_logger(component="XMLPipeline")
+        self.logger: Logger = get_logger(component="XMLPipeline")
 
     async def open(self, spider: Spider) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)

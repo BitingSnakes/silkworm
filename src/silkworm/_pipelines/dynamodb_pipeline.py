@@ -10,7 +10,7 @@ try:
 except ImportError:
     AIOBOTO3_AVAILABLE = False
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from .base import log_pipeline_item
 
 if TYPE_CHECKING:
@@ -67,7 +67,7 @@ class DynamoDBPipeline:
         self._client = None  # type: ignore[var-annotated]
         self._resource = None  # type: ignore[var-annotated]
         self._table = None  # type: ignore[var-annotated]
-        self.logger = get_logger(component="DynamoDBPipeline")
+        self.logger: Logger = get_logger(component="DynamoDBPipeline")
 
     async def open(self, spider: Spider) -> None:
         # Create aioboto3 session

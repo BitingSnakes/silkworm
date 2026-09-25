@@ -285,18 +285,20 @@ async def test_callback_pipeline_multiple_items():
 
 def test_callback_pipeline_requires_callable():
     with pytest.raises(TypeError, match="callback must be callable"):
-        CallbackPipeline(callback="not_callable")
+        CallbackPipeline(callback="not_callable")  # pyright: ignore[reportArgumentType]
 
     with pytest.raises(TypeError, match="callback must be callable"):
-        CallbackPipeline(callback=123)
+        CallbackPipeline(callback=123)  # pyright: ignore[reportArgumentType]
 
     with pytest.raises(TypeError, match="callback must be callable"):
-        CallbackPipeline(callback=None)
+        CallbackPipeline(callback=None)  # pyright: ignore[reportArgumentType]
 
 
 async def test_callback_pipeline_with_lambda():
     pipeline = CallbackPipeline(
-        callback=lambda item, spider: {**item, "processed": True}
+        callback=lambda item, spider: (
+            {**item, "processed": True} if isinstance(item, dict) else item
+        )
     )
     spider = Spider()
 

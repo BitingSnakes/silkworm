@@ -5,7 +5,7 @@ import sqlite3
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from .base import log_pipeline_item, validate_table_name
 
 if TYPE_CHECKING:
@@ -15,10 +15,10 @@ if TYPE_CHECKING:
 
 class SQLitePipeline:
     def __init__(self, path: str | Path = "items.db", table: str = "items") -> None:
-        self.path = Path(path)
-        self.table = validate_table_name(table)
+        self.path: Path = Path(path)
+        self.table: str = validate_table_name(table)
         self._conn: sqlite3.Connection | None = None
-        self.logger = get_logger(component="SQLitePipeline")
+        self.logger: Logger = get_logger(component="SQLitePipeline")
 
     async def open(self, spider: Spider) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)

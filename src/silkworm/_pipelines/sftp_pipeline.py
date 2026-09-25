@@ -11,7 +11,7 @@ try:
 except ImportError:
     ASYNCSSH_AVAILABLE = False
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from .base import log_pipeline_item
 
 if TYPE_CHECKING:
@@ -72,7 +72,7 @@ class SFTPPipeline:
         self._items: list[str] = []
         self._conn: Any = None
         self._sftp: Any = None
-        self.logger = get_logger(component="SFTPPipeline")
+        self.logger: Logger = get_logger(component="SFTPPipeline")
 
     async def open(self, spider: Spider) -> None:
         self._items = []
@@ -89,7 +89,7 @@ class SFTPPipeline:
             conn: Any | None = None
             sftp: Any | None = None
             try:
-                connect_kwargs = {
+                connect_kwargs: dict[str, object] = {
                     "host": self.host,
                     "port": self.port,
                     "username": self.user,

@@ -22,7 +22,7 @@ from ._types import (
 from .engine import DedupKey, EngineOptions
 from .logging import Logger, LogLevel
 from .middlewares import ExceptionMiddleware, RequestMiddleware, ResponseMiddleware
-from .pipelines import ItemPipeline
+from .pipelines import ItemCallback, ItemPipeline
 from .request import Callback, CallbackOutput, CallbackResult, Errback
 from .runner import LoopFactory
 
@@ -36,6 +36,7 @@ __all__ = [
     "Errback",
     "ExceptionMiddleware",
     "Headers",
+    "ItemCallback",
     "ItemPipeline",
     "JSONLike",
     "JSONScalar",

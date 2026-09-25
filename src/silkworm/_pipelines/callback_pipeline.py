@@ -1,14 +1,21 @@
 from __future__ import annotations
 
 import inspect
-from typing import TYPE_CHECKING, cast
+from collections.abc import Awaitable, Callable
+from typing import TYPE_CHECKING
 
-from ..logging import LogLevel, get_logger
+from ..logging import Logger, LogLevel, get_logger
 from .base import log_pipeline_item
 
 if TYPE_CHECKING:
     from .._types import JSONValue
     from ..spiders import Spider
+
+
+type ItemCallback = Callable[
+    [JSONValue, Spider], JSONValue | Awaitable[JSONValue | None] | None
+]
+"""Callback for :class:`CallbackPipeline`; returning ``None`` keeps the item."""
 
 
 class CallbackPipeline:
@@ -40,7 +47,9 @@ class CallbackPipeline:
         pipeline = CallbackPipeline(callback=async_process_item)
     """
 
-    def __init__(self, callback, *, log_level: LogLevel = "DEBUG") -> None:
+    def __init__(
+        self, callback: ItemCallback, *, log_level: LogLevel = "DEBUG"
+    ) -> None:
         """
         Initialize CallbackPipeline.
 
@@ -52,9 +61,9 @@ class CallbackPipeline:
             msg = "callback must be callable"
             raise TypeError(msg)
 
-        self.callback = callback
-        self.log_level = log_level
-        self.logger = get_logger(component="CallbackPipeline")
+        self.callback: ItemCallback = callback
+        self.log_level: LogLevel = log_level
+        self.logger: Logger = get_logger(component="CallbackPipeline")
 
     async def open(self, spider: Spider) -> None:
         """Open the pipeline."""
@@ -68,11 +77,10 @@ class CallbackPipeline:
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         """Process an item using the callback function."""
-        # Call the callback - handle both sync and async functions
-        if inspect.iscoroutinefunction(self.callback):
-            result = await self.callback(item, spider)
-        else:
-            result = self.callback(item, spider)
+        # Sync callbacks return the item; async ones return an awaitable of it.
+        result = self.callback(item, spider)
+        if inspect.isawaitable(result):
+            result = await result
 
         # If callback returns None, return the original item
         if result is None:
@@ -83,4 +91,4 @@ class CallbackPipeline:
             "Processed item with callback",
             spider=spider.name,
         )
-        return cast("JSONValue", result)
+        return result

@@ -3,7 +3,7 @@ from __future__ import annotations
 import random
 from typing import TYPE_CHECKING
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from ..request import Request
 
 if TYPE_CHECKING:
@@ -19,9 +19,9 @@ class UserAgentMiddleware:
         *,
         default: str | None = None,
     ) -> None:
-        self.user_agents = list(user_agents or [])
-        self.default = default or "silkworm/0.1"
-        self.logger = get_logger(component="UserAgentMiddleware")
+        self.user_agents: list[str] = list(user_agents or [])
+        self.default: str = default or "silkworm/0.1"
+        self.logger: Logger = get_logger(component="UserAgentMiddleware")
 
     async def process_request(self, request: Request, spider: Spider) -> Request:
         ua = None

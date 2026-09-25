@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 try:
     from elasticsearch import AsyncElasticsearch  # type: ignore[import-not-found]
@@ -9,7 +9,7 @@ try:
 except ImportError:
     ELASTICSEARCH_AVAILABLE = False
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from .base import log_pipeline_item
 
 if TYPE_CHECKING:
@@ -35,7 +35,7 @@ class ElasticsearchPipeline:
         hosts: list[str] | str = "http://localhost:9200",
         *,
         index: str = "items",
-        **es_kwargs,
+        **es_kwargs: Any,
     ) -> None:
         """
         Initialize ElasticsearchPipeline.
@@ -50,11 +50,11 @@ class ElasticsearchPipeline:
                 "elasticsearch is required for ElasticsearchPipeline. Install it with: pip install silkworm-rs[elasticsearch]",
             )
 
-        self.hosts = [hosts] if isinstance(hosts, str) else hosts
+        self.hosts: list[str] = [hosts] if isinstance(hosts, str) else hosts
         self.index = index
-        self.es_kwargs = es_kwargs
+        self.es_kwargs: dict[str, Any] = es_kwargs
         self._client: AsyncElasticsearch | None = None
-        self.logger = get_logger(component="ElasticsearchPipeline")
+        self.logger: Logger = get_logger(component="ElasticsearchPipeline")
 
     async def open(self, spider: Spider) -> None:
         self._client = AsyncElasticsearch(self.hosts, **self.es_kwargs)  # pyright: ignore[reportPossiblyUnboundVariable]

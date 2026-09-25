@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import time
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any, cast
 from uuid import uuid4
@@ -12,13 +12,17 @@ from wreq import Client, Method  # type: ignore[import]
 
 from .._timeouts import to_seconds
 from .._types import JSONValue
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from ..request import Request
 from ..response import Response
 from .base import callback_name, utc_timestamp
 
 if TYPE_CHECKING:
     from ..spiders import Spider
+
+
+class _Stop:
+    """Queue sentinel telling the sender task to flush and exit."""
 
 
 class RequestResponseStreamMiddleware:
@@ -49,7 +53,7 @@ class RequestResponseStreamMiddleware:
     _EXCHANGE_ID_META_KEY = "_stream_exchange_id"
     _PARENT_EXCHANGE_ID_META_KEY = "_stream_parent_exchange_id"
     _STARTED_AT_META_KEY = "_stream_started_at"
-    _STOP = object()
+    _STOP = _Stop()
 
     def __init__(
         self,
@@ -89,7 +93,7 @@ class RequestResponseStreamMiddleware:
 
         self.url = url
         self.method = method
-        self.headers = dict(headers or {})
+        self.headers: dict[str, str] = dict(headers or {})
         self.timeout = timeout
         self.max_body_bytes = max_body_bytes
         self.queue_size = queue_size
@@ -99,10 +103,10 @@ class RequestResponseStreamMiddleware:
         self.batch_envelope_key = batch_envelope_key
 
         self._client: Client | None = None  # type: ignore[name-defined]
-        self._queue: asyncio.Queue[JSONValue | object] | None = None
+        self._queue: asyncio.Queue[JSONValue | _Stop] | None = None
         self._sender_task: asyncio.Task[None] | None = None
         self._dropped_events = 0
-        self.logger = get_logger(component="RequestResponseStreamMiddleware")
+        self.logger: Logger = get_logger(component="RequestResponseStreamMiddleware")
 
         if self.auth_token is not None and "Authorization" not in self.headers:
             self.headers["Authorization"] = (
@@ -232,7 +236,7 @@ class RequestResponseStreamMiddleware:
         while True:
             payload = await queue.get()
             try:
-                if payload is self._STOP:
+                if isinstance(payload, _Stop):
                     if batch:
                         await self._send_payload(self._build_payload(batch))
                     return
@@ -246,9 +250,9 @@ class RequestResponseStreamMiddleware:
             finally:
                 queue.task_done()
 
-    async def _send_payload(self, payload: JSONValue | object) -> None:
+    async def _send_payload(self, payload: JSONValue) -> None:
         client = self._client
-        if client is None or payload is self._STOP:
+        if client is None:
             return
 
         method_upper = self.method.upper()
@@ -439,15 +443,14 @@ class RequestResponseStreamMiddleware:
         if value is None or isinstance(value, (str, int, float, bool)):
             return value
         if isinstance(value, Mapping):
-            return self._serialize_mapping(value)
+            return self._serialize_mapping(cast("Mapping[object, object]", value))
         if isinstance(value, (bytes, bytearray, memoryview)):
-            return self._serialize_bytes(bytes(value))
-        if isinstance(value, list):
-            return [self._coerce_json_value(item) for item in value]
-        if isinstance(value, tuple):
-            return [self._coerce_json_value(item) for item in value]
-        if isinstance(value, set):
-            return [self._coerce_json_value(item) for item in value]
+            return self._serialize_bytes(
+                bytes(cast("bytes | bytearray | memoryview[int]", value))
+            )
+        if isinstance(value, (list, tuple, set, frozenset)):
+            items = cast("Iterable[object]", value)
+            return [self._coerce_json_value(item) for item in items]
         return repr(value)
 
     def _serialize_text(self, value: str) -> dict[str, JSONValue]:

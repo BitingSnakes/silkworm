@@ -10,7 +10,7 @@ try:
 except ImportError:
     POLARS_AVAILABLE = False
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from .base import log_pipeline_item
 
 if TYPE_CHECKING:
@@ -64,10 +64,10 @@ class PolarsPipeline:
         if mode not in ("write", "append"):
             raise ValueError(f"mode must be 'write' or 'append', got '{mode}'")
 
-        self.path = Path(path)
+        self.path: Path = Path(path)
         self.mode = mode
         self._items: list[JSONValue] = []
-        self.logger = get_logger(component="PolarsPipeline")
+        self.logger: Logger = get_logger(component="PolarsPipeline")
 
     async def open(self, spider: Spider) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)

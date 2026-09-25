@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from .base import log_pipeline_item
 
 if TYPE_CHECKING:
@@ -21,12 +21,12 @@ class CSVPipeline:
         *,
         fieldnames: list[str] | None = None,
     ) -> None:
-        self.path = Path(path)
+        self.path: Path = Path(path)
         self.fieldnames = fieldnames
         self._fp: io.TextIOWrapper | None = None
-        self._writer: csv.DictWriter | None = None
+        self._writer: csv.DictWriter[str] | None = None
         self._header_written = False
-        self.logger = get_logger(component="CSVPipeline")
+        self.logger: Logger = get_logger(component="CSVPipeline")
 
     async def open(self, spider: Spider) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)

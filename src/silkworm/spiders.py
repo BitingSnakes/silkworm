@@ -103,7 +103,7 @@ class Spider:
             # If logger is already a Logger instance, use it directly
             self.logger = logger
 
-        self.stats_payload = StatsPayloadDict(_RESERVED_STATS_KEYS)
+        self.stats_payload: StatsPayloadDict = StatsPayloadDict(_RESERVED_STATS_KEYS)
 
     @property
     def log(self) -> Logger:

@@ -87,7 +87,7 @@ def _normalized_level(raw_level: str) -> _NormalizedLogLevel:
     """
     level = raw_level.upper()
     level = _ALIASES.get(level, level)
-    return cast("_NormalizedLogLevel", level) if level in _LEVELS else "INFO"
+    return level if level in _LEVELS else "INFO"
 
 
 class _TextFormatter(stdlib_logging.Formatter):
@@ -178,7 +178,9 @@ class _LoggerAdapter:
             case "stdout":
                 handler = stdlib_logging.StreamHandler(sys.stdout)
             case str() | os.PathLike():
-                handler = stdlib_logging.FileHandler(Path(sink), encoding="utf-8")
+                handler = stdlib_logging.FileHandler(
+                    Path(cast("str | os.PathLike[str]", sink)), encoding="utf-8"
+                )
             case _ if hasattr(sink, "write"):
                 handler = stdlib_logging.StreamHandler(cast("TextIO", sink))
             case _:

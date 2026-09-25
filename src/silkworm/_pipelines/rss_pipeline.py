@@ -9,7 +9,7 @@ from email.utils import format_datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from .base import log_pipeline_item
 
 if TYPE_CHECKING:
@@ -49,7 +49,7 @@ class RssPipeline:
             if max_items < 1:
                 raise ValueError("max_items must be at least 1")
 
-        self.path = Path(path)
+        self.path: Path = Path(path)
         self.channel_title = channel_title
         self.channel_link = channel_link
         self.channel_description = channel_description
@@ -61,7 +61,7 @@ class RssPipeline:
         self.item_guid_field = item_guid_field
         self.item_author_field = item_author_field
         self._items: deque[dict[str, str]] = deque(maxlen=max_items)
-        self.logger = get_logger(component="RssPipeline")
+        self.logger: Logger = get_logger(component="RssPipeline")
 
     async def open(self, spider: Spider) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)

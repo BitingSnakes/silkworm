@@ -9,7 +9,7 @@ try:
 except ImportError:
     AIOCOUCH_AVAILABLE = False
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from .base import log_pipeline_item
 
 if TYPE_CHECKING:
@@ -61,7 +61,7 @@ class CouchDBPipeline:
         self.password = password
         self._client: Any = None
         self._db: Any = None
-        self.logger = get_logger(component="CouchDBPipeline")
+        self.logger: Logger = get_logger(component="CouchDBPipeline")
 
     async def open(self, spider: Spider) -> None:
         # Connect to CouchDB

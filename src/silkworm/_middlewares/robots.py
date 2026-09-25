@@ -12,7 +12,7 @@ from wreq import Client, Method  # type: ignore[import]
 
 from .._timeouts import to_seconds
 from ..exceptions import HttpError
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from ..request import Request
 
 if TYPE_CHECKING:
@@ -57,7 +57,9 @@ class RobotsTxtDelayMiddleware:
             msg = "timeout must be non-negative"
             raise ValueError(msg)
 
-        self.robots_url, self._origin = self._normalize_robots_url(website_url)
+        robots_url, origin = self._normalize_robots_url(website_url)
+        self.robots_url: str = robots_url
+        self._origin = origin
         self.user_agent = user_agent
         self.fallback_delay = fallback_delay
         self.timeout = timeout
@@ -69,7 +71,7 @@ class RobotsTxtDelayMiddleware:
         self._delay_seconds: float | None = None
         self._delay_source: str | None = None
         self._next_request_at = 0.0
-        self.logger = get_logger(component="RobotsTxtDelayMiddleware")
+        self.logger: Logger = get_logger(component="RobotsTxtDelayMiddleware")
 
     async def open(self, spider: Spider) -> None:
         await self._ensure_loaded(spider)

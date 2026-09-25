@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from ..request import Request
 from ..response import HTMLResponse, Response
 
@@ -32,9 +32,9 @@ class SkipNonHTMLMiddleware:
             msg = "sniff_bytes must be non-negative"
             raise ValueError(msg)
 
-        self.allowed_types = [t.lower() for t in (allowed_types or ["html"])]
+        self.allowed_types: list[str] = [t.lower() for t in (allowed_types or ["html"])]
         self.sniff_bytes = sniff_bytes
-        self.logger = get_logger(component="SkipNonHTMLMiddleware")
+        self.logger: Logger = get_logger(component="SkipNonHTMLMiddleware")
 
     async def _skip_response(self, response: Response) -> None:
         return None

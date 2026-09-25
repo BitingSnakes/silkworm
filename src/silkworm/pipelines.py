@@ -12,7 +12,7 @@ from ._pipelines.base import (
     ItemPipeline,
     LoggedPipeline,
 )
-from ._pipelines.callback_pipeline import CallbackPipeline
+from ._pipelines.callback_pipeline import CallbackPipeline, ItemCallback
 from ._pipelines.cassandra_pipeline import (
     CASSANDRA_AVAILABLE,
     CassandraPipeline,
@@ -132,6 +132,7 @@ __all__ = [
     "ExcelPipeline",
     "FTPPipeline",
     "GoogleSheetsPipeline",
+    "ItemCallback",
     "ItemPipeline",
     "JsonLinesPipeline",
     "LoggedPipeline",

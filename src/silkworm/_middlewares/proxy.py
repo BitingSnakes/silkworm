@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from .._types import JSONValue
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from ..request import Request
 
 if TYPE_CHECKING:
@@ -43,7 +43,7 @@ class ProxyMiddleware:
         else:
             # At this point, proxies is guaranteed to be not None due to the check above
             assert proxies is not None
-            self.proxies = list(proxies)
+            self.proxies: list[str] = list(proxies)
 
         if not self.proxies:
             msg = "ProxyMiddleware requires at least one proxy."
@@ -51,7 +51,7 @@ class ProxyMiddleware:
 
         self.random_selection = random_selection
         self._idx = 0
-        self.logger = get_logger(component="ProxyMiddleware")
+        self.logger: Logger = get_logger(component="ProxyMiddleware")
 
     async def process_request(self, request: Request, spider: Spider) -> Request:
         proxy = request.meta.get("proxy")

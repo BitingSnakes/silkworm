@@ -9,7 +9,7 @@ try:
 except ImportError:
     MOTOR_AVAILABLE = False
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from .base import log_pipeline_item
 
 if TYPE_CHECKING:
@@ -57,7 +57,7 @@ class MongoDBPipeline:
         self._client = None  # type: ignore[var-annotated]
         self._db = None
         self._coll = None
-        self.logger = get_logger(component="MongoDBPipeline")
+        self.logger: Logger = get_logger(component="MongoDBPipeline")
 
     async def open(self, spider: Spider) -> None:
         self._client = motor.motor_asyncio.AsyncIOMotorClient(self.connection_string)  # type: ignore[assignment]

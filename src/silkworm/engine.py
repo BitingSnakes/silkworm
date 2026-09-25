@@ -182,7 +182,7 @@ class Engine:
     ) -> None:
         require_positive_int(concurrency, "concurrency")
         self.spider = spider
-        self.http = (
+        self.http: HttpClient = (
             http_client
             if http_client is not None
             else HttpClient(
@@ -208,14 +208,18 @@ class Engine:
             maxsize=queue_size,
         )
         self._seen: set[str] = set()
-        self.dedup_key = dedup_key or default_dedup_key
+        self.dedup_key: DedupKey = dedup_key or default_dedup_key
         self._stop_event = asyncio.Event()
-        self.logger = get_logger(component="engine", spider=self.spider.name)
-        self.engine_logger = engine_logger or EngineLogger()
+        self.logger: Logger = get_logger(component="engine", spider=self.spider.name)
+        self.engine_logger: EngineLogger = engine_logger or EngineLogger()
 
-        self.request_middlewares = list(request_middlewares or [])
-        self.response_middlewares = list(response_middlewares or [])
-        self.item_pipelines = list(item_pipelines or [])
+        self.request_middlewares: list[RequestMiddleware] = list(
+            request_middlewares or []
+        )
+        self.response_middlewares: list[ResponseMiddleware] = list(
+            response_middlewares or []
+        )
+        self.item_pipelines: list[ItemPipeline] = list(item_pipelines or [])
 
         # Statistics tracking
         self.log_stats_interval = log_stats_interval

@@ -132,7 +132,7 @@ def stream_html_to_markdown(
     options: MarkdownOptions | None = None,
 ) -> str:
     stream = MarkdownStream(mode=mode, options=options)
-    markdown = []
+    markdown: list[str] = []
     for chunk in chunks:
         markdown.append(stream.process_chunk(chunk))
     markdown.append(stream.finish())
@@ -146,7 +146,7 @@ async def stream_html_to_markdown_async(
     options: MarkdownOptions | None = None,
 ) -> str:
     stream = MarkdownStream(mode=mode, options=options)
-    markdown = []
+    markdown: list[str] = []
     async for chunk in chunks:
         markdown.append(stream.process_chunk(chunk))
     markdown.append(stream.finish())

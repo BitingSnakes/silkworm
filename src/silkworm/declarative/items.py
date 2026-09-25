@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import inspect
 from collections.abc import AsyncIterator, Mapping, Sequence
-from typing import TYPE_CHECKING, ClassVar, Protocol, Self, dataclass_transform
+from typing import TYPE_CHECKING, ClassVar, Protocol, Self, cast, dataclass_transform
 
 from .._types import JSONValue
 from .exceptions import (
@@ -288,8 +288,9 @@ def _to_json_value(value: object, *, path: str) -> JSONValue:
             for name, field_value in value._values.items()
         }
     if isinstance(value, Mapping):
+        mapping = cast("Mapping[object, object]", value)
         result: dict[str, JSONValue] = {}
-        for key, child in value.items():
+        for key, child in mapping.items():
             if not isinstance(key, str):
                 raise DeclarativeSerializationError(
                     f"{path}: mapping keys must be strings, got {type(key).__name__}"
@@ -297,9 +298,10 @@ def _to_json_value(value: object, *, path: str) -> JSONValue:
             result[key] = _to_json_value(child, path=f"{path}.{key}")
         return result
     if isinstance(value, (list, tuple)):
+        children = cast("Sequence[object]", value)
         return [
             _to_json_value(child, path=f"{path}[{index}]")
-            for index, child in enumerate(value)
+            for index, child in enumerate(children)
         ]
     raise DeclarativeSerializationError(
         f"{path}: {type(value).__name__} is not JSON-serializable"

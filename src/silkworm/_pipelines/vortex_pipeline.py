@@ -11,7 +11,7 @@ try:
 except ImportError:
     VORTEX_AVAILABLE = False
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from .base import log_pipeline_item
 
 if TYPE_CHECKING:
@@ -60,9 +60,9 @@ class VortexPipeline:
                 "vortex is required for VortexPipeline. Install it with: pip install silkworm-rs[vortex]",
             )
 
-        self.path = Path(path)
+        self.path: Path = Path(path)
         self._items: list[JSONValue] = []
-        self.logger = get_logger(component="VortexPipeline")
+        self.logger: Logger = get_logger(component="VortexPipeline")
 
     async def open(self, spider: Spider) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)

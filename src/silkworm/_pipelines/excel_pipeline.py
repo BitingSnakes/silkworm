@@ -11,7 +11,7 @@ try:
 except ImportError:
     OPENPYXL_AVAILABLE = False
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from .base import log_pipeline_item
 
 if TYPE_CHECKING:
@@ -49,10 +49,10 @@ class ExcelPipeline:
                 "openpyxl is required for ExcelPipeline. Install it with: pip install silkworm-rs[excel]",
             )
 
-        self.path = Path(path)
+        self.path: Path = Path(path)
         self.sheet_name = sheet_name
         self._items: list[JSONValue] = []
-        self.logger = get_logger(component="ExcelPipeline")
+        self.logger: Logger = get_logger(component="ExcelPipeline")
 
     async def open(self, spider: Spider) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)

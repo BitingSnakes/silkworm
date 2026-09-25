@@ -11,7 +11,7 @@ from ._timeouts import to_seconds
 from ._validation import require_positive_int
 from .exceptions import HttpError
 from .http import HttpClient
-from .logging import get_logger
+from .logging import Logger, get_logger
 from .response import HTMLResponse, Response
 
 if TYPE_CHECKING:
@@ -81,7 +81,7 @@ class OnionLinkClient(HttpClient):
             raise ValueError(msg)
         self._max_redirects = max_redirects
         self._response_limit = response_limit
-        self.logger = get_logger(component="onionlink")
+        self.logger: Logger = get_logger(component="onionlink")
 
     async def fetch(self, req: Request) -> Response:
         mocked_response = self._build_mock_response(req)

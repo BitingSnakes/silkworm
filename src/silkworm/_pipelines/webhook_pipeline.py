@@ -13,7 +13,7 @@ except ImportError:
     Method = None  # type: ignore
     WREQ_AVAILABLE = False
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from .base import log_pipeline_item
 
 if TYPE_CHECKING:
@@ -65,12 +65,12 @@ class WebhookPipeline:
 
         self.url = url
         self.method = method
-        self.headers = headers or {}
+        self.headers: dict[str, str] = headers or {}
         self.timeout = timeout
         self.batch_size = batch_size
         self._client: Client | None = None  # type: ignore[name-defined]
         self._batch: list[JSONValue] = []
-        self.logger = get_logger(component="WebhookPipeline")
+        self.logger: Logger = get_logger(component="WebhookPipeline")
 
     async def open(self, spider: Spider) -> None:
         self._client = Client()  # type: ignore[misc]

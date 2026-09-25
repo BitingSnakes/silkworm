@@ -6,7 +6,7 @@ from collections.abc import Callable
 from enum import Enum, auto
 from typing import TYPE_CHECKING, assert_never
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from ..request import Request
 
 if TYPE_CHECKING:
@@ -95,7 +95,7 @@ class DelayMiddleware:
             msg = "Must provide one of: delay, min_delay/max_delay, or delay_func"
             raise ValueError(msg)
 
-        self.logger = get_logger(component="DelayMiddleware")
+        self.logger: Logger = get_logger(component="DelayMiddleware")
 
     async def process_request(self, request: Request, spider: Spider) -> Request:
         """Calculate and apply delay before processing the request."""

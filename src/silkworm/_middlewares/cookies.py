@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from email.message import Message
 from http.cookiejar import Cookie, CookieJar, DefaultCookiePolicy, MozillaCookieJar
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import urlsplit
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from ..request import Request
 from ..response import Response
 
@@ -54,7 +54,7 @@ class CookiesMiddleware:
         )
         self._jars: dict[str | int, CookieJar] = {}
         self._lock = asyncio.Lock()
-        self.logger = get_logger(component="CookiesMiddleware")
+        self.logger: Logger = get_logger(component="CookiesMiddleware")
 
         if cookies:
             jar = self._jar_for(self._DEFAULT_JAR_KEY)
@@ -248,7 +248,7 @@ class CookiesMiddleware:
             if str(key).lower() != "set-cookie":
                 continue
             if isinstance(raw_value, (list, tuple)):
-                for value in raw_value:
+                for value in cast("Sequence[object]", raw_value):
                     yield from self._split_set_cookie_header(str(value))
             else:
                 yield from self._split_set_cookie_header(str(raw_value))

@@ -10,7 +10,7 @@ try:
 except ImportError:
     SNOWFLAKE_AVAILABLE = False
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from .base import log_pipeline_item, validate_table_name
 
 if TYPE_CHECKING:
@@ -73,11 +73,11 @@ class SnowflakePipeline:
         self.database = database
         self.schema = schema
         self.warehouse = warehouse
-        self.table = validate_table_name(table)
+        self.table: str = validate_table_name(table)
         self.role = role
         self._conn: Any = None
         self._cursor: Any = None
-        self.logger = get_logger(component="SnowflakePipeline")
+        self.logger: Logger = get_logger(component="SnowflakePipeline")
 
     async def open(self, spider: Spider) -> None:
         # Connect to Snowflake

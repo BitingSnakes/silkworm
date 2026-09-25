@@ -35,9 +35,9 @@ class Field[T = str]:
         if transform is not None and not callable(transform):
             raise TypeError("transform must be callable")
 
-        self.selector = selector
-        self.transform = transform
-        self.default = default
+        self.selector: str = selector
+        self.transform: Callable[[str], object] | None = transform
+        self.default: object | _Missing = default
         self._name: str | None = None
 
     @property

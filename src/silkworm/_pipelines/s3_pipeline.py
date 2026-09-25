@@ -10,7 +10,7 @@ try:
 except ImportError:
     OPENDAL_AVAILABLE = False
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from .base import log_pipeline_item
 
 if TYPE_CHECKING:
@@ -66,7 +66,7 @@ class S3JsonLinesPipeline:
         self.secret_access_key = secret_access_key
         self._items: list[str] = []
         self._operator: opendal.AsyncOperator | None = None
-        self.logger = get_logger(component="S3JsonLinesPipeline")
+        self.logger: Logger = get_logger(component="S3JsonLinesPipeline")
 
     async def open(self, spider: Spider) -> None:
         # Configure OpenDAL operator for S3

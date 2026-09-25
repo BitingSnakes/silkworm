@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from ..request import Request
 from ..response import Response
 
@@ -41,10 +41,10 @@ class RetryMiddleware:
         )
         # Any code we sleep on should also be retried even if it was not
         # included in retry_http_codes.
-        self.retry_http_codes = base_retry_codes | sleep_codes
+        self.retry_http_codes: set[int] = base_retry_codes | sleep_codes
         self.sleep_http_codes = sleep_codes
         self.backoff_base = backoff_base
-        self.logger = get_logger(component="RetryMiddleware")
+        self.logger: Logger = get_logger(component="RetryMiddleware")
 
     async def process_response(
         self,

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 from ._timeouts import to_seconds
 from ._validation import require_positive_int
 from .exceptions import HttpError
-from .logging import get_logger
+from .logging import Logger, get_logger
 from .response import HTMLResponse, Response
 
 if TYPE_CHECKING:
@@ -62,7 +62,7 @@ class CDPClient:
         self._session_id: str | None = None
         self._recv_task: asyncio.Task[None] | None = None
         self._page_load_future: asyncio.Future[None] | None = None
-        self.logger = get_logger(component="cdp")
+        self.logger: Logger = get_logger(component="cdp")
 
     @property
     def concurrency(self) -> int:

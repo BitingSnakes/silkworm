@@ -11,7 +11,7 @@ try:
 except ImportError:
     DUCKDB_AVAILABLE = False
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from .base import log_pipeline_item, validate_table_name
 
 if TYPE_CHECKING:
@@ -54,10 +54,10 @@ class DuckDBPipeline:
                 "Install it with: pip install silkworm-rs[duckdb]",
             )
 
-        self.database = Path(database)
-        self.table = validate_table_name(table)
+        self.database: Path = Path(database)
+        self.table: str = validate_table_name(table)
         self._conn: duckdb.DuckDBPyConnection | None = None
-        self.logger = get_logger(component="DuckDBPipeline")
+        self.logger: Logger = get_logger(component="DuckDBPipeline")
 
     async def open(self, spider: Spider) -> None:
         self.database.parent.mkdir(parents=True, exist_ok=True)

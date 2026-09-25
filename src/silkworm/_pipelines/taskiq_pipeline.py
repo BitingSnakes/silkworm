@@ -10,7 +10,7 @@ except ImportError:
     AsyncBroker = None  # type: ignore
     TASKIQ_AVAILABLE = False
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from .base import log_pipeline_item
 
 if TYPE_CHECKING:
@@ -71,7 +71,7 @@ class TaskiqPipeline:
         self._provided_task: _TaskiqTask | None = task
         self._task: _TaskiqTask | None = None
         self.task_name = task_name
-        self.logger = get_logger(component="TaskiqPipeline")
+        self.logger: Logger = get_logger(component="TaskiqPipeline")
 
     async def open(self, spider: Spider) -> None:
         """Open the pipeline and start the broker if needed."""

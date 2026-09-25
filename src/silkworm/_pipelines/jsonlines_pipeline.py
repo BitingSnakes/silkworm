@@ -12,7 +12,7 @@ try:
 except ImportError:
     OPENDAL_AVAILABLE = False
 
-from ..logging import LogLevel, get_logger
+from ..logging import Logger, LogLevel, get_logger
 from .base import log_pipeline_item
 
 if TYPE_CHECKING:
@@ -28,7 +28,7 @@ class JsonLinesPipeline:
         use_opendal: bool | None = None,
         log_level: LogLevel = "DEBUG",
     ) -> None:
-        self.path = Path(path)
+        self.path: Path = Path(path)
         self.log_level = log_level
         self._fp: io.TextIOWrapper | None = None
         self._operator: opendal.AsyncOperator | None = None
@@ -39,7 +39,7 @@ class JsonLinesPipeline:
                 "opendal is required for async JsonLinesPipeline writes. "
                 "Install it with: pip install silkworm-rs[s3]",
             )
-        self.logger = get_logger(component="JsonLinesPipeline")
+        self.logger: Logger = get_logger(component="JsonLinesPipeline")
 
     async def open(self, spider: Spider) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)

@@ -22,7 +22,7 @@ except ImportError:
     PlainTextAuthProvider = None  # type: ignore
     CASSANDRA_AVAILABLE = False
 
-from ..logging import get_logger
+from ..logging import Logger, get_logger
 from .base import log_pipeline_item, validate_table_name
 
 if TYPE_CHECKING:
@@ -73,15 +73,15 @@ class CassandraPipeline:
                 "Install it with: pip install silkworm-rs[cassandra]",
             )
 
-        self.hosts = hosts or ["127.0.0.1"]
+        self.hosts: list[str] = hosts or ["127.0.0.1"]
         self.keyspace = keyspace
-        self.table = validate_table_name(table)
+        self.table: str = validate_table_name(table)
         self.username = username
         self.password = password
         self.port = port
         self._cluster = None  # type: ignore[var-annotated]
         self._session = None  # type: ignore[var-annotated]
-        self.logger = get_logger(component="CassandraPipeline")
+        self.logger: Logger = get_logger(component="CassandraPipeline")
 
     async def open(self, spider: Spider) -> None:
         # Setup authentication if credentials provided
