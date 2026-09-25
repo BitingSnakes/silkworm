@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling==1.29.0"]
+requires = ["hatchling==1.32.4"]
 build-backend = "hatchling.build"
 
 [project]
@@ -51,9 +51,9 @@ classifiers = [
 
 dependencies = [
   "charset-normalizer==3.5.1",
-  "scraper-rust>=0.7.0",
+  "scraper-rust>=0.9.0",
   "rxml==3.0.0",
-  "wreq>=0.10.0",
+  "wreq>=0.12.2",
   "fast-h2m==0.4.4",
 ]
 
@@ -156,16 +156,20 @@ force-include = {"src/silkworm/py.typed" = "silkworm/py.typed"}
 
 [dependency-groups]
 dev = [
-    "build==1.4.2",
-    "mypy==1.19.1",
+    "build==1.6.1",
+    "mypy==2.3.1",
     "py-spy==0.4.2",
-    "pydantic==2.12.5",
-    "pytest==9.0.3",
-    "anyio==4.14.2",
-    "ruff==0.15.12",
-    "twine==6.2.0",
-    "testcontainers==4.14.2",
+    "pydantic==2.13.5",
+    "pytest==9.1.1",
+    "anyio==4.15.1",
+    "ruff==0.16.9",
+    "twine==7.0.0",
+    "testcontainers==4.15.0",
 ]
+
+[tool.ruff.lint]
+# Ruff 0.16 widened its default rule set; keep the rules this project was linted with.
+select = ["E4", "E7", "E9", "F"]
 
 [tool.pytest.ini_options]
 anyio_mode = "auto"

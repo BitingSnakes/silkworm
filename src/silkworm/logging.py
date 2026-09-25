@@ -137,7 +137,7 @@ class _LoggerAdapter:
         *,
         handlers: list[dict[str, object]] | None = None,
     ) -> None:
-        configurations = (
+        configurations: list[dict[str, object]] = (
             handlers if handlers is not None else [{"sink": "stderr", "level": "INFO"}]
         )
         configured_handlers = [

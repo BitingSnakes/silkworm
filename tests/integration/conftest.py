@@ -61,7 +61,7 @@ def mysql_container():
         pytest.skip("testcontainers not installed")
 
     try:
-        from testcontainers.mysql import MySqlContainer  # type: ignore[import-untyped]
+        from testcontainers.community.mysql import MySqlContainer  # type: ignore[import-untyped]
     except ImportError:
         pytest.skip("mysql testcontainer dependencies not installed")
 
@@ -89,7 +89,7 @@ def postgres_container():
         pytest.skip("testcontainers not installed")
 
     try:
-        from testcontainers.postgres import PostgresContainer  # type: ignore[import-untyped]
+        from testcontainers.community.postgres import PostgresContainer  # type: ignore[import-untyped]
     except ImportError:
         pytest.skip("postgres testcontainer dependencies not installed")
 
@@ -117,7 +117,7 @@ def mongodb_container():
         pytest.skip("testcontainers not installed")
 
     try:
-        from testcontainers.mongodb import MongoDbContainer  # type: ignore[import-untyped]
+        from testcontainers.community.mongodb import MongoDbContainer  # type: ignore[import-untyped]
     except ImportError:
         pytest.skip("mongodb testcontainer dependencies not installed")
 
@@ -135,7 +135,7 @@ def elasticsearch_container():
     """
     Provide an Elasticsearch test container for integration tests.
 
-    Yields an ElasticsearchContainer instance with connection details.
+    Yields an ElasticSearchContainer instance with connection details.
     The container is automatically started and stopped.
 
     The Elasticsearch version can be specified using the ELASTICSEARCH_VERSION environment variable.
@@ -145,12 +145,12 @@ def elasticsearch_container():
         pytest.skip("testcontainers not installed")
 
     try:
-        from testcontainers.elasticsearch import ElasticsearchContainer  # type: ignore[import-untyped]
+        from testcontainers.community.elasticsearch import ElasticSearchContainer  # type: ignore[import-untyped]
     except ImportError:
         pytest.skip("elasticsearch testcontainer dependencies not installed")
 
     version = os.getenv("ELASTICSEARCH_VERSION", "8.11.0")
-    container = ElasticsearchContainer(f"elasticsearch:{version}")
+    container = ElasticSearchContainer(f"elasticsearch:{version}")
     container.start()
     try:
         yield container
@@ -173,7 +173,7 @@ def cassandra_container():
         pytest.skip("testcontainers not installed")
 
     try:
-        from testcontainers.cassandra import CassandraContainer  # type: ignore[import-untyped]
+        from testcontainers.community.cassandra import CassandraContainer  # type: ignore[import-untyped]
     except ImportError:
         pytest.skip("cassandra testcontainer dependencies not installed")
 
@@ -201,7 +201,7 @@ def couchdb_container():
         pytest.skip("testcontainers not installed")
 
     try:
-        from testcontainers.couchdb import CouchDbContainer  # type: ignore[import-untyped]
+        from testcontainers.couchdb import CouchDbContainer  # type: ignore[import-not-found, import-untyped]
     except ImportError:
         pytest.skip("couchdb testcontainer dependencies not installed")
 

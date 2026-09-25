@@ -4,7 +4,7 @@ import json
 from typing import TYPE_CHECKING
 
 try:
-    import aioboto3  # type: ignore[import-not-found]
+    import aioboto3  # type: ignore[import-not-found, import-untyped]
 
     AIOBOTO3_AVAILABLE = True
 except ImportError:

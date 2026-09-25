@@ -555,7 +555,7 @@ IS_WINDOWS = platform.system() == "Windows"
 if not IS_WINDOWS:
     try:
         from silkworm.pipelines import MySQLPipeline
-        from testcontainers.mysql import MySqlContainer  # type: ignore[import-not-found, import-untyped]  # noqa: F401
+        from testcontainers.community.mysql import MySqlContainer  # type: ignore[import-not-found, import-untyped]  # noqa: F401
         import aiomysql  # type: ignore[import-not-found, import-untyped]
 
         MYSQL_AVAILABLE = True
@@ -625,7 +625,7 @@ async def test_mysql_pipeline_integration(mysql_container):
 if not IS_WINDOWS:
     try:
         from silkworm.pipelines import PostgreSQLPipeline
-        from testcontainers.postgres import PostgresContainer  # type: ignore[import-not-found, import-untyped]  # noqa: F401
+        from testcontainers.community.postgres import PostgresContainer  # type: ignore[import-not-found, import-untyped]  # noqa: F401
         import asyncpg  # type: ignore[import-not-found, import-untyped]
 
         POSTGRESQL_AVAILABLE = True
@@ -691,7 +691,7 @@ async def test_postgresql_pipeline_integration(postgres_container):
 if not IS_WINDOWS:
     try:
         from silkworm.pipelines import MongoDBPipeline
-        from testcontainers.mongodb import MongoDbContainer  # type: ignore[import-not-found, import-untyped]  # noqa: F401
+        from testcontainers.community.mongodb import MongoDbContainer  # type: ignore[import-not-found, import-untyped]  # noqa: F401
         import motor.motor_asyncio  # type: ignore[import-not-found, import-untyped]
 
         MONGODB_AVAILABLE = True
@@ -748,7 +748,7 @@ async def test_mongodb_pipeline_integration(mongodb_container):
 if not IS_WINDOWS:
     try:
         from silkworm.pipelines import ElasticsearchPipeline
-        from testcontainers.elasticsearch import ElasticsearchContainer  # type: ignore[import-not-found, import-untyped]  # noqa: F401
+        from testcontainers.community.elasticsearch import ElasticSearchContainer  # type: ignore[import-not-found, import-untyped]  # noqa: F401
         from elasticsearch import AsyncElasticsearch  # type: ignore[import-not-found, import-untyped]
 
         ELASTICSEARCH_AVAILABLE = True
@@ -811,7 +811,7 @@ async def test_elasticsearch_pipeline_integration(elasticsearch_container):
 if not IS_WINDOWS:
     try:
         from silkworm.pipelines import CassandraPipeline
-        from testcontainers.cassandra import CassandraContainer  # type: ignore[import-not-found, import-untyped]  # noqa: F401
+        from testcontainers.community.cassandra import CassandraContainer  # type: ignore[import-not-found, import-untyped]  # noqa: F401
         from cassandra.cluster import Cluster  # type: ignore[import-not-found, import-untyped]
 
         CASSANDRA_AVAILABLE = True
