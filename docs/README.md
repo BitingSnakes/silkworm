@@ -25,6 +25,7 @@
 - [Runners](runners.md)
 - [Logging and Stats](logging-and-stats.md)
 - [Examples](examples.md)
+- [Docker](docker.md)
 - [API Reference](api-reference.md)
 
 ## Quick Start
