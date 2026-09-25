@@ -78,27 +78,36 @@ class TaskiqPipeline:
         self._provided_task: _TaskiqTask | None = task
         self._task: _TaskiqTask | None = None
         self.task_name = task_name
+        self._started = False
         self.logger: Logger = get_logger(component="TaskiqPipeline")
 
     async def open(self, spider: Spider) -> None:
         """Open the pipeline and start the broker if needed."""
         await self.broker.startup()
+        self._started = True
 
-        # If task was provided directly, use it
-        if self._provided_task is not None:
-            self._task = self._provided_task
-            actual_task_name = self._provided_task.task_name
-        else:
-            # Find the registered task by name
-            if self.task_name is None:
-                raise ValueError("task_name cannot be None when task is not provided")
-            self._task = self.broker.find_task(self.task_name)
-            if self._task is None:
-                raise ValueError(
-                    f"Task '{self.task_name}' not found in broker. "
-                    f"Make sure you've registered it with @broker.task and use the full task name (e.g., '.:task_name')",
-                )
-            actual_task_name = self.task_name
+        try:
+            if self._provided_task is not None:
+                self._task = self._provided_task
+                actual_task_name = self._provided_task.task_name
+            else:
+                if self.task_name is None:
+                    raise ValueError(
+                        "task_name cannot be None when task is not provided"
+                    )
+                self._task = self.broker.find_task(self.task_name)
+                if self._task is None:
+                    raise ValueError(
+                        f"Task '{self.task_name}' not found in broker. "
+                        f"Make sure you've registered it with @broker.task and use the full task name (e.g., '.:task_name')",
+                    )
+                actual_task_name = self.task_name
+        except BaseException as exc:
+            try:
+                await self.close(spider)
+            except BaseException as cleanup_exc:  # noqa: BLE001
+                exc.add_note(f"Taskiq rollback failed: {cleanup_exc}")
+            raise
 
         self.logger.info(
             "Opened Taskiq pipeline",
@@ -108,10 +117,15 @@ class TaskiqPipeline:
 
     async def close(self, spider: Spider) -> None:
         """Close the pipeline and shutdown the broker."""
-        await self.broker.shutdown()
+        started = self._started
+        self._started = False
+        task = self._task
+        self._task = None
+        if started:
+            await self.broker.shutdown()
         task_name = (
-            self._task.task_name
-            if self._task is not None
+            task.task_name
+            if task is not None
             else self.task_name
             if self.task_name is not None
             else "unknown"

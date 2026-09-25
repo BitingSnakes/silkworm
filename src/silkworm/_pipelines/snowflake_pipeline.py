@@ -10,6 +10,7 @@ try:
 except ImportError:
     SNOWFLAKE_AVAILABLE = False
 
+from .._resources import raise_cleanup_errors
 from ..logging import Logger, get_logger
 from .base import log_pipeline_item, validate_table_name
 
@@ -104,21 +105,26 @@ class SnowflakePipeline:
             conn_params["role"] = self.role
 
         conn = snowflake.connector.connect(**conn_params)  # type: ignore[attr-defined]
-        cursor = conn.cursor()
         self._conn = conn
-        self._cursor = cursor
-
-        # Create table if it doesn't exist
-        cursor.execute(
-            f"""
-            CREATE TABLE IF NOT EXISTS {self.table} (
-                id NUMBER AUTOINCREMENT PRIMARY KEY,
-                spider VARCHAR(255) NOT NULL,
-                data VARIANT NOT NULL,
-                created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+        try:
+            cursor = conn.cursor()
+            self._cursor = cursor
+            cursor.execute(
+                f"""
+                CREATE TABLE IF NOT EXISTS {self.table} (
+                    id NUMBER AUTOINCREMENT PRIMARY KEY,
+                    spider VARCHAR(255) NOT NULL,
+                    data VARIANT NOT NULL,
+                    created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+                )
+                """,
             )
-            """,
-        )
+        except BaseException as exc:
+            try:
+                await self.close(spider)
+            except BaseException as cleanup_exc:  # noqa: BLE001
+                exc.add_note(f"Snowflake rollback failed: {cleanup_exc}")
+            raise
 
         self.logger.info(
             "Opened Snowflake pipeline",
@@ -130,15 +136,25 @@ class SnowflakePipeline:
 
     async def close(self, spider: Spider) -> None:
         """Close the Snowflake cursor and connection."""
-        if self._cursor:
-            self._cursor.close()
-            self._cursor = None
+        cursor = self._cursor
+        conn = self._conn
+        self._cursor = None
+        self._conn = None
+        errors: list[BaseException] = []
+        if cursor:
+            try:
+                cursor.close()
+            except BaseException as exc:  # noqa: BLE001 - attempt connection close
+                errors.append(exc)
 
-        if self._conn:
-            self._conn.close()
-            self._conn = None
+        if conn:
+            try:
+                conn.close()
+            except BaseException as exc:  # noqa: BLE001 - report all cleanup failures
+                errors.append(exc)
 
         self.logger.info("Closed Snowflake pipeline", table=self.table)
+        raise_cleanup_errors("Snowflake pipeline cleanup failed", errors)
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         """Insert and commit one JSON item with its spider name."""

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from collections.abc import Mapping
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
@@ -70,32 +71,41 @@ class ExcelPipeline:
         """Flatten buffered items and write the XLSX workbook."""
         if self._items:
             wb = openpyxl.Workbook()  # pyright: ignore[reportPossiblyUnboundVariable]
-            ws = cast("Worksheet", wb.active)
-            ws.title = self.sheet_name
+            try:
+                ws = cast("Worksheet", wb.active)
+                ws.title = self.sheet_name
 
-            # Get fieldnames from first item
-            if isinstance(self._items[0], Mapping):
-                flat_items: list[dict[str, JSONValue | str]] = []
-                for item in self._items:
-                    if isinstance(item, Mapping):
-                        flat_items.append(self._flatten_dict(item))
-                    else:
-                        flat_items.append({"value": str(item)})
-                fieldnames = list(flat_items[0].keys())
+                # Get fieldnames from first item
+                if isinstance(self._items[0], Mapping):
+                    flat_items: list[dict[str, JSONValue | str]] = []
+                    for item in self._items:
+                        if isinstance(item, Mapping):
+                            flat_items.append(self._flatten_dict(item))
+                        else:
+                            flat_items.append({"value": str(item)})
+                    fieldnames = list(flat_items[0].keys())
 
-                # Write header
-                ws.append(fieldnames)
+                    # Write header
+                    ws.append(fieldnames)
 
-                # Write data
-                for item in flat_items:
-                    ws.append([item.get(field) for field in fieldnames])
-            else:
-                # Simple values
-                ws.append(["value"])
-                for item in self._items:
-                    ws.append([str(item)])
+                    # Write data
+                    for item in flat_items:
+                        ws.append([item.get(field) for field in fieldnames])
+                else:
+                    # Simple values
+                    ws.append(["value"])
+                    for item in self._items:
+                        ws.append([str(item)])
 
-            wb.save(self.path)
+                wb.save(self.path)
+            finally:
+                primary = sys.exception()
+                try:
+                    wb.close()
+                except BaseException as cleanup_exc:
+                    if primary is None:
+                        raise
+                    primary.add_note(f"Excel workbook cleanup failed: {cleanup_exc}")
         self.logger.info("Closed Excel pipeline", path=str(self.path))
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:

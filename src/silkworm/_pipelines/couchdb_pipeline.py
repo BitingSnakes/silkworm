@@ -65,6 +65,7 @@ class CouchDBPipeline:
         self.database = database
         self.username = username
         self.password = password
+        self._context: Any = None
         self._client: Any = None
         self._db: Any = None
         self.logger: Logger = get_logger(component="CouchDBPipeline")
@@ -73,23 +74,31 @@ class CouchDBPipeline:
         """Connect and open or create the configured CouchDB database."""
         # Connect to CouchDB
         if self.username and self.password:
-            self._client = await aiocouch.CouchDB(  # type: ignore[attr-defined]
+            context = aiocouch.CouchDB(  # type: ignore[attr-defined]
                 self.url,
                 user=self.username,
                 password=self.password,
-            ).__aenter__()
+            )
         else:
-            self._client = await aiocouch.CouchDB(self.url).__aenter__()  # type: ignore[attr-defined]
+            context = aiocouch.CouchDB(self.url)  # type: ignore[attr-defined]
 
-        client = self._client
-        if client is None:
-            raise RuntimeError("Failed to initialize CouchDB client")
-
-        # Create database if it doesn't exist
+        self._context = context
         try:
-            self._db = await client[self.database]
-        except KeyError:
-            self._db = await client.create(self.database)
+            self._client = await context.__aenter__()
+            client = self._client
+            if client is None:
+                raise RuntimeError("Failed to initialize CouchDB client")
+
+            try:
+                self._db = await client[self.database]
+            except KeyError:
+                self._db = await client.create(self.database)
+        except BaseException as exc:
+            try:
+                await self.close(spider)
+            except BaseException as cleanup_exc:  # noqa: BLE001
+                exc.add_note(f"CouchDB rollback failed: {cleanup_exc}")
+            raise
 
         self.logger.info(
             "Opened CouchDB pipeline",
@@ -99,10 +108,12 @@ class CouchDBPipeline:
 
     async def close(self, spider: Spider) -> None:
         """Exit the CouchDB client context and release database references."""
-        if self._client:
-            await self._client.__aexit__(None, None, None)
-            self._client = None
-            self._db = None
+        context = self._context
+        self._context = None
+        self._client = None
+        self._db = None
+        if context:
+            await context.__aexit__(None, None, None)
             self.logger.info("Closed CouchDB pipeline", database=self.database)
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:

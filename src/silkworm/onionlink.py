@@ -6,7 +6,7 @@ import asyncio
 import importlib
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 from ._timeouts import to_seconds
@@ -60,6 +60,9 @@ class OnionLinkClient(HttpClient):
         response_limit: int = 4 * 1024 * 1024,
     ) -> None:
         require_positive_int(concurrency, "concurrency")
+        if max_redirects < 0:
+            msg = "max_redirects must be non-negative"
+            raise ValueError(msg)
         try:
             module = importlib.import_module("onionlink")
         except ImportError as err:
@@ -91,9 +94,6 @@ class OnionLinkClient(HttpClient):
         self._timeout = timeout
         self._html_max_size_bytes = html_max_size_bytes
         self._follow_redirects = follow_redirects
-        if max_redirects < 0:
-            msg = "max_redirects must be non-negative"
-            raise ValueError(msg)
         self._max_redirects = max_redirects
         self._response_limit = response_limit
         self.logger: Logger = get_logger(component="onionlink")
@@ -309,6 +309,24 @@ class OnionLinkClient(HttpClient):
         if seconds is None:
             return 30_000
         return max(0, int(seconds * 1000))
+
+    async def __aenter__(self) -> Self:
+        """Return this initialized onion-service client."""
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: object,
+    ) -> None:
+        """Close the onion-service session on context exit."""
+        try:
+            await self.close()
+        except BaseException as cleanup_exc:
+            if exc is None:
+                raise
+            exc.add_note(f"OnionLink client cleanup failed: {cleanup_exc}")
 
     async def close(self) -> None:
         """Complete client cleanup; onionlink sessions need no close operation."""

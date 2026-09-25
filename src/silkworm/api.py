@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-import inspect
+import sys
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any, cast
 
 from scraper_rs.asyncio import AsyncDocument, parse
 from wreq import Client
 
+from ._resources import close_resource, raise_cleanup_errors
 from .http import DEFAULT_EMULATION
 
 if TYPE_CHECKING:
@@ -36,21 +37,32 @@ async def fetch_html(
         deduplication, or pipelines.
     """
     client = cast(Any, Client)(emulation=emulation)
+    response: Any = None
     try:
         if timeout is not None:
             if not isinstance(timeout, timedelta):
                 timeout = timedelta(seconds=float(timeout))
-            resp = await client.get(url, timeout=timeout)
+            response = await client.get(url, timeout=timeout)
         else:
-            resp = await client.get(url)
-        text = await resp.text()
+            response = await client.get(url)
+        text = await response.text()
         return text, await parse(text)
     finally:
-        closer = getattr(client, "aclose", None) or getattr(client, "close", None)
-        if closer and callable(closer):
-            result = closer()
-            if inspect.isawaitable(result):
-                await result
+        primary = sys.exception()
+        cleanup_errors: list[BaseException] = []
+        for resource in (response, client):
+            try:
+                await close_resource(resource)
+            except BaseException as cleanup_exc:  # noqa: BLE001
+                cleanup_errors.append(cleanup_exc)
+        if primary is not None:
+            for cleanup_error in cleanup_errors:
+                primary.add_note(
+                    "Fetch cleanup failed with "
+                    f"{cleanup_error.__class__.__name__}: {cleanup_error}"
+                )
+        else:
+            raise_cleanup_errors("Fetch resource cleanup failed", cleanup_errors)
 
 
 async def fetch_html_cdp(
@@ -91,19 +103,11 @@ async def fetch_html_cdp(
     from .cdp import CDPClient
     from .request import Request
 
-    client = CDPClient(
-        ws_endpoint=ws_endpoint,
-        timeout=timeout,
-    )
-
-    try:
-        await client.connect()
+    async with CDPClient(ws_endpoint=ws_endpoint, timeout=timeout) as client:
         req = Request(url=url)
-        response = await client.fetch(req)
-        text = response.text
+        with await client.fetch(req) as response:
+            text = response.text
         return text, await parse(text)
-    finally:
-        await client.close()
 
 
 async def fetch_html_servo(
@@ -136,18 +140,15 @@ async def fetch_html_servo(
     from .request import Request
     from .servo import SERVO_JAVASCRIPT_META_KEY, ServoFetchClient
 
-    client = ServoFetchClient(
+    async with ServoFetchClient(
         timeout=timeout,
         settle_ms=settle_ms,
         user_agent=user_agent,
         allow_private_addresses=allow_private_addresses,
-    )
-    try:
+    ) as client:
         meta: MetaData = (
             {SERVO_JAVASCRIPT_META_KEY: javascript} if javascript is not None else {}
         )
-        response = await client.fetch(Request(url=url, meta=meta))
-        text = response.text
+        with await client.fetch(Request(url=url, meta=meta)) as response:
+            text = response.text
         return text, await parse(text)
-    finally:
-        await client.close()

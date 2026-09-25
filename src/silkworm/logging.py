@@ -16,6 +16,8 @@ from threading import RLock
 from types import TracebackType
 from typing import Literal, Protocol, TextIO, assert_never, cast, runtime_checkable
 
+from ._resources import raise_cleanup_errors
+
 type _NormalizedLogLevel = Literal[
     "TRACE",
     "DEBUG",
@@ -178,9 +180,20 @@ class _LoggerAdapter:
         configurations: list[dict[str, object]] = (
             handlers if handlers is not None else [{"sink": "stderr", "level": "INFO"}]
         )
-        configured_handlers = [
-            self._create_handler(configuration) for configuration in configurations
-        ]
+        configured_handlers: list[stdlib_logging.Handler] = []
+        try:
+            for configuration in configurations:
+                configured_handlers.append(self._create_handler(configuration))
+        except BaseException as exc:
+            cleanup_errors: list[BaseException] = []
+            for handler in configured_handlers:
+                try:
+                    handler.close()
+                except BaseException as cleanup_exc:  # noqa: BLE001
+                    cleanup_errors.append(cleanup_exc)
+            for cleanup_error in cleanup_errors:
+                exc.add_note(f"Logging handler cleanup failed: {cleanup_error}")
+            raise
 
         with _configuration_lock:
             previous_handlers = self._logger.handlers[:]
@@ -195,8 +208,13 @@ class _LoggerAdapter:
             )
             self._logger.propagate = False
 
+        cleanup_errors = []
         for handler in previous_handlers:
-            handler.close()
+            try:
+                handler.close()
+            except BaseException as exc:  # noqa: BLE001 - close every handler
+                cleanup_errors.append(exc)
+        raise_cleanup_errors("Logging handler cleanup failed", cleanup_errors)
 
     def _create_handler(
         self, configuration: dict[str, object]
@@ -264,8 +282,13 @@ class _LoggerAdapter:
         self._log(stdlib_logging.ERROR, message, **context)
 
     def complete(self) -> None:
+        errors: list[BaseException] = []
         for handler in self._logger.handlers:
-            handler.flush()
+            try:
+                handler.flush()
+            except BaseException as exc:  # noqa: BLE001 - flush every handler
+                errors.append(exc)
+        raise_cleanup_errors("Logging handler flush failed", errors)
 
 
 _configuration_lock = RLock()

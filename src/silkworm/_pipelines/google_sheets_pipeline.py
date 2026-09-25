@@ -17,6 +17,7 @@ except ImportError:
     build = None
     GOOGLE_SHEETS_AVAILABLE = False
 
+from .._resources import close_resource, raise_cleanup_errors
 from ..logging import Logger, get_logger
 from .base import log_pipeline_item
 
@@ -99,16 +100,24 @@ class GoogleSheetsPipeline:
 
     async def close(self, spider: Spider) -> None:
         """Write any partial batch and release the Sheets service reference."""
-        # Write any remaining batched items
-        if self._batch:
-            await self._write_batch()
-
+        service = self._service
+        errors: list[BaseException] = []
+        try:
+            if self._batch:
+                await self._write_batch()
+        except BaseException as exc:  # noqa: BLE001 - close service after cancellation
+            errors.append(exc)
         self._service = None
+        try:
+            await close_resource(service)
+        except BaseException as exc:  # noqa: BLE001 - preserve prior failure
+            errors.append(exc)
         self.logger.info(
             "Closed Google Sheets pipeline",
             spreadsheet_id=self.spreadsheet_id,
             sheet_name=self.sheet_name,
         )
+        raise_cleanup_errors("Google Sheets pipeline cleanup failed", errors)
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         """Buffer one item and append a batch when ``batch_size`` is reached."""

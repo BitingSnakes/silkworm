@@ -77,11 +77,12 @@ class MongoDBPipeline:
 
     async def close(self, spider: Spider) -> None:
         """Close the MongoDB client and release collection references."""
-        if self._client:
-            self._client.close()
-            self._client = None
-            self._db = None
-            self._coll = None
+        client = self._client
+        self._client = None
+        self._db = None
+        self._coll = None
+        if client:
+            client.close()
             self.logger.info("Closed MongoDB pipeline", collection=self.collection)
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:

@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 from importlib import import_module
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from ._timeouts import to_seconds
 from ._validation import require_positive_int
@@ -85,6 +85,25 @@ class CDPClient:
         """Return the rendered HTML size limit in bytes."""
         return self._html_max_size_bytes
 
+    async def __aenter__(self) -> Self:
+        """Connect to the browser and return this client."""
+        await self.connect()
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: object,
+    ) -> None:
+        """Close browser resources on context exit."""
+        try:
+            await self.close()
+        except BaseException as cleanup_exc:
+            if exc is None:
+                raise
+            exc.add_note(f"CDP client cleanup failed: {cleanup_exc}")
+
     async def connect(self) -> None:
         """Connect to the browser and create an isolated page target.
 
@@ -115,8 +134,19 @@ class CDPClient:
         # Start background task to receive messages
         self._recv_task = asyncio.create_task(self._receive_loop())
 
-        # Create a new browser context and page
-        await self._create_target()
+        # Create a new browser context and page. Roll back the socket and task
+        # when target initialization fails so callers need not close manually.
+        try:
+            await self._create_target()
+        except BaseException as exc:
+            try:
+                await self.close()
+            except BaseException as cleanup_exc:  # noqa: BLE001
+                exc.add_note(
+                    "CDP connection rollback failed with "
+                    f"{cleanup_exc.__class__.__name__}: {cleanup_exc}"
+                )
+            raise
 
     def _fail_pending(self, exc: Exception) -> None:
         """Fail all pending command futures with the given exception."""
@@ -388,33 +418,60 @@ class CDPClient:
 
     async def close(self) -> None:
         """Cancel background work and close the page target and WebSocket."""
-        # Cancel receive task
-        if self._recv_task:
-            self._recv_task.cancel()
-            try:
-                await self._recv_task
-            except asyncio.CancelledError:
-                pass
+        errors: list[BaseException] = []
 
-        # Close the target
-        if self._target_id:
+        # Keep the receiver alive until the close-target command gets its reply.
+        socket_closed = bool(
+            self._ws
+            and (
+                getattr(self._ws, "close_code", None) is not None
+                or getattr(self._ws, "closed", False)
+            )
+        )
+        if self._target_id and self._ws and not socket_closed:
             try:
                 await self._send_command(
                     "Target.closeTarget",
                     {"targetId": self._target_id},
                 )
-            except Exception:
-                # Best-effort cleanup; the browser may already have dropped the target.
+            except BaseException as exc:
+                socket_closed = bool(
+                    getattr(self._ws, "close_code", None) is not None
+                    or getattr(self._ws, "closed", False)
+                )
+                if not socket_closed:
+                    errors.append(exc)
                 self.logger.debug("Failed to close CDP target", exc_info=True)
 
-        # Close WebSocket
-        if self._ws:
+        ws = self._ws
+        self._ws = None
+        if ws:
             try:
-                await self._ws.close()
-            except Exception:
+                await ws.close()
+            except BaseException as exc:
+                errors.append(exc)
                 self.logger.debug("Failed to close CDP WebSocket", exc_info=True)
-            self._ws = None
+
+        recv_task = self._recv_task
+        self._recv_task = None
+        if recv_task:
+            if not recv_task.done():
+                recv_task.cancel()
+            try:
+                await recv_task
+            except asyncio.CancelledError:
+                pass
+            except BaseException as exc:  # noqa: BLE001 - report all cleanup failures
+                errors.append(exc)
 
         self._target_id = None
         self._session_id = None
-        self._pending_responses.clear()
+        if self._page_load_future is not None and not self._page_load_future.done():
+            self._page_load_future.cancel()
+        self._page_load_future = None
+        self._fail_pending(HttpError("CDP client closed"))
+
+        if len(errors) == 1:
+            raise errors[0]
+        if errors:
+            raise BaseExceptionGroup("Multiple CDP cleanup failures", errors)

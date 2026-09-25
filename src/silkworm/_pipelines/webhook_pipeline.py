@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import inspect
+import sys
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
@@ -13,6 +13,7 @@ except ImportError:
     Method = None
     WREQ_AVAILABLE = False
 
+from .._resources import close_resource, raise_cleanup_errors
 from ..logging import Logger, get_logger
 from .base import log_pipeline_item
 
@@ -93,29 +94,26 @@ class WebhookPipeline:
 
     async def close(self, spider: Spider) -> None:
         """Send a partial batch and close the webhook client."""
-        # Send any remaining batched items
-        if self._batch:
-            await self._send_batch()
-
-        if self._client:
-            closer = getattr(self._client, "aclose", None) or getattr(
-                self._client,
-                "close",
-                None,
-            )
-            if closer and callable(closer):
-                try:
-                    result = closer()
-                    if inspect.isawaitable(result):
-                        await result
-                except Exception:
-                    # Best-effort cleanup; a failed close must not fail the pipeline.
-                    self.logger.debug(
-                        "Failed to close webhook client cleanly", exc_info=True
-                    )
+        client = self._client
+        self._client = None
+        errors: list[BaseException] = []
+        try:
+            if self._batch:
+                # Keep the client visible while the final batch is sent.
+                self._client = client
+                await self._send_batch()
+        except BaseException as exc:  # noqa: BLE001 - close client after cancellation
+            errors.append(exc)
+        finally:
             self._client = None
 
+        try:
+            await close_resource(client)
+        except BaseException as exc:  # noqa: BLE001 - preserve flush failure
+            errors.append(exc)
+
         self.logger.info("Closed Webhook pipeline", url=self.url)
+        raise_cleanup_errors("Webhook pipeline cleanup failed", errors)
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         """Buffer one item and send when ``batch_size`` is reached."""
@@ -140,6 +138,7 @@ class WebhookPipeline:
         # Prepare payload
         payload = self._batch[0] if len(self._batch) == 1 else self._batch
 
+        response: object | None = None
         try:
             # Use the wreq client to send the request
             method_upper = self.method.upper()
@@ -178,23 +177,6 @@ class WebhookPipeline:
             if status is not None and hasattr(status, "value"):
                 status = status.value
 
-            # Close response if possible
-            closer = getattr(response, "aclose", None) or getattr(
-                response,
-                "close",
-                None,
-            )
-            if closer and callable(closer):
-                try:
-                    result = closer()
-                    if inspect.isawaitable(result):
-                        await result
-                except Exception:
-                    # Best-effort cleanup; a failed close must not fail the pipeline.
-                    self.logger.debug(
-                        "Failed to close webhook client cleanly", exc_info=True
-                    )
-
             log_pipeline_item(
                 self,
                 "Sent items to webhook",
@@ -210,6 +192,17 @@ class WebhookPipeline:
                 error=str(exc),
             )
             raise
+        finally:
+            primary = sys.exception()
+            try:
+                await close_resource(response)
+            except BaseException as cleanup_exc:
+                self.logger.debug(
+                    "Failed to close webhook response cleanly", exc_info=True
+                )
+                if primary is None:
+                    raise
+                primary.add_note(f"Webhook response cleanup failed: {cleanup_exc}")
 
         # Clear the batch after sending
         self._batch = []

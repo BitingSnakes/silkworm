@@ -10,6 +10,7 @@ from uuid import uuid4
 
 from wreq import Client, Method
 
+from .._resources import close_resource, raise_cleanup_errors
 from .._timeouts import to_seconds
 from .._types import JSONValue
 from ..logging import Logger, get_logger
@@ -141,29 +142,48 @@ class RequestResponseStreamMiddleware:
         """Flush queued events, stop the sender, and close its HTTP client."""
         queue = self._queue
         sender_task = self._sender_task
+        self._dropped_events = 0
+        client = self._client
 
+        errors: list[BaseException] = []
         if queue is not None and sender_task is not None:
-            await queue.put(self._STOP)
-            await sender_task
+            stop_task: asyncio.Task[None] | None = None
+            try:
+                if not sender_task.done():
+                    stop_task = asyncio.create_task(queue.put(self._STOP))
+                    done, _ = await asyncio.wait(
+                        {stop_task, sender_task},
+                        return_when=asyncio.FIRST_COMPLETED,
+                    )
+                    if sender_task in done and not stop_task.done():
+                        stop_task.cancel()
+                    else:
+                        await stop_task
+                await sender_task
+            except BaseException as exc:  # noqa: BLE001 - cleanup must survive cancellation
+                errors.append(exc)
+            finally:
+                if stop_task is not None and not stop_task.done():
+                    stop_task.cancel()
+                    try:
+                        await stop_task
+                    except asyncio.CancelledError:
+                        pass
 
         self._sender_task = None
         self._queue = None
-        self._dropped_events = 0
-
-        client = self._client
         self._client = None
-        if client is not None:
-            closer = getattr(client, "aclose", None) or getattr(client, "close", None)
-            if closer and callable(closer):
-                result = closer()
-                if hasattr(result, "__await__"):
-                    await result  # type: ignore[misc]
+        try:
+            await close_resource(client)
+        except BaseException as exc:  # noqa: BLE001 - attempt every cleanup
+            errors.append(exc)
 
         self.logger.info(
             "Closed request/response stream middleware",
             spider=spider.name,
             url=self.url,
         )
+        raise_cleanup_errors("Stream middleware cleanup failed", errors)
 
     async def process_request(self, request: Request, spider: Spider) -> Request:
         """Assign an exchange ID and enqueue a serialized request event."""
@@ -221,6 +241,8 @@ class RequestResponseStreamMiddleware:
         return None
 
     async def _ensure_started(self) -> None:
+        if self._sender_task is not None and self._sender_task.done():
+            self._sender_task.result()
         if self._client is None:
             self._client = Client()
         if self._queue is None:
@@ -316,9 +338,15 @@ class RequestResponseStreamMiddleware:
                     None,
                 )
                 if closer and callable(closer):
-                    result = closer()
-                    if hasattr(result, "__await__"):
-                        await result  # type: ignore[misc]
+                    try:
+                        await close_resource(response)
+                    except Exception as exc:
+                        self.logger.warning(
+                            "Failed to close stream response",
+                            url=self.url,
+                            error=str(exc),
+                            exc_info=True,
+                        )
 
     def _build_payload(self, events: list[JSONValue]) -> JSONValue:
         if len(events) == 1:

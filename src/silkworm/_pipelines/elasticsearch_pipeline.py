@@ -72,9 +72,10 @@ class ElasticsearchPipeline:
 
     async def close(self, spider: Spider) -> None:
         """Close the Elasticsearch transport and release the client."""
-        if self._client:
-            await self._client.close()
-            self._client = None
+        client = self._client
+        self._client = None
+        if client:
+            await client.close()
             self.logger.info("Closed Elasticsearch pipeline", index=self.index)
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:

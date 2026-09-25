@@ -88,16 +88,15 @@ class FTPPipeline:
     async def close(self, spider: Spider) -> None:
         """Upload all buffered lines and close the FTP connection."""
         if self._items:
-            # Connect to FTP server and upload all buffered items
-            self._client = aioftp.Client()  # type: ignore[attr-defined]
+            client = aioftp.Client()  # type: ignore[attr-defined]
+            self._client = client
+            primary: BaseException | None = None
             try:
-                await self._client.connect(self.host, self.port)  # type: ignore[union-attr]
-                await self._client.login(self.user, self.password)  # type: ignore[union-attr]
+                await client.connect(self.host, self.port)
+                await client.login(self.user, self.password)
 
                 content = "\n".join(self._items) + "\n"
-
-                # Upload the file
-                async with self._client.upload_stream(self.remote_path) as stream:  # type: ignore[union-attr]
+                async with client.upload_stream(self.remote_path) as stream:
                     await stream.write(content.encode("utf-8"))
 
                 self.logger.info(
@@ -106,10 +105,20 @@ class FTPPipeline:
                     remote_path=self.remote_path,
                     count=len(self._items),
                 )
+            except BaseException as exc:  # noqa: BLE001 - cleanup follows cancellation
+                primary = exc
             finally:
-                if self._client:
-                    await self._client.quit()
-                    self._client = None
+                self._client = None
+                try:
+                    await client.quit()
+                except BaseException as cleanup_exc:  # noqa: BLE001
+                    if primary is None:
+                        primary = cleanup_exc
+                    else:
+                        primary.add_note(f"FTP cleanup failed: {cleanup_exc}")
+            if primary is not None:
+                raise primary
+            self._items = []
 
         self.logger.info("Closed FTP pipeline", remote_path=self.remote_path)
 

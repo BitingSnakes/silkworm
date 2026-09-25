@@ -87,9 +87,10 @@ class MsgPackPipeline:
 
     async def close(self, spider: Spider) -> None:
         """Flush and close the MessagePack destination."""
-        if self._fp:
-            self._fp.close()
-            self._fp = None
+        fp = self._fp
+        self._fp = None
+        if fp:
+            fp.close()
             self.logger.info("Closed MsgPack pipeline", path=str(self.path))
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:

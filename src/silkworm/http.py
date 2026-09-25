@@ -6,7 +6,7 @@ import asyncio
 import inspect
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, Self, cast, runtime_checkable
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit
 
 from wreq import Client, Emulation, Method, Proxy
@@ -72,6 +72,9 @@ class HttpClient:
         **client_kwargs: object,
     ) -> None:
         require_positive_int(concurrency, "concurrency")
+        if max_redirects < 0:
+            msg = "max_redirects must be non-negative"
+            raise ValueError(msg)
         client_options: dict[str, object] = {"emulation": emulation}
         if keep_alive and self._supports_kwarg(Client, "keep_alive"):
             client_options["keep_alive"] = True
@@ -85,15 +88,13 @@ class HttpClient:
         self._timeout = timeout
         self._html_max_size_bytes = html_max_size_bytes
         self._follow_redirects = follow_redirects
-        if max_redirects < 0:
-            msg = "max_redirects must be non-negative"
-            raise ValueError(msg)
         self._max_redirects = max_redirects
         self._keep_alive = keep_alive
         self._supports_keep_alive_kwarg = self._supports_kwarg(
             getattr(self._client, "request", None),
             "keep_alive",
         )
+        self._closed = False
         self.logger: Logger = get_logger(component="http")
 
     @property
@@ -106,6 +107,24 @@ class HttpClient:
         """Return the HTML document parsing limit in bytes."""
         return self._html_max_size_bytes
 
+    async def __aenter__(self) -> Self:
+        """Return this initialized client for use in an async context."""
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: object,
+    ) -> None:
+        """Close the underlying transport on context exit."""
+        try:
+            await self.close()
+        except BaseException as cleanup_exc:
+            if exc is None:
+                raise
+            exc.add_note(f"HTTP client cleanup failed: {cleanup_exc}")
+
     async def fetch(self, req: Request) -> Response:
         """Send one request, follow redirects, and return a normalized response.
 
@@ -116,6 +135,9 @@ class HttpClient:
             HttpError: If the request times out, redirects loop or exceed the
                 configured limit, or the transport fails.
         """
+        if self._closed:
+            raise HttpError("HTTP client is closed")
+
         mocked_response = self._build_mock_response(req)
         if mocked_response is not None:
             self.logger.debug(
@@ -607,7 +629,10 @@ class HttpClient:
         return updated
 
     async def close(self) -> None:
-        """Close the underlying transport, suppressing best-effort cleanup errors."""
+        """Close the underlying transport."""
+        if self._closed:
+            return
+        self._closed = True
         closer = getattr(self._client, "aclose", None) or getattr(
             self._client,
             "close",
@@ -621,7 +646,7 @@ class HttpClient:
             if inspect.isawaitable(result):
                 await result
         except Exception as exc:
-            # Best-effort cleanup; suppress shutdown errors so the engine can exit.
             self.logger.debug(
                 "Failed to close HTTP client cleanly", error=str(exc), exc_info=True
             )
+            raise

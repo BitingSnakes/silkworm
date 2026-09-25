@@ -7,7 +7,7 @@ import inspect
 from collections.abc import Mapping
 from datetime import timedelta
 from importlib import import_module
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 from ._timeouts import to_seconds
 from ._validation import require_positive_int
@@ -102,6 +102,7 @@ class ServoFetchClient:
         self._settle_ms = settle_ms
         self._user_agent = user_agent
         self._html_max_size_bytes = html_max_size_bytes
+        self._closed = False
         self.logger: Logger = get_logger(component="servo")
 
     @property
@@ -114,6 +115,24 @@ class ServoFetchClient:
         """Return the rendered HTML parsing limit in bytes."""
         return self._html_max_size_bytes
 
+    async def __aenter__(self) -> Self:
+        """Return this initialized browser client."""
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: object,
+    ) -> None:
+        """Close the browser on context exit."""
+        try:
+            await self.close()
+        except BaseException as cleanup_exc:
+            if exc is None:
+                raise
+            exc.add_note(f"Servo client cleanup failed: {cleanup_exc}")
+
     async def fetch(self, req: Request) -> HTMLResponse:
         """Render ``req.url`` and return its HTML response.
 
@@ -125,6 +144,9 @@ class ServoFetchClient:
             TypeError: If a recognized metadata value has the wrong type.
             HttpError: If rendering fails or no HTML is returned.
         """
+        if self._closed:
+            raise HttpError("Servo client is closed")
+
         timeout_seconds = to_seconds(
             req.timeout if req.timeout is not None else self._timeout,
         )
@@ -187,6 +209,9 @@ class ServoFetchClient:
 
     async def close(self) -> None:
         """Close the underlying Servo browser using its available close hook."""
+        if self._closed:
+            return
+        self._closed = True
         closer = getattr(self._browser, "aclose", None) or getattr(
             self._browser,
             "close",
@@ -203,6 +228,7 @@ class ServoFetchClient:
             self.logger.debug(
                 "Failed to close Servo browser cleanly", error=str(exc), exc_info=True
             )
+            raise
 
     def _response_headers(self, page: object, *, screenshot: bool) -> dict[str, str]:
         headers = {

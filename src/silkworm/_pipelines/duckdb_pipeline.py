@@ -66,26 +66,32 @@ class DuckDBPipeline:
     async def open(self, spider: Spider) -> None:
         """Open DuckDB and create the sequence and JSON table if absent."""
         self.database.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = duckdb.connect(str(self.database))  # type: ignore[attr-defined]
-        assert self._conn is not None
-
-        # Create sequence for auto-incrementing IDs
-        # Use IF NOT EXISTS to avoid errors on reopening
-        self._conn.execute(
-            f"CREATE SEQUENCE IF NOT EXISTS {self.table}_seq START 1",
-        )
-
-        # Create table if it doesn't exist
-        self._conn.execute(
-            f"""
-            CREATE TABLE IF NOT EXISTS {self.table} (
-                id INTEGER PRIMARY KEY DEFAULT nextval('{self.table}_seq'),
-                spider VARCHAR NOT NULL,
-                data JSON NOT NULL,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        conn = duckdb.connect(str(self.database))  # type: ignore[attr-defined]
+        self._conn = conn
+        try:
+            # Create sequence for auto-incrementing IDs
+            conn.execute(
+                f"CREATE SEQUENCE IF NOT EXISTS {self.table}_seq START 1",
             )
-            """,
-        )
+
+            # Create table if it doesn't exist
+            conn.execute(
+                f"""
+                CREATE TABLE IF NOT EXISTS {self.table} (
+                    id INTEGER PRIMARY KEY DEFAULT nextval('{self.table}_seq'),
+                    spider VARCHAR NOT NULL,
+                    data JSON NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+                """,
+            )
+        except BaseException as exc:
+            self._conn = None
+            try:
+                conn.close()
+            except BaseException as cleanup_exc:  # noqa: BLE001
+                exc.add_note(f"DuckDB rollback failed: {cleanup_exc}")
+            raise
 
         self.logger.info(
             "Opened DuckDB pipeline",
@@ -95,9 +101,10 @@ class DuckDBPipeline:
 
     async def close(self, spider: Spider) -> None:
         """Close the embedded DuckDB connection."""
-        if self._conn:
-            self._conn.close()
-            self._conn = None
+        conn = self._conn
+        self._conn = None
+        if conn:
+            conn.close()
             self.logger.info("Closed DuckDB pipeline", database=str(self.database))
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:

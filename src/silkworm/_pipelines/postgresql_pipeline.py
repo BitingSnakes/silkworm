@@ -80,26 +80,35 @@ class PostgreSQLPipeline:
 
     async def open(self, spider: Spider) -> None:
         """Create the async pool and JSONB table if absent."""
-        self._pool = await asyncpg.create_pool(  # pyright: ignore[reportPossiblyUnboundVariable]
+        pool = await asyncpg.create_pool(  # pyright: ignore[reportPossiblyUnboundVariable]
             host=self.host,
             port=self.port,
             user=self.user,
             password=self.password,
             database=self.database,
         )
+        self._pool = pool
 
-        # Create table if it doesn't exist
-        async with self._pool.acquire() as conn:
-            await conn.execute(
-                f"""
-                CREATE TABLE IF NOT EXISTS {self.table} (
-                    id SERIAL PRIMARY KEY,
-                    spider VARCHAR(255) NOT NULL,
-                    data JSONB NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        try:
+            # Create table if it doesn't exist
+            async with pool.acquire() as conn:
+                await conn.execute(
+                    f"""
+                    CREATE TABLE IF NOT EXISTS {self.table} (
+                        id SERIAL PRIMARY KEY,
+                        spider VARCHAR(255) NOT NULL,
+                        data JSONB NOT NULL,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                    """,
                 )
-                """,
-            )
+        except BaseException as exc:
+            self._pool = None
+            try:
+                await pool.close()
+            except BaseException as cleanup_exc:  # noqa: BLE001
+                exc.add_note(f"PostgreSQL rollback failed: {cleanup_exc}")
+            raise
 
         self.logger.info(
             "Opened PostgreSQL pipeline",
@@ -110,9 +119,10 @@ class PostgreSQLPipeline:
 
     async def close(self, spider: Spider) -> None:
         """Close the PostgreSQL connection pool."""
-        if self._pool:
-            await self._pool.close()
-            self._pool = None
+        pool = self._pool
+        self._pool = None
+        if pool:
+            await pool.close()
             self.logger.info("Closed PostgreSQL pipeline", table=self.table)
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:

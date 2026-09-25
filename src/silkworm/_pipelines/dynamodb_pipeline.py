@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from contextlib import AsyncExitStack
+from typing import TYPE_CHECKING, Any
 
 try:
     import aioboto3  # type: ignore[import-not-found, import-untyped]
@@ -72,6 +73,7 @@ class DynamoDBPipeline:
         self.aws_secret_access_key = aws_secret_access_key
         self.endpoint_url = endpoint_url
         self._session = None
+        self._stack: AsyncExitStack | None = None
         self._client = None
         self._resource = None
         self._table = None
@@ -87,38 +89,42 @@ class DynamoDBPipeline:
 
         session = aioboto3.Session(**session_kwargs)  # type: ignore[attr-defined]
         self._session = session
+        stack = AsyncExitStack()
+        self._stack = stack
 
         # Create resource and client
         resource_kwargs = {}
         if self.endpoint_url:
             resource_kwargs["endpoint_url"] = self.endpoint_url
 
-        resource = await session.resource(
-            "dynamodb",
-            **resource_kwargs,
-        ).__aenter__()
-        client = await session.client(
-            "dynamodb",
-            **resource_kwargs,
-        ).__aenter__()
-        self._resource = resource
-        self._client = client
-
-        # Create table if it doesn't exist
         try:
-            await client.describe_table(TableName=self.table_name)
-            table = await resource.Table(self.table_name)
-        except client.exceptions.ResourceNotFoundException:
-            # Create table with a simple schema (id as primary key)
-            table = await resource.create_table(
-                TableName=self.table_name,
-                KeySchema=[{"AttributeName": "id", "KeyType": "HASH"}],
-                AttributeDefinitions=[{"AttributeName": "id", "AttributeType": "S"}],
-                BillingMode="PAY_PER_REQUEST",
-            )
-            # Wait for table to be created
-            await table.wait_until_exists()
-        self._table = table
+            resource_context: Any = session.resource("dynamodb", **resource_kwargs)
+            client_context: Any = session.client("dynamodb", **resource_kwargs)
+            resource = await stack.enter_async_context(resource_context)
+            client = await stack.enter_async_context(client_context)
+            self._resource = resource
+            self._client = client
+
+            try:
+                await client.describe_table(TableName=self.table_name)
+                table = await resource.Table(self.table_name)
+            except client.exceptions.ResourceNotFoundException:
+                table = await resource.create_table(
+                    TableName=self.table_name,
+                    KeySchema=[{"AttributeName": "id", "KeyType": "HASH"}],
+                    AttributeDefinitions=[
+                        {"AttributeName": "id", "AttributeType": "S"}
+                    ],
+                    BillingMode="PAY_PER_REQUEST",
+                )
+                await table.wait_until_exists()
+            self._table = table
+        except BaseException as exc:
+            try:
+                await self.close(spider)
+            except BaseException as cleanup_exc:  # noqa: BLE001
+                exc.add_note(f"DynamoDB rollback failed: {cleanup_exc}")
+            raise
 
         self.logger.info(
             "Opened DynamoDB pipeline",
@@ -128,13 +134,14 @@ class DynamoDBPipeline:
 
     async def close(self, spider: Spider) -> None:
         """Exit the DynamoDB client and resource contexts."""
-        if self._client:
-            await self._client.__aexit__(None, None, None)
-            self._client = None
-        if self._resource:
-            await self._resource.__aexit__(None, None, None)
-            self._resource = None
-            self._table = None
+        stack = self._stack
+        self._stack = None
+        self._client = None
+        self._resource = None
+        self._table = None
+        self._session = None
+        if stack is not None:
+            await stack.aclose()
         self.logger.info("Closed DynamoDB pipeline", table_name=self.table_name)
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:

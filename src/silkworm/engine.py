@@ -139,6 +139,7 @@ _SAFE_REPR.maxtuple = 8
 
 type DedupKey = Callable[[Request], str]
 type PrioritizedRequest = tuple[int, int, Request]
+type LifecycleCloser = tuple[str, Callable[[], Awaitable[object]]]
 
 
 def default_dedup_key(req: Request) -> str:
@@ -262,6 +263,7 @@ class Engine:
             response_middlewares or []
         )
         self.item_pipelines: list[ItemPipeline] = list(item_pipelines or [])
+        self._lifecycle_closers: list[LifecycleCloser] = []
 
         # Statistics tracking
         self.log_stats_interval = log_stats_interval
@@ -280,26 +282,39 @@ class Engine:
         Middleware opens before the spider; pipelines open afterward in their
         configured order.
         """
-        self.logger.info("Opening spider", spider=self.spider.name)
-        await self._open_middlewares()
-        await self.spider.open()
-        for pipe in self.item_pipelines:
-            await pipe.open(self.spider)
+        if self._lifecycle_closers:
+            raise RuntimeError("Spider lifecycle is already open")
 
-        async for req in self.spider.start_requests():
-            await self._enqueue(req)
+        self.logger.info("Opening spider", spider=self.spider.name)
+        try:
+            await self._open_middlewares()
+            self._register_lifecycle_close(
+                f"spider {self.spider.name}",
+                self.spider.close,
+            )
+            await self.spider.open()
+            for pipe in self.item_pipelines:
+                self._register_lifecycle_close(
+                    f"pipeline {pipe.__class__.__name__}",
+                    lambda pipe=pipe: pipe.close(self.spider),
+                )
+                await pipe.open(self.spider)
+
+            async for req in self.spider.start_requests():
+                await self._enqueue(req)
+        except BaseException as exc:
+            cleanup_errors = await self._close_lifecycle_components()
+            self._record_cleanup_failures(exc, cleanup_errors)
+            raise
 
     async def close_spider(self) -> None:
         """Close pipelines, the spider, and middleware lifecycle hooks.
 
-        Pipelines close in configured order. Middleware instances close once in
-        reverse order, even when registered for both request and response work.
+        Components close in reverse startup order. Middleware instances close
+        once even when registered for both request and response work.
         """
         self.logger.info("Closing spider", spider=self.spider.name)
-        for pipe in self.item_pipelines:
-            await pipe.close(self.spider)
-        await self.spider.close()
-        await self._close_middlewares()
+        self._raise_cleanup_errors(await self._close_lifecycle_components())
 
     def _iter_middlewares(self) -> Iterable[object]:
         seen_ids: set[int] = set()
@@ -318,15 +333,73 @@ class Engine:
 
     async def _open_middlewares(self) -> None:
         for middleware in self._iter_middlewares():
+            close_hook = getattr(middleware, "close", None)
+            if callable(close_hook):
+                self._register_lifecycle_close(
+                    f"middleware {middleware.__class__.__name__}",
+                    lambda close_hook=close_hook: cast(
+                        "Awaitable[object]", close_hook(self.spider)
+                    ),
+                )
             open_hook = getattr(middleware, "open", None)
             if callable(open_hook):
                 await cast("Awaitable[object]", open_hook(self.spider))
 
-    async def _close_middlewares(self) -> None:
-        for middleware in reversed(list(self._iter_middlewares())):
-            close_hook = getattr(middleware, "close", None)
-            if callable(close_hook):
-                await cast("Awaitable[object]", close_hook(self.spider))
+    def _register_lifecycle_close(
+        self,
+        name: str,
+        closer: Callable[[], Awaitable[object]],
+    ) -> None:
+        self._lifecycle_closers.append((name, closer))
+
+    async def _close_lifecycle_components(self) -> list[BaseException]:
+        closers = self._lifecycle_closers
+        self._lifecycle_closers = []
+        errors: list[BaseException] = []
+        for name, closer in reversed(closers):
+            try:
+                await closer()
+            except BaseException as exc:
+                errors.append(exc)
+                self.logger.exception(
+                    "Lifecycle cleanup failed",
+                    component=name,
+                    error=str(exc),
+                    error_type=exc.__class__.__name__,
+                )
+        return errors
+
+    def _record_cleanup_failures(
+        self,
+        primary: BaseException,
+        errors: Iterable[BaseException],
+    ) -> None:
+        for error in errors:
+            primary.add_note(f"Cleanup failed with {error.__class__.__name__}: {error}")
+
+    def _raise_cleanup_errors(self, errors: list[BaseException]) -> None:
+        if not errors:
+            return
+        if len(errors) == 1:
+            raise errors[0]
+        raise BaseExceptionGroup("Multiple resource cleanup failures", errors)
+
+    async def _shutdown(self) -> list[BaseException]:
+        errors = await self._close_lifecycle_components()
+        try:
+            await self.http.close()
+        except BaseException as exc:
+            errors.append(exc)
+            self.logger.exception(
+                "HTTP client cleanup failed",
+                error=str(exc),
+                error_type=exc.__class__.__name__,
+            )
+        try:
+            complete_logs()
+        except BaseException as exc:  # noqa: BLE001 - logging flush is final cleanup
+            errors.append(exc)
+        return errors
 
     async def _apply_request_mw(self, req: Request) -> Request:
         for mw in self.request_middlewares:
@@ -495,60 +568,75 @@ class Engine:
             finally:
                 self._queue.task_done()
 
-    async def _apply_response_mw(self, resp: Response) -> Response | Request:
+    async def _apply_response_mw(
+        self,
+        resp: Response,
+        owned_responses: list[Response],
+    ) -> Response | Request:
         current: Response | Request = resp
         for mw in self.response_middlewares:
             if isinstance(current, Request):
                 # already converted to a retry Request by a previous mw
                 break
-            current = await mw.process_response(current, self.spider)
+            previous = current
+            current = await mw.process_response(previous, self.spider)
+            if isinstance(current, Response) and current is not previous:
+                owned_responses.append(current)
         return current
 
     async def _handle_response(self, resp: Response) -> None:
-        original_resp = resp
+        owned_responses = [resp]
         try:
-            processed = await self._apply_response_mw(resp)
-        except Exception:
-            original_resp.close()
-            raise
+            processed = await self._apply_response_mw(resp, owned_responses)
+            if isinstance(processed, Request):
+                # e.g. RetryMiddleware wants a retry
+                self.engine_logger.retrying_request(
+                    self.logger,
+                    processed,
+                    self.spider,
+                    source="response middleware",
+                )
+                await self._enqueue(processed)
+                return
 
-        if isinstance(processed, Request):
-            # e.g. RetryMiddleware wants a retry
-            self.engine_logger.retrying_request(
-                self.logger,
-                processed,
-                self.spider,
-                source="response middleware",
-            )
-            original_resp.close()
-            await self._enqueue(processed)
-            return
-
-        resp = processed
-        callback = resp.request.callback
-
-        produced: CallbackResult
-        name = getattr(callback, "__name__", "parse") if callback else "parse"
-        try:
+            callback = processed.request.callback
+            name = getattr(callback, "__name__", "parse") if callback else "parse"
             effective_callback = callback or self.spider.parse
             if self._expects_html(callback):
-                html_resp = self._ensure_html_response(resp)
-                produced = effective_callback(html_resp)
+                callback_resp = self._ensure_html_response(processed)
+                if callback_resp is not processed:
+                    owned_responses.append(callback_resp)
             else:
-                produced = effective_callback(resp)
-        except Exception as exc:
-            raise SpiderError(
-                f"Spider callback '{name}' failed for {self.spider.name}",
-            ) from exc
+                callback_resp = processed
 
-        try:
+            try:
+                produced: CallbackResult = effective_callback(callback_resp)
+            except Exception as exc:
+                raise SpiderError(
+                    f"Spider callback '{name}' failed for {self.spider.name}",
+                ) from exc
+
             await self._handle_callback_results(
-                produced, callback_name=name, url=resp.url
+                produced,
+                callback_name=name,
+                url=processed.url,
             )
         finally:
-            resp.close()
-            if resp is not original_resp:
-                original_resp.close()
+            primary = sys.exception()
+            closed_ids: set[int] = set()
+            cleanup_errors: list[BaseException] = []
+            for owned_response in reversed(owned_responses):
+                if id(owned_response) in closed_ids:
+                    continue
+                closed_ids.add(id(owned_response))
+                try:
+                    owned_response.close()
+                except BaseException as exc:  # noqa: BLE001 - close every response
+                    cleanup_errors.append(exc)
+            if primary is not None:
+                self._record_cleanup_failures(primary, cleanup_errors)
+            else:
+                self._raise_cleanup_errors(cleanup_errors)
 
     async def _handle_callback_results(
         self,
@@ -736,9 +824,8 @@ class Engine:
                 await self.open_spider()
                 await self._queue.join()
                 self._stop_event.set()
-        finally:
+        except BaseException as exc:
             self._stop_event.set()
-
             self.logger.info(
                 "Final crawl statistics",
                 **self._statistics_log_context(
@@ -746,10 +833,19 @@ class Engine:
                     include_event_loop=True,
                 ),
             )
-
-            await self.http.close()
-            await self.close_spider()
-            complete_logs()
+            cleanup_errors = await self._shutdown()
+            self._record_cleanup_failures(exc, cleanup_errors)
+            raise
+        else:
+            self._stop_event.set()
+            self.logger.info(
+                "Final crawl statistics",
+                **self._statistics_log_context(
+                    time.time() - self._start_time,
+                    include_event_loop=True,
+                ),
+            )
+            self._raise_cleanup_errors(await self._shutdown())
 
     def _expects_html(
         self,

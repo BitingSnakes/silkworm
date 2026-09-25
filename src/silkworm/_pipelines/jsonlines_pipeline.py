@@ -74,9 +74,10 @@ class JsonLinesPipeline:
                 path=str(self.path),
                 backend="opendal",
             )
-        if self._fp:
-            self._fp.close()
-            self._fp = None
+        fp = self._fp
+        self._fp = None
+        if fp:
+            fp.close()
             self.logger.info("Closed JSONL pipeline", path=str(self.path))
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:

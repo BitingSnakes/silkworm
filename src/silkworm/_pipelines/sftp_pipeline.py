@@ -121,6 +121,7 @@ class SFTPPipeline:
             # Connect to SFTP server and upload all buffered items
             conn: Any | None = None
             sftp: Any | None = None
+            primary: BaseException | None = None
             try:
                 connect_kwargs: dict[str, object] = {
                     "host": self.host,
@@ -162,14 +163,41 @@ class SFTPPipeline:
                     remote_path=self.remote_path,
                     count=len(self._items),
                 )
+            except BaseException as exc:  # noqa: BLE001 - cleanup follows cancellation
+                primary = exc
             finally:
                 if sftp:
-                    sftp.exit()
                     self._sftp = None
+                    try:
+                        sftp.exit()
+                    except BaseException as cleanup_exc:  # noqa: BLE001
+                        if primary is None:
+                            primary = cleanup_exc
+                        else:
+                            primary.add_note(
+                                f"SFTP client cleanup failed: {cleanup_exc}"
+                            )
                 if conn:
-                    conn.close()
-                    await conn.wait_closed()
                     self._conn = None
+                    try:
+                        conn.close()
+                    except BaseException as cleanup_exc:  # noqa: BLE001
+                        if primary is None:
+                            primary = cleanup_exc
+                        else:
+                            primary.add_note(
+                                f"SFTP connection cleanup failed: {cleanup_exc}"
+                            )
+                    try:
+                        await conn.wait_closed()
+                    except BaseException as cleanup_exc:  # noqa: BLE001
+                        if primary is None:
+                            primary = cleanup_exc
+                        else:
+                            primary.add_note(f"SFTP wait-closed failed: {cleanup_exc}")
+            if primary is not None:
+                raise primary
+            self._items = []
 
         self.logger.info("Closed SFTP pipeline", remote_path=self.remote_path)
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -39,19 +40,37 @@ class XMLPipeline:
     async def open(self, spider: Spider) -> None:
         """Open the destination and write the XML declaration and root tag."""
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self._fp = self.path.open("w", encoding="utf-8")
-        self._fp.write(
-            f'<?xml version="1.0" encoding="UTF-8"?>\n<{self.root_element}>\n',
-        )
-        self._fp.flush()
+        fp = self.path.open("w", encoding="utf-8")
+        self._fp = fp
+        try:
+            fp.write(
+                f'<?xml version="1.0" encoding="UTF-8"?>\n<{self.root_element}>\n',
+            )
+            fp.flush()
+        except BaseException as exc:
+            self._fp = None
+            try:
+                fp.close()
+            except BaseException as cleanup_exc:  # noqa: BLE001
+                exc.add_note(f"XML pipeline rollback failed: {cleanup_exc}")
+            raise
         self.logger.info("Opened XML pipeline", path=str(self.path))
 
     async def close(self, spider: Spider) -> None:
         """Write the closing root tag and close the XML file."""
-        if self._fp:
-            self._fp.write(f"</{self.root_element}>\n")
-            self._fp.close()
-            self._fp = None
+        fp = self._fp
+        self._fp = None
+        if fp:
+            try:
+                fp.write(f"</{self.root_element}>\n")
+            finally:
+                primary = sys.exception()
+                try:
+                    fp.close()
+                except BaseException as cleanup_exc:
+                    if primary is None:
+                        raise
+                    primary.add_note(f"XML file cleanup failed: {cleanup_exc}")
             self.logger.info("Closed XML pipeline", path=str(self.path))
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:

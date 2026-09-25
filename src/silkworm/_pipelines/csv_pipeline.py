@@ -48,10 +48,11 @@ class CSVPipeline:
 
     async def close(self, spider: Spider) -> None:
         """Flush and close the CSV file if it is open."""
-        if self._fp:
-            self._fp.close()
-            self._fp = None
-            self._writer = None
+        fp = self._fp
+        self._fp = None
+        self._writer = None
+        if fp:
+            fp.close()
             self.logger.info("Closed CSV pipeline", path=str(self.path))
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:

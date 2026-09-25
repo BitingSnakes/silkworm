@@ -6,7 +6,7 @@ import asyncio
 import codecs
 import re
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, override
+from typing import TYPE_CHECKING, Self, override
 from urllib.parse import urljoin
 
 from scraper_rs.asyncio import (
@@ -157,6 +157,24 @@ class Response:
     def url_join(self, href: str) -> str:
         """Resolve ``href`` relative to the final response URL."""
         return urljoin(self.url, href)
+
+    def __enter__(self) -> Self:
+        """Return this response for deterministic synchronous cleanup."""
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: object,
+    ) -> None:
+        """Release response resources on context exit."""
+        try:
+            self.close()
+        except BaseException as cleanup_exc:
+            if exc is None:
+                raise
+            exc.add_note(f"Response cleanup failed: {cleanup_exc}")
 
     def _decode_text(self) -> tuple[str, str]:
         body = self.body or b""
@@ -569,9 +587,11 @@ class HTMLResponse(Response):
         if self._closed:
             return
 
-        if self._document is not None:
-            self._document.close()
-            self._document = None
-
-        # Explicitly call base class to avoid zero-arg super issues with slotted dataclasses.
-        Response.close(self)
+        document = self._document
+        self._document = None
+        try:
+            if document is not None:
+                document.close()
+        finally:
+            # Explicit base call avoids zero-arg super issues with slotted dataclasses.
+            Response.close(self)

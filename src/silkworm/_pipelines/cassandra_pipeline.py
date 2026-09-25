@@ -108,32 +108,35 @@ class CassandraPipeline:
             port=self.port,
             auth_provider=auth_provider,
         )
-        session = cluster.connect()
         self._cluster = cluster
-        self._session = session
-
-        # Create keyspace if it doesn't exist
-        session.execute(
-            f"""
-            CREATE KEYSPACE IF NOT EXISTS {self.keyspace}
-            WITH replication = {{'class': 'SimpleStrategy', 'replication_factor': 1}}
-            """,
-        )
-
-        # Use the keyspace
-        session.set_keyspace(self.keyspace)
-
-        # Create table if it doesn't exist
-        session.execute(
-            f"""
-            CREATE TABLE IF NOT EXISTS {self.table} (
-                id uuid PRIMARY KEY,
-                spider text,
-                data text,
-                created_at timestamp
+        try:
+            session = cluster.connect()
+            self._session = session
+            session.execute(
+                f"""
+                CREATE KEYSPACE IF NOT EXISTS {self.keyspace}
+                WITH replication = {{'class': 'SimpleStrategy', 'replication_factor': 1}}
+                """,
             )
-            """,
-        )
+            session.set_keyspace(self.keyspace)
+            session.execute(
+                f"""
+                CREATE TABLE IF NOT EXISTS {self.table} (
+                    id uuid PRIMARY KEY,
+                    spider text,
+                    data text,
+                    created_at timestamp
+                )
+                """,
+            )
+        except BaseException as exc:
+            self._cluster = None
+            self._session = None
+            try:
+                cluster.shutdown()
+            except BaseException as cleanup_exc:  # noqa: BLE001
+                exc.add_note(f"Cassandra rollback failed: {cleanup_exc}")
+            raise
 
         self.logger.info(
             "Opened Cassandra pipeline",
@@ -144,10 +147,11 @@ class CassandraPipeline:
 
     async def close(self, spider: Spider) -> None:
         """Shut down the Cassandra cluster connection."""
-        if self._cluster:
-            self._cluster.shutdown()
-            self._cluster = None
-            self._session = None
+        cluster = self._cluster
+        self._cluster = None
+        self._session = None
+        if cluster:
+            cluster.shutdown()
             self.logger.info("Closed Cassandra pipeline", table=self.table)
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
