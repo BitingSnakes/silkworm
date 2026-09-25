@@ -41,7 +41,7 @@ run_spider(
 - **Purpose**: Run a custom callback for each item (sync or async).
 - **Behavior**: If the callback returns `None`, the original item passes through unchanged.
 - **Extras**: none.
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/callback.py](../src/silkworm/_pipelines/callback.py)
 
 ```python
 from silkworm.pipelines import CallbackPipeline
@@ -56,7 +56,7 @@ CallbackPipeline(callback=validate_item)
 - **Purpose**: Write items as JSON Lines to a local file.
 - **Options**: `path`, `use_opendal` (async writes with OpenDAL when available).
 - **Extras**: `s3` (OpenDAL).
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/jsonlines.py](../src/silkworm/_pipelines/jsonlines.py)
 
 ```python
 JsonLinesPipeline("data/items.jl", use_opendal=False)
@@ -66,7 +66,7 @@ JsonLinesPipeline("data/items.jl", use_opendal=False)
 - **Purpose**: Binary MessagePack file using `ormsgpack`.
 - **Options**: `path`, `mode` (`write` or `append`).
 - **Extras**: `msgpack`.
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/msgpack.py](../src/silkworm/_pipelines/msgpack.py)
 
 ```python
 MsgPackPipeline("data/items.msgpack", mode="append")
@@ -76,7 +76,7 @@ MsgPackPipeline("data/items.msgpack", mode="append")
 - **Purpose**: Store items as JSON text in SQLite.
 - **Options**: `path`, `table`.
 - **Extras**: none.
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/sqlite.py](../src/silkworm/_pipelines/sqlite.py)
 
 ```python
 SQLitePipeline("data/items.db", table="quotes")
@@ -86,7 +86,7 @@ SQLitePipeline("data/items.db", table="quotes")
 - **Purpose**: Write items as XML with nested data preserved.
 - **Options**: `path`, `root_element`, `item_element`.
 - **Extras**: none.
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/xml.py](../src/silkworm/_pipelines/xml.py)
 
 ```python
 XMLPipeline("data/items.xml", root_element="items", item_element="item")
@@ -96,7 +96,7 @@ XMLPipeline("data/items.xml", root_element="items", item_element="item")
 - **Purpose**: Write items to an RSS 2.0 feed (buffered).
 - **Options**: `path`, `channel_title`, `channel_link`, `channel_description`, `max_items`, field mappings for item data.
 - **Extras**: none.
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/rss.py](../src/silkworm/_pipelines/rss.py)
 
 ```python
 RssPipeline(
@@ -112,7 +112,7 @@ RssPipeline(
 - **Purpose**: CSV export (nested dicts flattened, lists joined by commas).
 - **Options**: `path`, `fieldnames` (optional).
 - **Extras**: none.
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/csv.py](../src/silkworm/_pipelines/csv.py)
 
 ```python
 CSVPipeline("data/items.csv", fieldnames=["author", "text", "tags"])
@@ -122,7 +122,7 @@ CSVPipeline("data/items.csv", fieldnames=["author", "text", "tags"])
 - **Purpose**: Send items to a Taskiq broker/queue.
 - **Options**: `broker`, `task` or `task_name`.
 - **Extras**: `taskiq`.
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/taskiq.py](../src/silkworm/_pipelines/taskiq.py)
 
 ```python
 TaskiqPipeline(broker, task_name=".:process_item")
@@ -132,7 +132,7 @@ TaskiqPipeline(broker, task_name=".:process_item")
 - **Purpose**: Write Parquet via Polars (buffered).
 - **Options**: `path`, `mode` (`write` or `append`).
 - **Extras**: `polars`.
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/polars.py](../src/silkworm/_pipelines/polars.py)
 
 ```python
 PolarsPipeline("data/items.parquet", mode="append")
@@ -142,7 +142,7 @@ PolarsPipeline("data/items.parquet", mode="append")
 - **Purpose**: Write XLSX via openpyxl (buffered, flattening like CSV).
 - **Options**: `path`, `sheet_name`.
 - **Extras**: `excel`.
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/excel.py](../src/silkworm/_pipelines/excel.py)
 
 ```python
 ExcelPipeline("data/items.xlsx", sheet_name="quotes")
@@ -152,7 +152,7 @@ ExcelPipeline("data/items.xlsx", sheet_name="quotes")
 - **Purpose**: Write YAML (buffered).
 - **Options**: `path`.
 - **Extras**: `yaml`.
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/yaml.py](../src/silkworm/_pipelines/yaml.py)
 
 ```python
 YAMLPipeline("data/items.yaml")
@@ -162,7 +162,7 @@ YAMLPipeline("data/items.yaml")
 - **Purpose**: Write Avro (buffered). Schema can be inferred.
 - **Options**: `path`, `schema` (optional).
 - **Extras**: `avro`.
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/avro.py](../src/silkworm/_pipelines/avro.py)
 
 ```python
 AvroPipeline("data/items.avro", schema=my_schema)
@@ -172,7 +172,7 @@ AvroPipeline("data/items.avro", schema=my_schema)
 - **Purpose**: Index items in Elasticsearch.
 - **Options**: `hosts`, `index`, `**es_kwargs`.
 - **Extras**: `elasticsearch`.
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/elasticsearch.py](../src/silkworm/_pipelines/elasticsearch.py)
 
 ```python
 ElasticsearchPipeline(hosts=["http://localhost:9200"], index="quotes")
@@ -182,7 +182,7 @@ ElasticsearchPipeline(hosts=["http://localhost:9200"], index="quotes")
 - **Purpose**: Insert items into MongoDB.
 - **Options**: `connection_string`, `database`, `collection`.
 - **Extras**: `mongodb`.
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/mongodb.py](../src/silkworm/_pipelines/mongodb.py)
 
 ```python
 MongoDBPipeline(database="scraping", collection="items")
@@ -192,7 +192,7 @@ MongoDBPipeline(database="scraping", collection="items")
 - **Purpose**: Write JSON Lines to S3 via OpenDAL (buffered).
 - **Options**: `bucket`, `key`, `region`, optional `endpoint`, `access_key_id`, `secret_access_key`.
 - **Extras**: `s3`.
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/s3.py](../src/silkworm/_pipelines/s3.py)
 
 ```python
 S3JsonLinesPipeline(bucket="my-bucket", key="data/items.jl")
@@ -202,7 +202,7 @@ S3JsonLinesPipeline(bucket="my-bucket", key="data/items.jl")
 - **Purpose**: Write Vortex columnar format (buffered).
 - **Options**: `path`.
 - **Extras**: `vortex`.
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/vortex.py](../src/silkworm/_pipelines/vortex.py)
 
 ```python
 VortexPipeline("data/items.vortex")
@@ -212,7 +212,7 @@ VortexPipeline("data/items.vortex")
 - **Purpose**: Insert items into MySQL as JSON.
 - **Options**: `host`, `port`, `user`, `password`, `database`, `table`.
 - **Extras**: `mysql`.
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/mysql.py](../src/silkworm/_pipelines/mysql.py)
 
 ```python
 MySQLPipeline(database="scraping", table="items")
@@ -222,7 +222,7 @@ MySQLPipeline(database="scraping", table="items")
 - **Purpose**: Insert items into PostgreSQL as JSONB.
 - **Options**: `host`, `port`, `user`, `password`, `database`, `table`.
 - **Extras**: `postgresql`.
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/postgresql.py](../src/silkworm/_pipelines/postgresql.py)
 
 ```python
 PostgreSQLPipeline(database="scraping", table="items")
@@ -233,7 +233,7 @@ PostgreSQLPipeline(database="scraping", table="items")
 - **Options**: `url`, `method`, `headers`, `timeout`, `batch_size`.
 - **Behavior**: If `batch_size` > 1, the payload is a list of items.
 - **Extras**: none (wreq is core).
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/webhook.py](../src/silkworm/_pipelines/webhook.py)
 
 ```python
 WebhookPipeline("https://example.com/webhook", batch_size=10)
@@ -243,7 +243,7 @@ WebhookPipeline("https://example.com/webhook", batch_size=10)
 - **Purpose**: Append rows to Google Sheets (batching, flattening like CSV).
 - **Options**: `spreadsheet_id`, `credentials_file`, `sheet_name`, `batch_size`.
 - **Extras**: `gsheets`.
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/google_sheets.py](../src/silkworm/_pipelines/google_sheets.py)
 
 ```python
 GoogleSheetsPipeline(
@@ -258,7 +258,7 @@ GoogleSheetsPipeline(
 - **Purpose**: Insert items into Snowflake as JSON.
 - **Options**: `account`, `user`, `password`, `database`, `schema`, `warehouse`, `table`, `role`.
 - **Extras**: `snowflake`.
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/snowflake.py](../src/silkworm/_pipelines/snowflake.py)
 
 ```python
 SnowflakePipeline(
@@ -276,7 +276,7 @@ SnowflakePipeline(
 - **Purpose**: Upload JSON Lines to FTP (buffered).
 - **Options**: `host`, `user`, `password`, `remote_path`, `port`.
 - **Extras**: `ftp`.
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/ftp.py](../src/silkworm/_pipelines/ftp.py)
 
 ```python
 FTPPipeline(host="ftp.example.com", user="user", password="pass")
@@ -286,7 +286,7 @@ FTPPipeline(host="ftp.example.com", user="user", password="pass")
 - **Purpose**: Upload JSON Lines to SFTP (buffered).
 - **Options**: `host`, `user`, `password` or `private_key`, `remote_path`, `port`.
 - **Extras**: `sftp`.
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/sftp.py](../src/silkworm/_pipelines/sftp.py)
 
 ```python
 SFTPPipeline(host="sftp.example.com", user="user", password="pass")
@@ -296,7 +296,7 @@ SFTPPipeline(host="sftp.example.com", user="user", password="pass")
 - **Purpose**: Insert items into Cassandra.
 - **Options**: `hosts`, `keyspace`, `table`, `username`, `password`, `port`.
 - **Extras**: `cassandra` (not available on Windows).
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/cassandra.py](../src/silkworm/_pipelines/cassandra.py)
 
 ```python
 CassandraPipeline(hosts=["127.0.0.1"], keyspace="scraping", table="items")
@@ -306,7 +306,7 @@ CassandraPipeline(hosts=["127.0.0.1"], keyspace="scraping", table="items")
 - **Purpose**: Insert items into CouchDB.
 - **Options**: `url`, `database`, `username`, `password`.
 - **Extras**: `couchdb`.
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/couchdb.py](../src/silkworm/_pipelines/couchdb.py)
 
 ```python
 CouchDBPipeline(url="http://localhost:5984", database="scraping")
@@ -316,7 +316,7 @@ CouchDBPipeline(url="http://localhost:5984", database="scraping")
 - **Purpose**: Insert items into DynamoDB (auto-creates table if missing).
 - **Options**: `table_name`, `region_name`, `aws_access_key_id`, `aws_secret_access_key`, `endpoint_url`.
 - **Extras**: `dynamodb`.
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/dynamodb.py](../src/silkworm/_pipelines/dynamodb.py)
 
 ```python
 DynamoDBPipeline(table_name="items", region_name="us-east-1")
@@ -326,7 +326,7 @@ DynamoDBPipeline(table_name="items", region_name="us-east-1")
 - **Purpose**: Insert items into DuckDB as JSON.
 - **Options**: `database`, `table`.
 - **Extras**: `duckdb`.
-- **Code**: [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
+- **Code**: [src/silkworm/_pipelines/duckdb.py](../src/silkworm/_pipelines/duckdb.py)
 
 ```python
 DuckDBPipeline(database="data/items.db", table="items")
