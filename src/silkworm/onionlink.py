@@ -7,6 +7,7 @@ from datetime import timedelta
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
+from ._timeouts import to_seconds
 from ._validation import require_positive_int
 from .exceptions import HttpError
 from .http import HttpClient
@@ -109,14 +110,14 @@ class OnionLinkClient(HttpClient):
                 if current_req.timeout is not None
                 else self._timeout
             )
-            timeout_seconds = self._timeout_seconds(timeout_raw)
+            timeout_seconds = to_seconds(timeout_raw)
             onion_request = self._build_onion_request(current_req)
             url = onion_request.url
             visited_urls.add(url)
 
             try:
                 async with self._sem:
-                    async with self._request_timeout(timeout_seconds):
+                    async with asyncio.timeout(timeout_seconds):
                         resp = await self._send_onion_request(
                             current_req,
                             onion_request,
@@ -280,7 +281,7 @@ class OnionLinkClient(HttpClient):
         )
 
     def _timeout_ms(self, timeout: float | timedelta | None) -> int:
-        seconds = self._timeout_seconds(timeout)
+        seconds = to_seconds(timeout)
         if seconds is None:
             return 30_000
         return max(0, int(seconds * 1000))

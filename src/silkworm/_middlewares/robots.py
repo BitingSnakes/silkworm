@@ -10,10 +10,10 @@ from urllib.robotparser import RobotFileParser
 
 from wreq import Client, Method  # type: ignore[import]
 
+from .._timeouts import to_seconds
 from ..exceptions import HttpError
 from ..logging import get_logger
 from ..request import Request
-from .base import _timeout_seconds
 
 if TYPE_CHECKING:
     from ..spiders import Spider
@@ -52,7 +52,7 @@ class RobotsTxtDelayMiddleware:
         if fallback_delay is not None and fallback_delay < 0:
             msg = "fallback_delay must be non-negative"
             raise ValueError(msg)
-        timeout_seconds = _timeout_seconds(timeout)
+        timeout_seconds = to_seconds(timeout)
         if timeout_seconds is not None and timeout_seconds < 0:
             msg = "timeout must be non-negative"
             raise ValueError(msg)
@@ -153,7 +153,7 @@ class RobotsTxtDelayMiddleware:
         response: Any = None
         try:
             kwargs: dict[str, object] = {}
-            request_timeout = _timeout_seconds(self.timeout)
+            request_timeout = to_seconds(self.timeout)
             if request_timeout is not None:
                 kwargs["timeout"] = timedelta(seconds=request_timeout)
 

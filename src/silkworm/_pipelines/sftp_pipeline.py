@@ -12,7 +12,7 @@ except ImportError:
     ASYNCSSH_AVAILABLE = False
 
 from ..logging import get_logger
-from .base import _log_pipeline_item
+from .base import log_pipeline_item
 
 if TYPE_CHECKING:
     from .._types import JSONValue
@@ -133,7 +133,7 @@ class SFTPPipeline:
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         line = json.dumps(item, ensure_ascii=False)
         self._items.append(line)
-        _log_pipeline_item(
+        log_pipeline_item(
             self,
             "Buffered item for SFTP",
             remote_path=self.remote_path,

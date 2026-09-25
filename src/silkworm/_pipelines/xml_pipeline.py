@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import rxml
 
 from ..logging import get_logger
-from .base import _log_pipeline_item
+from .base import log_pipeline_item
 
 if TYPE_CHECKING:
     from .._types import JSONValue
@@ -54,7 +54,7 @@ class XMLPipeline:
 
         self._fp.write(indented_xml + "\n")
         self._fp.flush()
-        _log_pipeline_item(
+        log_pipeline_item(
             self, "Wrote item to XML", path=str(self.path), spider=spider.name
         )
         return item

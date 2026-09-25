@@ -14,7 +14,7 @@ except ImportError:
     WREQ_AVAILABLE = False
 
 from ..logging import get_logger
-from .base import _log_pipeline_item
+from .base import log_pipeline_item
 
 if TYPE_CHECKING:
     from .._types import JSONValue
@@ -184,7 +184,7 @@ class WebhookPipeline:
                         "Failed to close webhook client cleanly", exc_info=True
                     )
 
-            _log_pipeline_item(
+            log_pipeline_item(
                 self,
                 "Sent items to webhook",
                 url=self.url,

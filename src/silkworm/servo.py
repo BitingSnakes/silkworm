@@ -7,6 +7,7 @@ from datetime import timedelta
 from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
+from ._timeouts import to_seconds
 from ._validation import require_positive_int
 from .exceptions import HttpError
 from .logging import get_logger
@@ -75,7 +76,7 @@ class ServoFetchClient:
             "onion_verbose": onion_verbose,
             "onion_response_limit": onion_response_limit,
         }
-        timeout_seconds = self._timeout_seconds(timeout)
+        timeout_seconds = to_seconds(timeout)
         if timeout_seconds is not None:
             browser_kwargs["timeout"] = timeout_seconds
 
@@ -97,7 +98,7 @@ class ServoFetchClient:
         return self._html_max_size_bytes
 
     async def fetch(self, req: Request) -> HTMLResponse:
-        timeout_seconds = self._timeout_seconds(
+        timeout_seconds = to_seconds(
             req.timeout if req.timeout is not None else self._timeout,
         )
         settle_ms = self._meta_int(req.meta, SERVO_SETTLE_MS_META_KEY, self._settle_ms)
@@ -209,13 +210,6 @@ class ServoFetchClient:
             return None
         cleaned = " ".join(value.split())
         return cleaned[:512] if cleaned else None
-
-    def _timeout_seconds(self, timeout: float | timedelta | None) -> float | None:
-        if timeout is None:
-            return None
-        if isinstance(timeout, timedelta):
-            return timeout.total_seconds()
-        return float(timeout)
 
     def _meta_str(
         self,

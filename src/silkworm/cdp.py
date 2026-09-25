@@ -2,12 +2,10 @@ from __future__ import annotations
 
 import asyncio
 import json
-from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
-from datetime import timedelta
 from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
+from ._timeouts import to_seconds
 from ._validation import require_positive_int
 from .exceptions import HttpError
 from .logging import get_logger
@@ -251,14 +249,14 @@ class CDPClient:
 
         url = req.url
         timeout_raw = req.timeout if req.timeout is not None else self._timeout
-        timeout = self._timeout_seconds(timeout_raw)
+        timeout = to_seconds(timeout_raw)
 
         async with self._sem:
             start_time = asyncio.get_running_loop().time()
 
             try:
                 # Navigate to the URL
-                async with self._request_timeout(timeout):
+                async with asyncio.timeout(timeout):
                     # Create a future to track page load
                     load_future: asyncio.Future[None] = asyncio.Future()
                     self._page_load_future = load_future
@@ -364,22 +362,6 @@ class CDPClient:
                 detail = str(exc)
                 suffix = f": {detail}" if detail else ""
                 raise HttpError(f"CDP request to {url} failed{suffix}") from exc
-
-    def _timeout_seconds(self, timeout: float | timedelta | None) -> float | None:
-        """Convert timeout to seconds."""
-        if timeout is None:
-            return None
-        if isinstance(timeout, timedelta):
-            return timeout.total_seconds()
-        return float(timeout)
-
-    @asynccontextmanager
-    async def _request_timeout(self, timeout: float | None) -> AsyncIterator[None]:
-        if timeout is None:
-            yield
-            return
-        async with asyncio.timeout(timeout):
-            yield
 
     async def close(self) -> None:
         """Close the CDP connection and cleanup resources."""

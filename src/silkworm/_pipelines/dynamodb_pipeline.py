@@ -11,7 +11,7 @@ except ImportError:
     AIOBOTO3_AVAILABLE = False
 
 from ..logging import get_logger
-from .base import _log_pipeline_item
+from .base import log_pipeline_item
 
 if TYPE_CHECKING:
     from .._types import JSONValue
@@ -143,7 +143,7 @@ class DynamoDBPipeline:
         # Put item in DynamoDB
         await self._table.put_item(Item=dynamo_item)  # type: ignore[union-attr]
 
-        _log_pipeline_item(
+        log_pipeline_item(
             self,
             "Inserted item in DynamoDB",
             table_name=self.table_name,

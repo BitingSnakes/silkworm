@@ -12,7 +12,7 @@ except ImportError:
     VORTEX_AVAILABLE = False
 
 from ..logging import get_logger
-from .base import _log_pipeline_item
+from .base import log_pipeline_item
 
 if TYPE_CHECKING:
     from .._types import JSONValue
@@ -90,7 +90,7 @@ class VortexPipeline:
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         self._items.append(item)
-        _log_pipeline_item(
+        log_pipeline_item(
             self,
             "Buffered item for Vortex",
             path=str(self.path),

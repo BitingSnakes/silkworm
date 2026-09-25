@@ -25,12 +25,14 @@ except ImportError:  # pragma: no cover - platform dependent
 from ._types import JSONLike, JSONValue
 from ._validation import require_positive_int
 from .exceptions import SilkwormError, SpiderError
-from .http import HttpClient
-from .logging import LogLevel, complete_logs, get_logger, log_at_level
+from .http import DEFAULT_EMULATION, HttpClient
+from .logging import Logger, LogLevel, complete_logs, get_logger, log_at_level
 from .request import CallbackOutput, CallbackResult, Request
 from .response import HTMLResponse, Response
 
 if TYPE_CHECKING:
+    from wreq import Emulation, Profile  # type: ignore[import]
+
     from .middlewares import (
         ExceptionMiddleware,
         RequestMiddleware,
@@ -57,7 +59,7 @@ class EngineLogger:
 
     def fetching_request(
         self,
-        logger,
+        logger: Logger,
         request: Request,
         spider: Spider,
     ) -> None:
@@ -72,7 +74,7 @@ class EngineLogger:
 
     def fetched_response(
         self,
-        logger,
+        logger: Logger,
         request: Request,
         response: Response,
         spider: Spider,
@@ -87,7 +89,7 @@ class EngineLogger:
 
     def retrying_request(
         self,
-        logger,
+        logger: Logger,
         request: Request,
         spider: Spider,
         *,
@@ -105,7 +107,7 @@ class EngineLogger:
 
     def running_item_pipeline(
         self,
-        logger,
+        logger: Logger,
         pipeline: ItemPipeline,
         spider: Spider,
     ) -> None:
@@ -144,7 +146,7 @@ class Engine:
         *,
         concurrency: int = 16,
         max_pending_requests: int | None = None,
-        emulation=None,
+        emulation: Emulation | Profile | None = DEFAULT_EMULATION,
         request_timeout: float | timedelta | None = None,
         html_max_size_bytes: int = 5_000_000,
         request_middlewares: Iterable[RequestMiddleware] | None = None,

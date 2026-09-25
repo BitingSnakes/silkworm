@@ -2,25 +2,30 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-from collections.abc import AsyncIterator, Callable, Iterable, Mapping, Sequence
-from contextlib import asynccontextmanager
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any, Protocol, cast, runtime_checkable
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit
 
 from wreq import Client, Emulation, Method, Proxy  # type: ignore[import]
 
+from ._timeouts import to_seconds
 from ._validation import require_positive_int
 from .exceptions import HttpError
 from .logging import get_logger
 from .response import HTMLResponse, Response
 
 if TYPE_CHECKING:
+    from wreq import Profile  # type: ignore[import]
+
     from ._types import Headers, QueryValue
     from .request import Request
 
 
 MOCK_RESPONSE_META_KEY = "_silkworm_mock_response"
+
+# Browser profile impersonated by default; pass ``emulation=None`` to disable.
+DEFAULT_EMULATION = Emulation.Firefox139
 
 
 @runtime_checkable
@@ -36,7 +41,7 @@ class HttpClient:
         self,
         *,
         concurrency: int = 16,
-        emulation: Any = Emulation.Firefox139,
+        emulation: Emulation | Profile | None = DEFAULT_EMULATION,
         default_headers: Headers | None = None,
         timeout: float | timedelta | None = None,
         html_max_size_bytes: int = 5_000_000,
@@ -115,7 +120,7 @@ class HttpClient:
                         if current_req.timeout is not None
                         else self._timeout
                     )
-                    timeout_seconds = self._timeout_seconds(timeout_raw)
+                    timeout_seconds = to_seconds(timeout_raw)
                     headers = {**self._default_headers, **current_req.headers}
                     if self._keep_alive and not self._has_connection_header(headers):
                         headers["Connection"] = "keep-alive"
@@ -131,7 +136,7 @@ class HttpClient:
                     if self._keep_alive and self._supports_keep_alive_kwarg:
                         request_kwargs["keep_alive"] = True
 
-                    async with self._request_timeout(timeout_seconds):
+                    async with asyncio.timeout(timeout_seconds):
                         # Adjust keyword arguments to the actual wreq Client.request signature
                         resp = await self._send_request(method, url, request_kwargs)
 
@@ -261,21 +266,6 @@ class HttpClient:
 
     async def _maybe_await(self, value: object) -> object:
         return await value if inspect.isawaitable(value) else value
-
-    @asynccontextmanager
-    async def _request_timeout(self, timeout: float | None) -> AsyncIterator[None]:
-        if timeout is None:
-            yield
-            return
-        async with asyncio.timeout(timeout):
-            yield
-
-    def _timeout_seconds(self, timeout: float | timedelta | None) -> float | None:
-        if timeout is None:
-            return None
-        if isinstance(timeout, timedelta):
-            return timeout.total_seconds()
-        return float(timeout)
 
     def _as_timedelta(self, timeout: float | timedelta | None) -> timedelta | None:
         if timeout is None:

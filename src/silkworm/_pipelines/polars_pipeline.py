@@ -11,7 +11,7 @@ except ImportError:
     POLARS_AVAILABLE = False
 
 from ..logging import get_logger
-from .base import _log_pipeline_item
+from .base import log_pipeline_item
 
 if TYPE_CHECKING:
     from .._types import JSONValue
@@ -86,7 +86,7 @@ class PolarsPipeline:
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         self._items.append(item)
-        _log_pipeline_item(
+        log_pipeline_item(
             self,
             "Buffered item for Parquet",
             path=str(self.path),

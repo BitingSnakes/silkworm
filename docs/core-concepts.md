@@ -184,4 +184,10 @@ run_spider(MySpider, dedup_key=dedup_with_params)
 ```
 
 ## Data Types
-Shared JSON-friendly types live in [src/silkworm/_types.py](../src/silkworm/_types.py). Use these as guides for item structures and metadata.
+Public type aliases and protocols live in [`silkworm.types`](../src/silkworm/types.py). Import them from there to annotate your own code, for example:
+
+```python
+from silkworm.types import Callback, JSONValue, Logger, MetaData
+```
+
+It covers JSON item shapes (`JSONValue`, and the read-only `JSONLike` that callbacks may yield), request data (`Headers`, `QueryParams`, `MetaData`, `BodyData`), callbacks (`Callback`, `CallbackResult`, `Errback`), the `Logger` protocol and `LogLevel`, and the middleware and pipeline protocols.

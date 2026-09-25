@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Protocol
 
 from ..request import Request
@@ -31,19 +31,11 @@ class ExceptionMiddleware(Protocol):
     ) -> Request | None: ...
 
 
-def _utc_timestamp() -> str:
+def utc_timestamp() -> str:
     return datetime.now(UTC).isoformat()
 
 
-def _timeout_seconds(timeout: float | timedelta | None) -> float | None:
-    if timeout is None:
-        return None
-    if isinstance(timeout, timedelta):
-        return timeout.total_seconds()
-    return float(timeout)
-
-
-def _callback_name(callback: object) -> str | None:
+def callback_name(callback: object) -> str | None:
     if callback is None:
         return None
     return getattr(callback, "__name__", callback.__class__.__name__)

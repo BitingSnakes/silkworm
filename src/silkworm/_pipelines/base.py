@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING, Protocol, cast
 
-from ..logging import LogLevel, _Logger, log_at_level
+from ..logging import Logger, LogLevel, log_at_level
 
 if TYPE_CHECKING:
     from .._types import JSONValue
@@ -12,14 +12,14 @@ if TYPE_CHECKING:
 
 class _LoggingPipeline(Protocol):
     @property
-    def logger(self) -> _Logger: ...
+    def logger(self) -> Logger: ...
 
 
 class _LevelledPipeline(Protocol):
     log_level: LogLevel
 
 
-def _log_pipeline_item(
+def log_pipeline_item(
     pipeline: _LoggingPipeline,
     message: str,
     **context: object,
@@ -29,7 +29,7 @@ def _log_pipeline_item(
     log_at_level(logger, log_level, message, **context)
 
 
-def _validate_table_name(table: str) -> str:
+def validate_table_name(table: str) -> str:
     """Validate table name to prevent SQL injection."""
     if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", table):
         raise ValueError(

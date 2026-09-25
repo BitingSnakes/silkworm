@@ -3,11 +3,11 @@ from __future__ import annotations
 from typing import cast, override
 
 from silkworm import Request, Response, Spider, run_spider
-from silkworm._types import JSONValue
 from silkworm.http import MOCK_RESPONSE_META_KEY
 from silkworm.middlewares import RequestMiddleware
 from silkworm.pipelines import JsonLinesPipeline
 from silkworm.request import CallbackOutput
+from silkworm.types import JSONValue
 
 
 class FailThenRecoverMiddleware:

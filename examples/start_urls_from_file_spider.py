@@ -10,8 +10,7 @@ from silkworm.middlewares import RetryMiddleware, UserAgentMiddleware
 from silkworm.pipelines import JsonLinesPipeline
 
 if TYPE_CHECKING:
-    from silkworm._types import MetaData
-    from silkworm.logging import _Logger
+    from silkworm.types import Logger, MetaData
 
 
 class StartUrlsFromFileSpider(Spider):
@@ -31,7 +30,7 @@ class StartUrlsFromFileSpider(Spider):
         name: str | None = None,
         start_urls: Iterable[str] | None = None,
         custom_settings: MetaData | None = None,
-        logger: _Logger | dict[str, object] | None = None,
+        logger: Logger | dict[str, object] | None = None,
     ) -> None:
         super().__init__(
             name=name,

@@ -10,11 +10,12 @@ from uuid import uuid4
 
 from wreq import Client, Method  # type: ignore[import]
 
+from .._timeouts import to_seconds
 from .._types import JSONValue
 from ..logging import get_logger
 from ..request import Request
 from ..response import Response
-from .base import _callback_name, _timeout_seconds, _utc_timestamp
+from .base import callback_name, utc_timestamp
 
 if TYPE_CHECKING:
     from ..spiders import Spider
@@ -188,7 +189,7 @@ class RequestResponseStreamMiddleware:
                 "event": "request_error",
                 "exchange_id": exchange_id,
                 "parent_exchange_id": self._parent_exchange_id(request),
-                "timestamp": _utc_timestamp(),
+                "timestamp": utc_timestamp(),
                 "spider": spider.name,
                 "duration_ms": self._duration_ms(request),
                 "error": str(exception),
@@ -262,7 +263,7 @@ class RequestResponseStreamMiddleware:
             "json": payload,
         }
 
-        timeout = _timeout_seconds(self.timeout)
+        timeout = to_seconds(self.timeout)
         if timeout is not None:
             request_kwargs["timeout"] = timedelta(seconds=timeout)
 
@@ -319,7 +320,7 @@ class RequestResponseStreamMiddleware:
             "parent_exchange_id": (
                 previous_exchange_id if isinstance(previous_exchange_id, str) else None
             ),
-            "timestamp": _utc_timestamp(),
+            "timestamp": utc_timestamp(),
             "spider": spider.name,
             "request": self._serialize_request(request),
         }
@@ -334,7 +335,7 @@ class RequestResponseStreamMiddleware:
             "event": "response",
             "exchange_id": exchange_id,
             "parent_exchange_id": self._parent_exchange_id(response.request),
-            "timestamp": _utc_timestamp(),
+            "timestamp": utc_timestamp(),
             "spider": spider.name,
             "duration_ms": self._duration_ms(response.request),
             "request": self._serialize_request(response.request),
@@ -359,8 +360,8 @@ class RequestResponseStreamMiddleware:
             "params": self._serialize_params(request.params),
             "body": self._serialize_request_body(request),
             "meta": self._serialize_meta(request.meta),
-            "timeout_seconds": _timeout_seconds(request.timeout),
-            "callback": _callback_name(request.callback),
+            "timeout_seconds": to_seconds(request.timeout),
+            "callback": callback_name(request.callback),
             "dont_filter": request.dont_filter,
             "priority": request.priority,
         }

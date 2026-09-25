@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ..logging import get_logger
-from .base import _log_pipeline_item, _validate_table_name
+from .base import log_pipeline_item, validate_table_name
 
 if TYPE_CHECKING:
     from .._types import JSONValue
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 class SQLitePipeline:
     def __init__(self, path: str | Path = "items.db", table: str = "items") -> None:
         self.path = Path(path)
-        self.table = _validate_table_name(table)
+        self.table = validate_table_name(table)
         self._conn: sqlite3.Connection | None = None
         self.logger = get_logger(component="SQLitePipeline")
 
@@ -55,7 +55,7 @@ class SQLitePipeline:
             (spider.name, json.dumps(item, ensure_ascii=False)),
         )
         self._conn.commit()
-        _log_pipeline_item(
+        log_pipeline_item(
             self, "Stored item in SQLite", table=self.table, spider=spider.name
         )
         return item

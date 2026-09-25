@@ -3,13 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import cast
 
-from silkworm._types import JSONValue
 from silkworm.engine import Engine, EngineLogger
 from silkworm.logging import LogLevel, log_at_level
 from silkworm.pipelines import JsonLinesPipeline, LoggedPipeline
 from silkworm.request import CallbackOutput, Request
 from silkworm.response import Response
 from silkworm.spiders import Spider
+from silkworm.types import JSONValue
 
 
 class _SpyLogger:

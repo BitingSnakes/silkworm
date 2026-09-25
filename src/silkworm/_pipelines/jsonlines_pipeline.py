@@ -13,7 +13,7 @@ except ImportError:
     OPENDAL_AVAILABLE = False
 
 from ..logging import LogLevel, get_logger
-from .base import _log_pipeline_item
+from .base import log_pipeline_item
 
 if TYPE_CHECKING:
     from .._types import JSONValue
@@ -85,7 +85,7 @@ class JsonLinesPipeline:
                 self._object_path = None
                 self._fp = self.path.open("a", encoding="utf-8")
             else:
-                _log_pipeline_item(
+                log_pipeline_item(
                     self,
                     "Wrote item to JSONL",
                     path=str(self.path),
@@ -98,7 +98,7 @@ class JsonLinesPipeline:
             raise RuntimeError("JsonLinesPipeline not opened")
         self._fp.write(line + "\n")
         self._fp.flush()
-        _log_pipeline_item(
+        log_pipeline_item(
             self,
             "Wrote item to JSONL",
             path=str(self.path),

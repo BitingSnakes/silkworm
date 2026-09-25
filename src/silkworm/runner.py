@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable, Iterable
 from datetime import timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from .http import HttpClient
@@ -68,7 +68,7 @@ def run_spider_trio(
     http_client: HttpClient | None = None,
     engine_logger: EngineLogger | None = None,
     dedup_key: DedupKey | None = None,
-    **spider_kwargs,
+    **spider_kwargs: Any,
 ) -> None:
     """
     Run a spider using trio as the async backend.
@@ -145,7 +145,7 @@ async def crawl(
     http_client: HttpClient | None = None,
     engine_logger: EngineLogger | None = None,
     dedup_key: DedupKey | None = None,
-    **spider_kwargs,
+    **spider_kwargs: Any,
 ) -> None:
     spider = spider_cls(**spider_kwargs)
     engine = Engine(
@@ -182,7 +182,7 @@ def run_spider(
     http_client: HttpClient | None = None,
     engine_logger: EngineLogger | None = None,
     dedup_key: DedupKey | None = None,
-    **spider_kwargs,
+    **spider_kwargs: Any,
 ) -> None:
     coroutine = crawl(
         spider_cls,
@@ -223,7 +223,7 @@ def run_spider_uvloop(
     http_client: HttpClient | None = None,
     engine_logger: EngineLogger | None = None,
     dedup_key: DedupKey | None = None,
-    **spider_kwargs,
+    **spider_kwargs: Any,
 ) -> None:
     loop_factory = _install_uvloop()
     run_spider(
@@ -260,7 +260,7 @@ def run_spider_winloop(
     http_client: HttpClient | None = None,
     engine_logger: EngineLogger | None = None,
     dedup_key: DedupKey | None = None,
-    **spider_kwargs,
+    **spider_kwargs: Any,
 ) -> None:
     """
     Run a spider using winloop as the event loop.
@@ -320,7 +320,7 @@ def run_spider_rsloop(
     http_client: HttpClient | None = None,
     engine_logger: EngineLogger | None = None,
     dedup_key: DedupKey | None = None,
-    **spider_kwargs,
+    **spider_kwargs: Any,
 ) -> None:
     """
     Run a spider using rsloop as the event loop.

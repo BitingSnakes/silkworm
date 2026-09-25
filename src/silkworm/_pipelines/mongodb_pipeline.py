@@ -10,7 +10,7 @@ except ImportError:
     MOTOR_AVAILABLE = False
 
 from ..logging import get_logger
-from .base import _log_pipeline_item
+from .base import log_pipeline_item
 
 if TYPE_CHECKING:
     from .._types import JSONValue
@@ -85,7 +85,7 @@ class MongoDBPipeline:
         # Shallow copy is sufficient since MongoDB only adds _id at the root level.
         item_copy = dict(item) if isinstance(item, dict) else item
         await self._coll.insert_one(item_copy)
-        _log_pipeline_item(
+        log_pipeline_item(
             self,
             "Inserted item in MongoDB",
             collection=self.collection,

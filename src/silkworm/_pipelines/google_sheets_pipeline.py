@@ -18,7 +18,7 @@ except ImportError:
     GOOGLE_SHEETS_AVAILABLE = False
 
 from ..logging import get_logger
-from .base import _log_pipeline_item
+from .base import log_pipeline_item
 
 if TYPE_CHECKING:
     from .._types import JSONValue
@@ -159,7 +159,7 @@ class GoogleSheetsPipeline:
                     body=body,
                 ).execute()
 
-            _log_pipeline_item(
+            log_pipeline_item(
                 self,
                 "Wrote items to Google Sheets",
                 spreadsheet_id=self.spreadsheet_id,

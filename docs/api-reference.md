@@ -25,7 +25,7 @@ This page lists the public API exports from [src/silkworm/__init__.py](../src/si
 - **`html_to_markdown(...)`**: Convert HTML to Markdown with `fast-h2m` in `full`, `minimal`, or `mdream` mode. [src/silkworm/markdown.py](../src/silkworm/markdown.py)
 - **`convert_html_to_markdown(...)`**: Return `fast-h2m`'s structured Markdown conversion result. [src/silkworm/markdown.py](../src/silkworm/markdown.py)
 - **`MarkdownStream`**, **`stream_html_to_markdown(...)`**, **`stream_html_to_markdown_async(...)`**: Streaming HTML-to-Markdown conversion helpers. [src/silkworm/markdown.py](../src/silkworm/markdown.py)
-- **`get_logger(...)`**: Configured standard-library logger adapter. [src/silkworm/logging.py](../src/silkworm/logging.py)
+- **`get_logger(...)`**: Configured standard-library logger adapter, typed as the `Logger` protocol. [src/silkworm/logging.py](../src/silkworm/logging.py)
 
 ## Public Client Adapters
 - **`OnionLinkClient`**: Optional client for Tor v3 `.onion` services (requires `onionlink` extra). [src/silkworm/onionlink.py](../src/silkworm/onionlink.py)
@@ -36,8 +36,11 @@ This page lists the public API exports from [src/silkworm/__init__.py](../src/si
 - **`RequestResponseStreamMiddleware`**: Streams request/response telemetry to an HTTP collector. [src/silkworm/_middlewares/stream.py](../src/silkworm/_middlewares/stream.py)
 - **`RobotsTxtDelayMiddleware`**: Downloads robots.txt for a site origin and applies `Crawl-delay` or `Request-rate` to matching-origin requests. [src/silkworm/_middlewares/robots.py](../src/silkworm/_middlewares/robots.py)
 
-## Optional CDP Export
-- **`CDPClient`**: CDP client for browser-driven fetches (available when `cdp` extra is installed). [src/silkworm/cdp.py](../src/silkworm/cdp.py)
+## CDP Client
+- **`CDPClient`**: CDP client for browser-driven fetches. Always importable; constructing it requires the `cdp` extra (`websockets`). [src/silkworm/cdp.py](../src/silkworm/cdp.py)
+
+## Types (`silkworm.types`)
+Public type aliases and protocols for annotating your own code: `JSONValue`, `JSONLike`, `JSONScalar`, `Headers`, `QueryParams`, `QueryValue`, `MetaData`, `BodyData`, `Callback`, `CallbackOutput`, `CallbackResult`, `Errback`, `DedupKey`, `Logger`, `LogLevel`, `ItemPipeline`, `RequestMiddleware`, `ResponseMiddleware`, `ExceptionMiddleware`. [src/silkworm/types.py](../src/silkworm/types.py)
 
 ## Exceptions
 - **`SilkwormError`**: Base exception. [src/silkworm/exceptions.py](../src/silkworm/exceptions.py)

@@ -62,7 +62,7 @@ Engine accepts a wide range of callback outputs (single item, iterable, async it
 HttpClient wraps wreq and is responsible for request serialization, redirects, and HTML detection. See [src/silkworm/http.py](../src/silkworm/http.py).
 
 Core features:
-- **Browser emulation**: `emulation=Emulation.Firefox139` by default.
+- **Browser emulation**: `emulation=Emulation.Firefox139` by default, for both `HttpClient` and the client `Engine` creates; pass `emulation=None` to disable it.
 - **Timeouts**: per-request or global (seconds or `timedelta`).
 - **Redirects**: automatic follow with loop detection and max redirect cap.
 - **Keep-alive**: optional connection reuse when supported by the underlying client.

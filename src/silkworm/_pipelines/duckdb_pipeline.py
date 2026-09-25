@@ -12,7 +12,7 @@ except ImportError:
     DUCKDB_AVAILABLE = False
 
 from ..logging import get_logger
-from .base import _log_pipeline_item, _validate_table_name
+from .base import log_pipeline_item, validate_table_name
 
 if TYPE_CHECKING:
     from .._types import JSONValue
@@ -55,7 +55,7 @@ class DuckDBPipeline:
             )
 
         self.database = Path(database)
-        self.table = _validate_table_name(table)
+        self.table = validate_table_name(table)
         self._conn: duckdb.DuckDBPyConnection | None = None
         self.logger = get_logger(component="DuckDBPipeline")
 
@@ -105,7 +105,7 @@ class DuckDBPipeline:
             (spider.name, json.dumps(item, ensure_ascii=False)),
         )
 
-        _log_pipeline_item(
+        log_pipeline_item(
             self,
             "Inserted item in DuckDB",
             table=self.table,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .api import fetch_html, fetch_html_cdp, fetch_html_servo
+from .cdp import CDPClient
 from .engine import DedupKey, Engine, EngineLogger, default_dedup_key
 from .exceptions import (
     HttpError,
@@ -37,6 +38,7 @@ from .servo import ServoFetchClient
 from .spiders import Spider
 
 __all__ = [
+    "CDPClient",
     "CookiesMiddleware",
     "DedupKey",
     "Engine",
@@ -71,11 +73,3 @@ __all__ = [
     "stream_html_to_markdown",
     "stream_html_to_markdown_async",
 ]
-
-# Optional CDP support
-try:
-    from .cdp import CDPClient  # noqa: F401
-
-    __all__.append("CDPClient")
-except ImportError:
-    pass

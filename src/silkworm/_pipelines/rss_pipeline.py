@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ..logging import get_logger
-from .base import _log_pipeline_item
+from .base import log_pipeline_item
 
 if TYPE_CHECKING:
     from .._types import JSONValue
@@ -146,7 +146,7 @@ class RssPipeline:
                 rss_item["author"] = author
 
         self._items.append(rss_item)
-        _log_pipeline_item(
+        log_pipeline_item(
             self,
             "Buffered item for RSS",
             path=str(self.path),

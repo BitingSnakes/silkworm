@@ -31,14 +31,19 @@ type _ExcInfo = (
 
 
 @runtime_checkable
-class _Logger(Protocol):
+class Logger(Protocol):
+    """Structured logger returned by :func:`get_logger` and ``Spider.log``.
+
+    Keyword arguments become structured context fields on each record.
+    """
+
     def configure(
         self,
         *,
         handlers: list[dict[str, object]] | None = None,
     ) -> None: ...
 
-    def bind(self, **context: object) -> _Logger: ...
+    def bind(self, **context: object) -> Logger: ...
 
     def info(self, message: str, **context: object) -> None: ...
     def debug(self, message: str, **context: object) -> None: ...
@@ -131,7 +136,7 @@ class _JsonFormatter(stdlib_logging.Formatter):
 @dataclass(slots=True, frozen=True)
 class _LoggerAdapter:
     _logger: stdlib_logging.Logger
-    _context: dict[str, object] = field(default_factory=dict)
+    _context: dict[str, object] = field(default_factory=dict[str, object])
 
     def configure(
         self,
@@ -231,11 +236,14 @@ class _LoggerAdapter:
 
 _configuration_lock = RLock()
 _stdlib_logger = stdlib_logging.getLogger("silkworm")
-_typed_logger: _Logger = _LoggerAdapter(_stdlib_logger)
+# Backwards-compatible alias for the protocol's former private name.
+_Logger = Logger
+
+_typed_logger: Logger = _LoggerAdapter(_stdlib_logger)
 _configured = False
 
 
-def _configure_if_needed() -> _Logger:
+def _configure_if_needed() -> Logger:
     """
     Configure the shared logger once using environment overrides and return it.
     """
@@ -257,7 +265,7 @@ def _configure_if_needed() -> _Logger:
         return _typed_logger
 
 
-def get_logger(**context: object) -> _Logger:
+def get_logger(**context: object) -> Logger:
     """
     Grab the shared logger with optional bound context fields.
     """
@@ -266,7 +274,7 @@ def get_logger(**context: object) -> _Logger:
 
 
 def log_at_level(
-    logger: _Logger,
+    logger: Logger,
     level: LogLevel,
     message: str,
     **context: object,
@@ -301,3 +309,6 @@ def complete_logs() -> None:
     if not _configured:
         return
     _typed_logger.complete()
+
+
+__all__ = ["LogLevel", "Logger", "complete_logs", "get_logger", "log_at_level"]

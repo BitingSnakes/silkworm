@@ -4,7 +4,7 @@ import inspect
 from typing import TYPE_CHECKING, cast
 
 from ..logging import LogLevel, get_logger
-from .base import _log_pipeline_item
+from .base import log_pipeline_item
 
 if TYPE_CHECKING:
     from .._types import JSONValue
@@ -78,7 +78,7 @@ class CallbackPipeline:
         if result is None:
             return item
 
-        _log_pipeline_item(
+        log_pipeline_item(
             self,
             "Processed item with callback",
             spider=spider.name,

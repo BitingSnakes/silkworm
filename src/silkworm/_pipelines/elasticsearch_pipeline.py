@@ -10,7 +10,7 @@ except ImportError:
     ELASTICSEARCH_AVAILABLE = False
 
 from ..logging import get_logger
-from .base import _log_pipeline_item
+from .base import log_pipeline_item
 
 if TYPE_CHECKING:
     from .._types import JSONValue
@@ -75,7 +75,7 @@ class ElasticsearchPipeline:
             raise RuntimeError("ElasticsearchPipeline not opened")
 
         await self._client.index(index=self.index, document=item)  # type: ignore[arg-type]
-        _log_pipeline_item(
+        log_pipeline_item(
             self,
             "Indexed item in Elasticsearch",
             index=self.index,

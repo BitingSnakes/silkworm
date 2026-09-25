@@ -5,7 +5,15 @@ from dataclasses import dataclass, field, replace
 from datetime import timedelta
 from typing import TYPE_CHECKING, Self
 
-from ._types import BodyData, Headers, JSONLike, JSONValue, MetaData, QueryParams
+from ._types import (
+    BodyData,
+    Headers,
+    JSONLike,
+    JSONValue,
+    MetaData,
+    QueryParams,
+    QueryValue,
+)
 
 if TYPE_CHECKING:
     from .response import Response
@@ -15,11 +23,11 @@ if TYPE_CHECKING:
 class Request:
     url: str
     method: str = "GET"
-    headers: Headers = field(default_factory=dict)
-    params: QueryParams = field(default_factory=dict)
+    headers: Headers = field(default_factory=dict[str, str])
+    params: QueryParams = field(default_factory=dict[str, QueryValue])
     data: BodyData = None
     json: JSONValue | None = None
-    meta: MetaData = field(default_factory=dict)
+    meta: MetaData = field(default_factory=dict[str, JSONValue])
     timeout: float | timedelta | None = None
     callback: Callback | None = None
     errback: Errback | None = None

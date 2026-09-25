@@ -11,7 +11,7 @@ except ImportError:
     TASKIQ_AVAILABLE = False
 
 from ..logging import get_logger
-from .base import _log_pipeline_item
+from .base import log_pipeline_item
 
 if TYPE_CHECKING:
     from taskiq import AsyncBroker as _AsyncBroker  # type: ignore[import-not-found]
@@ -120,7 +120,7 @@ class TaskiqPipeline:
         task_result = await self._task.kiq(item)
         task_name = self._task.task_name
         task_id = task_result.task_id
-        _log_pipeline_item(
+        log_pipeline_item(
             self,
             "Sent item to Taskiq queue",
             task_name=task_name,

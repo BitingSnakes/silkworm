@@ -12,7 +12,7 @@ except ImportError:
     ORMSGPACK_AVAILABLE = False
 
 from ..logging import get_logger
-from .base import _log_pipeline_item
+from .base import log_pipeline_item
 
 if TYPE_CHECKING:
     from .._types import JSONValue
@@ -91,7 +91,7 @@ class MsgPackPipeline:
         packed = ormsgpack.packb(item)  # pyright: ignore[reportPossiblyUnboundVariable]
         self._fp.write(packed)
         self._fp.flush()
-        _log_pipeline_item(
+        log_pipeline_item(
             self,
             "Wrote item to MsgPack",
             path=str(self.path),

@@ -874,6 +874,39 @@ def test_onionlink_client_requires_async_session(
         OnionLinkClient()
 
 
+def _record_client_options(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
+    created: list[dict[str, Any]] = []
+
+    def fake_client(**options: Any) -> object:
+        created.append(options)
+        return object()
+
+    monkeypatch.setattr("silkworm.http.Client", fake_client)
+    return created
+
+
+def test_engine_http_client_uses_default_browser_emulation(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    from silkworm.http import DEFAULT_EMULATION
+
+    created = _record_client_options(monkeypatch)
+    HttpClient()
+    Engine(Spider())
+
+    assert [options["emulation"] for options in created] == [
+        DEFAULT_EMULATION,
+        DEFAULT_EMULATION,
+    ]
+
+
+def test_engine_emulation_can_be_disabled(monkeypatch: pytest.MonkeyPatch):
+    created = _record_client_options(monkeypatch)
+    Engine(Spider(), emulation=None)
+
+    assert created[0]["emulation"] is None
+
+
 async def test_engine_uses_supplied_http_client():
     class OneShotSpider(Spider):
         start_urls = ("http://example.com",)
