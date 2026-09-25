@@ -44,26 +44,26 @@ dependencies = [
 
 [project.optional-dependencies]
 rsloop = [
-  "rsloop>=0.1.42",
+  "rsloop>=0.1.53",
 ]
 taskiq = [
-  "taskiq==0.12.4",
+  "taskiq==0.12.6",
 ]
 uvloop = [
   "uvloop==0.22.1",
 ]
 winloop = [
-  "winloop==0.6.3",
+  "winloop==0.6.4",
 ]
 trio = [
-  "trio==0.33.0",
-  "trio-asyncio==0.15.0",
+  "trio==0.34.0",
+  "trio-asyncio==0.16.0",
 ]
 msgpack = [
   "ormsgpack==1.12.2",
 ]
 polars = [
-  "polars==1.39.3",
+  "polars==1.44.2",
 ]
 excel = [
   "openpyxl==3.1.5",
@@ -72,19 +72,19 @@ yaml = [
   "pyyaml==6.0.3",
 ]
 avro = [
-  "fastavro==1.12.1",
+  "fastavro==1.12.2",
 ]
 elasticsearch = [
-  "elasticsearch==9.3.0",
+  "elasticsearch==9.5.1",
 ]
 mongodb = [
   "motor==3.7.1",
 ]
 s3 = [
-  "opendal==0.46.0",
+  "opendal==0.47.10",
 ]
 vortex = [
-  "vortex-data==0.67.0",
+  "vortex-data==0.86.1",
 ]
 mysql = [
   "aiomysql==0.3.2",
@@ -93,20 +93,20 @@ postgresql = [
   "asyncpg==0.31.0",
 ]
 gsheets = [
-  "google-api-python-client==2.193.0",
-  "google-auth==2.49.1",
+  "google-api-python-client==2.200.0",
+  "google-auth==2.58.1",
 ]
 snowflake = [
-  "snowflake-connector-python==4.7.1",
+  "snowflake-connector-python==4.7.5",
 ]
 ftp = [
-  "aioftp==0.27.2",
+  "aioftp==0.28.3",
 ]
 sftp = [
   "asyncssh==2.24.0",
 ]
 cassandra = [
-  "cassandra-driver==3.29.3; sys_platform != 'win32' and python_version < '3.14'",
+  "cassandra-driver==3.30.1; sys_platform != 'win32' and python_version < '3.14'",
 ]
 couchdb = [
   "aiocouch==4.0.1",
@@ -115,13 +115,13 @@ dynamodb = [
   "aioboto3==15.5.0",
 ]
 duckdb = [
-  "duckdb==1.5.1",
+  "duckdb==1.5.5",
 ]
 memray = [
-  "memray==1.19.2",
+  "memray==1.20.0",
 ]
 cdp = [
-  "websockets==16.0",
+  "websockets==17.1",
 ]
 onionlink = [
   "onionlink==0.1.2",

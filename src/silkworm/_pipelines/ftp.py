@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import io
 import json
 from typing import TYPE_CHECKING
 
@@ -84,12 +83,11 @@ class FTPPipeline:
                 await self._client.connect(self.host, self.port)  # type: ignore[union-attr]
                 await self._client.login(self.user, self.password)  # type: ignore[union-attr]
 
-                # Write items to a temporary buffer
                 content = "\n".join(self._items) + "\n"
-                buffer = io.BytesIO(content.encode("utf-8"))
 
                 # Upload the file
-                await self._client.upload_stream(buffer, self.remote_path)  # type: ignore[union-attr]
+                async with self._client.upload_stream(self.remote_path) as stream:  # type: ignore[union-attr]
+                    await stream.write(content.encode("utf-8"))
 
                 self.logger.info(
                     "Uploaded items to FTP",

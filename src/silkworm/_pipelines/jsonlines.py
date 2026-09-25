@@ -109,9 +109,7 @@ class JsonLinesPipeline:
         if not self._operator or not self._object_path:
             raise RuntimeError("JsonLinesPipeline not opened")
 
-        append_fn = getattr(self._operator, "append", None)
-        if callable(append_fn):
-            await append_fn(self._object_path, data.encode("utf-8"))
-            return
+        if not self._operator.capability().write_can_append:
+            raise RuntimeError("OpenDAL operator does not support append writes")
 
-        raise RuntimeError("OpenDAL operator does not support append writes")
+        await self._operator.write(self._object_path, data.encode("utf-8"), append=True)

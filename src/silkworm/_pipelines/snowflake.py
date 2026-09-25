@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 try:
     import snowflake.connector  # type: ignore[import-not-found]
@@ -75,8 +75,8 @@ class SnowflakePipeline:
         self.warehouse = warehouse
         self.table = _validate_table_name(table)
         self.role = role
-        self._conn = None  # type: ignore[var-annotated]
-        self._cursor = None  # type: ignore[var-annotated]
+        self._conn: Any = None
+        self._cursor: Any = None
         self.logger = get_logger(component="SnowflakePipeline")
 
     async def open(self, spider: Spider) -> None:

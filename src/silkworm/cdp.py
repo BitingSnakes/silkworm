@@ -152,10 +152,14 @@ class CDPClient:
             self._fail_pending(HttpError(f"CDP connection error: {exc}"))
         finally:
             # If the socket closed unexpectedly, unblock any waiters.
-            ws_closed = bool(getattr(self._ws, "closed", False)) if self._ws else False
+            # websockets' asyncio connection has no ``closed`` attribute; its
+            # ``close_code`` stays None until the closing handshake completes.
+            close_code = getattr(self._ws, "close_code", None) if self._ws else None
+            ws_closed = close_code is not None or bool(
+                getattr(self._ws, "closed", False)
+            )
             if ws_closed:
                 close_reason = getattr(self._ws, "close_reason", None)
-                close_code = getattr(self._ws, "close_code", None)
                 error_detail = (
                     f" (code={close_code}, reason={close_reason})"
                     if close_code is not None or close_reason

@@ -75,7 +75,7 @@ class ElasticsearchPipeline:
         if not self._client:
             raise RuntimeError("ElasticsearchPipeline not opened")
 
-        await self._client.index(index=self.index, document=item)
+        await self._client.index(index=self.index, document=item)  # type: ignore[arg-type]
         _log_pipeline_item(
             self,
             "Indexed item in Elasticsearch",

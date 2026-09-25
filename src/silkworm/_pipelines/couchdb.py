@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 try:
     import aiocouch  # type: ignore[import-not-found]
@@ -59,8 +59,8 @@ class CouchDBPipeline:
         self.database = database
         self.username = username
         self.password = password
-        self._client = None  # type: ignore[var-annotated]
-        self._db = None  # type: ignore[var-annotated]
+        self._client: Any = None
+        self._db: Any = None
         self.logger = get_logger(component="CouchDBPipeline")
 
     async def open(self, spider: Spider) -> None:

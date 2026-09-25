@@ -70,8 +70,8 @@ class SFTPPipeline:
         self.port = port
         self.private_key = private_key
         self._items: list[str] = []
-        self._conn = None  # type: ignore[var-annotated]
-        self._sftp = None  # type: ignore[var-annotated]
+        self._conn: Any = None
+        self._sftp: Any = None
         self.logger = get_logger(component="SFTPPipeline")
 
     async def open(self, spider: Spider) -> None:

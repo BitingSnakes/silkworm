@@ -73,7 +73,7 @@ class VortexPipeline:
         if self._items:
             # Convert items list to PyArrow Table
             # Vortex can directly accept PyArrow tables for efficient writing
-            import pyarrow as pa  # type: ignore[import-not-found]
+            import pyarrow as pa  # type: ignore[import-not-found, import-untyped]
 
             table = pa.Table.from_pylist(self._items)
 

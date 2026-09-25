@@ -971,6 +971,32 @@ def test_s3_jsonlines_pipeline_initialization():
     assert pipeline.region == "us-east-1"
 
 
+@pytest.mark.skipif(not OPENDAL_AVAILABLE, reason="opendal not installed")
+async def test_jsonlines_pipeline_appends_with_opendal():
+    from silkworm.pipelines import JsonLinesPipeline
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        path = Path(tmpdir) / "items.jl"
+        path.write_text('{"existing": true}\n', encoding="utf-8")
+        pipeline = JsonLinesPipeline(path, use_opendal=True)
+        spider = Spider()
+
+        await pipeline.open(spider)
+        await pipeline.process_item({"text": "Hello"}, spider)
+        await pipeline.process_item({"text": "World"}, spider)
+        # A failed OpenDAL write drops the operator and falls back to a file handle.
+        assert pipeline._operator is not None
+        assert pipeline._fp is None
+        await pipeline.close(spider)
+
+        lines = path.read_text(encoding="utf-8").splitlines()
+        assert [json.loads(line) for line in lines] == [
+            {"existing": True},
+            {"text": "Hello"},
+            {"text": "World"},
+        ]
+
+
 # VortexPipeline tests - skip if vortex not installed
 try:
     import vortex  # type: ignore[import-not-found]  # noqa: F401
@@ -1334,6 +1360,37 @@ def test_ftp_pipeline_initialization():
     assert pipeline.port == 21
 
 
+@pytest.mark.skipif(not AIOFTP_AVAILABLE, reason="aioftp not installed")
+async def test_ftp_pipeline_uploads_items():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        user = aioftp.User("user", "password", base_path=tmpdir)  # type: ignore[attr-defined]
+        server = aioftp.Server([user])  # type: ignore[attr-defined]
+        await server.start("127.0.0.1", 0)
+        try:
+            port = server.server.sockets[0].getsockname()[1]
+            pipeline = FTPPipeline(  # type: ignore
+                host="127.0.0.1",
+                user="user",
+                password="password",
+                remote_path="items.jl",
+                port=port,
+            )
+            spider = Spider()
+
+            await pipeline.open(spider)
+            await pipeline.process_item({"text": "Hello"}, spider)
+            await pipeline.process_item({"text": "World"}, spider)
+            await pipeline.close(spider)
+        finally:
+            await server.close()
+
+        lines = (Path(tmpdir) / "items.jl").read_text(encoding="utf-8").splitlines()
+        assert [json.loads(line) for line in lines] == [
+            {"text": "Hello"},
+            {"text": "World"},
+        ]
+
+
 # SFTPPipeline tests - skip if asyncssh not installed
 try:
     import asyncssh  # type: ignore[import-not-found]  # noqa: F401
@@ -1566,9 +1623,9 @@ async def test_duckdb_pipeline_writes_items():
         conn.close()
 
         assert len(result) == 2
-        assert result[0][0] == "Spider"  # Default spider name
+        assert result[0][0] == "spider"  # Default spider name
         assert json.loads(result[0][1]) == {"text": "Hello", "author": "John"}
-        assert result[1][0] == "Spider"
+        assert result[1][0] == "spider"
         assert json.loads(result[1][1]) == {"text": "World", "author": "Jane"}
 
 
