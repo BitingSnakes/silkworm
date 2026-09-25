@@ -111,7 +111,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        elasticsearch-version: ["7.17.0", "8.11.0", "8.16.0"]
+        # elasticsearch-py 8.x supports Elasticsearch 8.x. Major versions must match.
+        elasticsearch-version: ["8.11.0", "8.16.0"]
         python-version: ["3.13", "3.15"]
 
     steps:
