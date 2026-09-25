@@ -75,7 +75,7 @@ class AvroPipeline:
                 schema = self._infer_schema(self._items[0])
 
             with self.path.open("wb") as f:
-                fastavro.writer(f, schema, self._items)
+                fastavro.writer(f, schema, self._items)  # pyright: ignore[reportPossiblyUnboundVariable]
         self.logger.info("Closed Avro pipeline", path=str(self.path))
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:

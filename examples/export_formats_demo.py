@@ -19,13 +19,9 @@ from silkworm.pipelines import (
     XMLPipeline,
 )
 
-# Try to import MsgPackPipeline (requires optional dependency)
-try:
-    from silkworm.pipelines import MsgPackPipeline
-
-    MSGPACK_AVAILABLE = True
-except ImportError:
-    MSGPACK_AVAILABLE = False
+# MsgPackPipeline needs the optional ormsgpack dependency (silkworm-rs[msgpack]).
+from silkworm.pipelines import MsgPackPipeline
+from silkworm.pipelines import ORMSGPACK_AVAILABLE as MSGPACK_AVAILABLE
 
 
 class Quote(BaseModel):

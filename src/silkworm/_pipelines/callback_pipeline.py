@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from ..logging import LogLevel, get_logger
 from .base import _log_pipeline_item
@@ -83,4 +83,4 @@ class CallbackPipeline:
             "Processed item with callback",
             spider=spider.name,
         )
-        return result
+        return cast("JSONValue", result)

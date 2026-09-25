@@ -282,11 +282,8 @@ class SitemapSpider(Spider):
 
         # Extract canonical URL
         canonical_elem = await html.select_first('link[rel="canonical"]')
-        canonical_url = (
-            canonical_elem.attr("href").strip()
-            if canonical_elem and canonical_elem.attr("href")
-            else None
-        )
+        canonical_href = canonical_elem.attr("href") if canonical_elem else None
+        canonical_url = canonical_href.strip() if canonical_href else None
 
         # Create structured item
         original_url = response.request.meta.get("original_url")

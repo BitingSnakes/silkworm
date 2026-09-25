@@ -76,11 +76,11 @@ class PolarsPipeline:
 
     async def close(self, spider: Spider) -> None:
         if self._items:
-            df = pl.DataFrame(self._items)
+            df = pl.DataFrame(self._items)  # pyright: ignore[reportPossiblyUnboundVariable]
             if self.mode == "append" and self.path.exists():
                 # Read existing data and concatenate
-                existing_df = pl.read_parquet(self.path)
-                df = pl.concat([existing_df, df])
+                existing_df = pl.read_parquet(self.path)  # pyright: ignore[reportPossiblyUnboundVariable]
+                df = pl.concat([existing_df, df])  # pyright: ignore[reportPossiblyUnboundVariable]
             df.write_parquet(self.path)
         self.logger.info("Closed Polars pipeline", path=str(self.path))
 

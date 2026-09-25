@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 try:
     import openpyxl  # type: ignore[import-not-found, import-untyped]
@@ -15,6 +15,7 @@ from ..logging import get_logger
 from .base import _log_pipeline_item
 
 if TYPE_CHECKING:
+    from openpyxl.worksheet.worksheet import Worksheet  # type: ignore[import-untyped]
     from .._types import JSONValue
     from ..spiders import Spider
 
@@ -59,8 +60,8 @@ class ExcelPipeline:
 
     async def close(self, spider: Spider) -> None:
         if self._items:
-            wb = openpyxl.Workbook()
-            ws = wb.active
+            wb = openpyxl.Workbook()  # pyright: ignore[reportPossiblyUnboundVariable]
+            ws = cast("Worksheet", wb.active)
             ws.title = self.sheet_name
 
             # Get fieldnames from first item

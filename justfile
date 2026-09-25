@@ -16,19 +16,19 @@ lint:
 	uv run --group dev ruff check src examples
 
 typecheck:
-	uv run --group dev mypy src
+	uv run --group dev pyright src
 
 test:
 	uv run --group dev pytest -o "anyio_mode=auto"
 
-mypy:
-	uv run --group dev mypy src tests examples
+pyright:
+	uv run --group dev pyright
 
 clean:
 	rm -rf .venv/
 	rm -rf .uv-cache/
 	rm -rf .uv_cache/
-	rm -rf dist build .mypy_cache .ruff_cache .pytest_cache *.egg-info
+	rm -rf dist build .ruff_cache .pytest_cache *.egg-info
 	rm -rf data/
 	rm -rf **/**/__pycache__
 	rm -rf **/__pycache__

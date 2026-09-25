@@ -71,7 +71,7 @@ class MySQLPipeline:
         self.logger = get_logger(component="MySQLPipeline")
 
     async def open(self, spider: Spider) -> None:
-        self._pool = await aiomysql.create_pool(
+        self._pool = await aiomysql.create_pool(  # pyright: ignore[reportPossiblyUnboundVariable]
             host=self.host,
             port=self.port,
             user=self.user,

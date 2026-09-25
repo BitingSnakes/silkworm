@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Protocol, TYPE_CHECKING, runtime_checkable
+from typing import Any, TYPE_CHECKING
 
 try:
     from taskiq import AsyncBroker  # type: ignore[import-not-found]
@@ -14,27 +14,13 @@ from ..logging import get_logger
 from .base import _log_pipeline_item
 
 if TYPE_CHECKING:
+    from taskiq import AsyncBroker as _AsyncBroker  # type: ignore[import-not-found]
+    from taskiq.decor import AsyncTaskiqDecoratedTask  # type: ignore[import-not-found]
+
     from .._types import JSONValue
     from ..spiders import Spider
 
-
-@runtime_checkable
-class _TaskiqTask(Protocol):
-    task_name: str
-
-    async def kiq(self, item: JSONValue): ...
-
-
-@runtime_checkable
-class _TaskiqResult(Protocol):
-    task_id: str | int
-
-
-@runtime_checkable
-class _TaskiqBroker(Protocol):
-    async def startup(self) -> None: ...
-    async def shutdown(self) -> None: ...
-    def find_task(self, task_name: str) -> _TaskiqTask | None: ...
+    type _TaskiqTask = AsyncTaskiqDecoratedTask[Any, Any]
 
 
 class TaskiqPipeline:
@@ -61,7 +47,7 @@ class TaskiqPipeline:
 
     def __init__(
         self,
-        broker: _TaskiqBroker,
+        broker: _AsyncBroker,
         task: _TaskiqTask | None = None,
         task_name: str | None = None,
     ) -> None:
@@ -81,7 +67,7 @@ class TaskiqPipeline:
         if task is None and task_name is None:
             raise ValueError("Either 'task' or 'task_name' must be provided")
 
-        self.broker: _TaskiqBroker = broker
+        self.broker: _AsyncBroker = broker
         self._provided_task: _TaskiqTask | None = task
         self._task: _TaskiqTask | None = None
         self.task_name = task_name
@@ -94,7 +80,7 @@ class TaskiqPipeline:
         # If task was provided directly, use it
         if self._provided_task is not None:
             self._task = self._provided_task
-            actual_task_name = self._task.task_name
+            actual_task_name = self._provided_task.task_name
         else:
             # Find the registered task by name
             if self.task_name is None:
@@ -133,9 +119,7 @@ class TaskiqPipeline:
         # Send item to the task queue
         task_result = await self._task.kiq(item)
         task_name = self._task.task_name
-        task_id: str | int | None = None
-        if isinstance(task_result, _TaskiqResult):
-            task_id = task_result.task_id
+        task_id = task_result.task_id
         _log_pipeline_item(
             self,
             "Sent item to Taskiq queue",

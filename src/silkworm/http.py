@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from contextlib import asynccontextmanager
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any, AsyncIterator, cast
@@ -440,7 +440,7 @@ class HttpClient:
 
         headers: Headers = {}
         try:
-            raw_keys = keys()
+            raw_keys = cast("Iterable[object]", keys())
         except Exception:
             return {}
 

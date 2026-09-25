@@ -157,14 +157,26 @@ force-include = {"src/silkworm/py.typed" = "silkworm/py.typed"}
 [dependency-groups]
 dev = [
     "build==1.6.1",
-    "mypy==2.3.1",
     "py-spy==0.4.2",
     "pydantic==2.13.5",
+    "pyright==1.1.414",
     "pytest==9.1.1",
     "anyio==4.15.1",
     "ruff==0.16.9",
     "twine==7.0.0",
     "testcontainers==4.15.0",
+]
+
+[tool.pyright]
+include = ["src", "tests", "examples"]
+pythonVersion = "3.13"
+typeCheckingMode = "standard"
+executionEnvironments = [
+  # Tests import optional dependencies inside try/except guarded by skipif, and
+  # assert on parsed results directly; don't flag those idioms.
+  { root = "tests", extraPaths = ["src"], reportPossiblyUnboundVariable = "none", reportOptionalMemberAccess = "none", reportOptionalSubscript = "none" },
+  { root = "examples", extraPaths = ["src"] },
+  { root = "src" },
 ]
 
 [tool.ruff.lint]

@@ -7,7 +7,6 @@ try:
 
     ELASTICSEARCH_AVAILABLE = True
 except ImportError:
-    AsyncElasticsearch = None  # type: ignore
     ELASTICSEARCH_AVAILABLE = False
 
 from ..logging import get_logger
@@ -58,7 +57,7 @@ class ElasticsearchPipeline:
         self.logger = get_logger(component="ElasticsearchPipeline")
 
     async def open(self, spider: Spider) -> None:
-        self._client = AsyncElasticsearch(self.hosts, **self.es_kwargs)
+        self._client = AsyncElasticsearch(self.hosts, **self.es_kwargs)  # pyright: ignore[reportPossiblyUnboundVariable]
         self.logger.info(
             "Opened Elasticsearch pipeline",
             hosts=self.hosts,

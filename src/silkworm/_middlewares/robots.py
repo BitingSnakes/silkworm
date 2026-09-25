@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 from collections.abc import Awaitable, Callable
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any, cast
@@ -164,14 +165,14 @@ class RobotsTxtDelayMiddleware:
             text = getattr(response, "text", None)
             if callable(text):
                 result = text()
-                if hasattr(result, "__await__"):
+                if inspect.isawaitable(result):
                     result = await result
                 return str(result)
 
             read = getattr(response, "read", None)
             if callable(read):
                 body = read()
-                if hasattr(body, "__await__"):
+                if inspect.isawaitable(body):
                     body = await body
                 if isinstance(body, bytes):
                     return body.decode("utf-8", errors="replace")
@@ -187,7 +188,7 @@ class RobotsTxtDelayMiddleware:
         closer = getattr(resource, "aclose", None) or getattr(resource, "close", None)
         if closer and callable(closer):
             result = closer()
-            if hasattr(result, "__await__"):
+            if inspect.isawaitable(result):
                 await result
 
     def _matches_origin(self, url: str) -> bool:

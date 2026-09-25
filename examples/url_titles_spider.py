@@ -172,7 +172,7 @@ def main() -> None:
         JsonLinesPipeline(args.output, use_opendal=False),
     ]
 
-    kwargs = dict(
+    kwargs: dict[str, Any] = dict(
         concurrency=128,
         request_middlewares=request_mw,
         response_middlewares=response_mw,

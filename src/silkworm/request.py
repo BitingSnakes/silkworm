@@ -4,7 +4,7 @@ from datetime import timedelta
 from collections.abc import AsyncIterable, AsyncIterator, Awaitable, Callable, Iterable
 from typing import TYPE_CHECKING, Self
 
-from ._types import BodyData, Headers, JSONValue, MetaData, QueryParams
+from ._types import BodyData, Headers, JSONLike, JSONValue, MetaData, QueryParams
 
 if TYPE_CHECKING:
     from .response import Response
@@ -34,10 +34,10 @@ class Request:
 
 type CallbackOutput = (
     Request
-    | JSONValue
-    | Iterable[Request | JSONValue]
-    | AsyncIterable[Request | JSONValue]
-    | AsyncIterator[Request | JSONValue]
+    | JSONLike
+    | Iterable[Request | JSONLike]
+    | AsyncIterable[Request | JSONLike]
+    | AsyncIterator[Request | JSONLike]
     | None
 )
 type CallbackResult = CallbackOutput | Awaitable[CallbackOutput]

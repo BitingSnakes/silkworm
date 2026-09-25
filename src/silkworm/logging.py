@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from threading import RLock
 from types import TracebackType
-from typing import Literal, Protocol, assert_never, cast, runtime_checkable
+from typing import Literal, Protocol, TextIO, assert_never, cast, runtime_checkable
 
 type _NormalizedLogLevel = Literal[
     "TRACE",
@@ -174,7 +174,7 @@ class _LoggerAdapter:
             case str() | os.PathLike():
                 handler = stdlib_logging.FileHandler(Path(sink), encoding="utf-8")
             case _ if hasattr(sink, "write"):
-                handler = stdlib_logging.StreamHandler(sink)
+                handler = stdlib_logging.StreamHandler(cast("TextIO", sink))
             case _:
                 msg = f"Unsupported logging sink: {sink!r}"
                 raise TypeError(msg)

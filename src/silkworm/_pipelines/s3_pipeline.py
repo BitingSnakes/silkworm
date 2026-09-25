@@ -81,7 +81,7 @@ class S3JsonLinesPipeline:
         if self.secret_access_key:
             config["secret_access_key"] = self.secret_access_key
 
-        self._operator = opendal.AsyncOperator("s3", **config)
+        self._operator = opendal.AsyncOperator("s3", **config)  # pyright: ignore[reportPossiblyUnboundVariable]
         self._items = []
         self.logger.info(
             "Opened S3 JSON Lines pipeline",

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import inspect
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncIterator, Mapping, Sequence
 from typing import TYPE_CHECKING, ClassVar, Protocol, Self, dataclass_transform
 
 from .._types import JSONValue
@@ -62,7 +62,7 @@ class Item(metaclass=_ItemMeta):
         plan = cls.extraction_plan()
         source = response  # HTMLResponse satisfies the internal selector protocol.
         if plan.root_selector is None:
-            roots: list[object] = [source]
+            roots: Sequence[object] = [source]
         else:
             roots = await source.select(plan.root_selector)
 
@@ -196,7 +196,8 @@ async def _extract_element_value(
                     _field_context(plan, item_name, response.url, root_index)
                     + ": selected element does not expose attr()"
                 )
-            value = attr(field.attribute)
+            raw_value = attr(field.attribute)
+            value = None if raw_value is None else str(raw_value)
             if value is not None and field.absolute:
                 value = response.url_join(value)
         case _:

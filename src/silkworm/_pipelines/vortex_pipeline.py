@@ -78,7 +78,7 @@ class VortexPipeline:
             table = pa.Table.from_pylist(self._items)
 
             # Write the table to a Vortex file
-            vortex.io.write(table, str(self.path))
+            vortex.io.write(table, str(self.path))  # pyright: ignore[reportPossiblyUnboundVariable]
 
             self.logger.info(
                 "Closed Vortex pipeline",

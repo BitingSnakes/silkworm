@@ -4,7 +4,13 @@ import inspect
 import reprlib
 import sys
 import time
-from collections.abc import AsyncIterable, AsyncIterator, Callable, Iterable
+from collections.abc import (
+    AsyncIterable,
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Iterable,
+)
 from dataclasses import dataclass
 from datetime import timedelta
 from itertools import count
@@ -15,7 +21,7 @@ try:  # resource is POSIX-only
 except ImportError:  # pragma: no cover - platform dependent
     resource = None  # type: ignore[assignment]
 
-from ._types import JSONValue
+from ._types import JSONLike, JSONValue
 from ._validation import require_positive_int
 from .exceptions import SpiderError
 from .http import HttpClient
@@ -102,7 +108,9 @@ class EngineLogger:
         pipeline: ItemPipeline,
         spider: Spider,
     ) -> None:
-        log_level = getattr(pipeline, "log_level", self.item_pipeline_level)
+        log_level = cast(
+            "LogLevel", getattr(pipeline, "log_level", self.item_pipeline_level)
+        )
         log_at_level(
             logger,
             log_level,
@@ -231,13 +239,13 @@ class Engine:
         for middleware in self._iter_middlewares():
             open_hook = getattr(middleware, "open", None)
             if callable(open_hook):
-                await open_hook(self.spider)
+                await cast("Awaitable[object]", open_hook(self.spider))
 
     async def _close_middlewares(self) -> None:
         for middleware in reversed(list(self._iter_middlewares())):
             close_hook = getattr(middleware, "close", None)
             if callable(close_hook):
-                await close_hook(self.spider)
+                await cast("Awaitable[object]", close_hook(self.spider))
 
     async def _apply_request_mw(self, req: Request) -> Request:
         for mw in self.request_middlewares:
@@ -472,7 +480,9 @@ class Engine:
                         spider=self.spider.name,
                         pipelines=len(self.item_pipelines),
                     )
-                    await self._process_item(x)
+                    # Pipelines take JSONValue; callbacks may yield read-only
+                    # JSONLike shapes, which are the same objects at runtime.
+                    await self._process_item(cast(JSONValue, x))
         except Exception as exc:
             self.logger.error(
                 "Callback yielded invalid results",
@@ -493,7 +503,7 @@ class Engine:
     async def _iterate_callback_results(
         self,
         produced: CallbackResult,
-    ) -> AsyncIterator[Request | JSONValue]:
+    ) -> AsyncIterator[Request | JSONLike]:
         """
         Normalize any supported callback return shape (single item, Request,
         sync/async iterator, or awaitable) into an async iterator.
@@ -523,7 +533,7 @@ class Engine:
 
         # Fallback: treat any other value as a single item to avoid confusing
         # TypeError from iterating over non-iterables.
-        yield cast(JSONValue, results)
+        yield cast(JSONLike, results)
 
     async def _process_item(self, item: JSONValue) -> None:
         self._stats["items_scraped"] += 1

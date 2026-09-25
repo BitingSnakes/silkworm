@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from threading import RLock
-from typing import TYPE_CHECKING, get_type_hints
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Protocol, get_type_hints
 from weakref import WeakKeyDictionary
 
 from .exceptions import DeclarativeConfigurationError
@@ -13,10 +14,27 @@ if TYPE_CHECKING:
     from .items import Item
 
 
+class FieldSpec(Protocol):
+    """Read-only view of the ``Field`` a plan extracts with.
+
+    ``Field`` is a descriptor, so type checkers would apply its ``__get__`` to a
+    dataclass attribute annotated as ``Field[object]``; this protocol avoids that.
+    """
+
+    @property
+    def name(self) -> str: ...
+    @property
+    def selector(self) -> str: ...
+    @property
+    def transform(self) -> Callable[[str], object] | None: ...
+    @property
+    def default(self) -> object: ...
+
+
 @dataclass(frozen=True, slots=True)
 class FieldPlan:
     name: str
-    field: Field[object]
+    field: FieldSpec
     cardinality: Cardinality
     value_type: object
     annotation: object

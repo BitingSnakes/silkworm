@@ -410,7 +410,7 @@ async def test_htmlresponse_css_aliases_select(monkeypatch: pytest.MonkeyPatch):
         request=req,
     )
 
-    document = type("Document", (), {})()
+    document = types.SimpleNamespace()
     document.select = AsyncMock(return_value=["first", "second"])
     first_link = object()
     document.select_first = AsyncMock(return_value=first_link)
@@ -440,7 +440,7 @@ async def test_htmlresponse_find_aliases_select_first(monkeypatch: pytest.Monkey
         request=req,
     )
 
-    document = type("Document", (), {})()
+    document = types.SimpleNamespace()
     found_link = object()
     document.select_first = AsyncMock(return_value=found_link)
     parse_mock = AsyncMock(return_value=document)
@@ -466,7 +466,7 @@ async def test_htmlresponse_prettify_uses_scraper_rs(monkeypatch: pytest.MonkeyP
         request=req,
     )
 
-    document = type("Document", (), {})()
+    document = types.SimpleNamespace()
     prettify_mock = AsyncMock(return_value="<html>\n  <body></body>\n</html>")
     document.prettify = prettify_mock
     parse_mock = AsyncMock(return_value=document)
@@ -494,7 +494,7 @@ async def test_htmlresponse_close_releases_cached_document(
         request=req,
     )
 
-    document = type("Document", (), {})()
+    document = types.SimpleNamespace()
     document.select = AsyncMock(return_value=[])
     document.close = Mock()
     parse_mock = AsyncMock(return_value=document)
@@ -674,7 +674,7 @@ async def test_httpclient_detects_redirect_loops():
 
 async def test_httpclient_handles_unhashable_status_codes():
     class UnhashableStatus:
-        __hash__ = None
+        __hash__ = None  # pyright: ignore[reportAssignmentType]
 
         def __int__(self) -> int:
             return 302

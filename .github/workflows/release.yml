@@ -34,8 +34,8 @@ jobs:
       - name: Run ruff linting
         run: uv run --group dev ruff check src examples
 
-      - name: Run mypy type checking
-        run: uv run --group dev mypy src
+      - name: Run pyright type checking
+        run: uv run --group dev pyright src
 
       - name: Run tests
         run: uv run --group dev pytest -o "anyio_mode=auto"

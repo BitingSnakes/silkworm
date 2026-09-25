@@ -4,6 +4,7 @@ import tempfile
 import json
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -894,7 +895,7 @@ async def test_avro_pipeline_infers_schema():
         # Read and verify Avro data
         with open(avro_path, "rb") as f:
             reader = fastavro.reader(f)
-            records = list(reader)
+            records = [cast("dict[str, Any]", record) for record in reader]
 
         assert len(records) == 1
         assert records[0]["text"] == "Hello"

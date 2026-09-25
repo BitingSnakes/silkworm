@@ -44,7 +44,7 @@ class JsonLinesPipeline:
     async def open(self, spider: Spider) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         if self._use_opendal:
-            self._operator = opendal.AsyncOperator("fs", root=str(self.path.parent))
+            self._operator = opendal.AsyncOperator("fs", root=str(self.path.parent))  # pyright: ignore[reportPossiblyUnboundVariable]
             self._object_path = self.path.name
             self.logger.info(
                 "Opened JSONL pipeline",

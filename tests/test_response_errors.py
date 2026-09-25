@@ -1,4 +1,5 @@
 import asyncio
+import types
 from unittest.mock import AsyncMock
 
 import pytest
@@ -13,7 +14,7 @@ async def test_select_wraps_selector_errors(monkeypatch):
     async def boom(*args, **kwargs):
         raise RuntimeError("no parent ElemInfo")
 
-    document = type("Document", (), {})()
+    document = types.SimpleNamespace()
     document.select = boom
     monkeypatch.setattr(
         response_module, "parse_async", AsyncMock(return_value=document)
@@ -40,7 +41,7 @@ async def test_select_propagates_cancelled_error(monkeypatch):
     async def cancel(*args, **kwargs):
         raise asyncio.CancelledError
 
-    document = type("Document", (), {})()
+    document = types.SimpleNamespace()
     document.select = cancel
     monkeypatch.setattr(
         response_module, "parse_async", AsyncMock(return_value=document)
@@ -63,7 +64,7 @@ async def test_prettify_wraps_scraper_errors(monkeypatch):
     async def boom(*args, **kwargs):
         raise RuntimeError("cannot prettify")
 
-    document = type("Document", (), {})()
+    document = types.SimpleNamespace()
     document.prettify = boom
     monkeypatch.setattr(
         response_module, "parse_async", AsyncMock(return_value=document)

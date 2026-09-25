@@ -88,7 +88,7 @@ class MsgPackPipeline:
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:
         if not self._fp:
             raise RuntimeError("MsgPackPipeline not opened")
-        packed = ormsgpack.packb(item)
+        packed = ormsgpack.packb(item)  # pyright: ignore[reportPossiblyUnboundVariable]
         self._fp.write(packed)
         self._fp.flush()
         _log_pipeline_item(

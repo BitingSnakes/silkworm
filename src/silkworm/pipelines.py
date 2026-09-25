@@ -8,93 +8,93 @@ from ._pipelines.base import (
     ItemPipeline,
     LoggedPipeline,
 )
-from ._pipelines.callback import CallbackPipeline
-from ._pipelines.taskiq import (
+from ._pipelines.callback_pipeline import CallbackPipeline
+from ._pipelines.taskiq_pipeline import (
     TaskiqPipeline,
     TASKIQ_AVAILABLE,
 )
-from ._pipelines.jsonlines import (
+from ._pipelines.jsonlines_pipeline import (
     JsonLinesPipeline,
     OPENDAL_AVAILABLE,
 )
-from ._pipelines.msgpack import (
+from ._pipelines.msgpack_pipeline import (
     MsgPackPipeline,
     ORMSGPACK_AVAILABLE,
 )
-from ._pipelines.sqlite import SQLitePipeline
-from ._pipelines.xml import XMLPipeline
-from ._pipelines.rss import RssPipeline
-from ._pipelines.csv import CSVPipeline
-from ._pipelines.polars import (
+from ._pipelines.sqlite_pipeline import SQLitePipeline
+from ._pipelines.xml_pipeline import XMLPipeline
+from ._pipelines.rss_pipeline import RssPipeline
+from ._pipelines.csv_pipeline import CSVPipeline
+from ._pipelines.polars_pipeline import (
     PolarsPipeline,
     POLARS_AVAILABLE,
 )
-from ._pipelines.excel import (
+from ._pipelines.excel_pipeline import (
     ExcelPipeline,
     OPENPYXL_AVAILABLE,
 )
-from ._pipelines.yaml import (
+from ._pipelines.yaml_pipeline import (
     YAMLPipeline,
     YAML_AVAILABLE,
 )
-from ._pipelines.avro import (
+from ._pipelines.avro_pipeline import (
     AvroPipeline,
     FASTAVRO_AVAILABLE,
 )
-from ._pipelines.elasticsearch import (
+from ._pipelines.elasticsearch_pipeline import (
     ElasticsearchPipeline,
     ELASTICSEARCH_AVAILABLE,
 )
-from ._pipelines.mongodb import (
+from ._pipelines.mongodb_pipeline import (
     MongoDBPipeline,
     MOTOR_AVAILABLE,
 )
-from ._pipelines.s3 import S3JsonLinesPipeline
-from ._pipelines.vortex import (
+from ._pipelines.s3_pipeline import S3JsonLinesPipeline
+from ._pipelines.vortex_pipeline import (
     VortexPipeline,
     VORTEX_AVAILABLE,
 )
-from ._pipelines.mysql import (
+from ._pipelines.mysql_pipeline import (
     MySQLPipeline,
     AIOMYSQL_AVAILABLE,
 )
-from ._pipelines.postgresql import (
+from ._pipelines.postgresql_pipeline import (
     PostgreSQLPipeline,
     ASYNCPG_AVAILABLE,
 )
-from ._pipelines.webhook import (
+from ._pipelines.webhook_pipeline import (
     WebhookPipeline,
     WREQ_AVAILABLE,
 )
-from ._pipelines.google_sheets import (
+from ._pipelines.google_sheets_pipeline import (
     GoogleSheetsPipeline,
     GOOGLE_SHEETS_AVAILABLE,
 )
-from ._pipelines.snowflake import (
+from ._pipelines.snowflake_pipeline import (
     SnowflakePipeline,
     SNOWFLAKE_AVAILABLE,
 )
-from ._pipelines.ftp import (
+from ._pipelines.ftp_pipeline import (
     FTPPipeline,
     AIOFTP_AVAILABLE,
 )
-from ._pipelines.sftp import (
+from ._pipelines.sftp_pipeline import (
     SFTPPipeline,
     ASYNCSSH_AVAILABLE,
 )
-from ._pipelines.cassandra import (
+from ._pipelines.cassandra_pipeline import (
     CassandraPipeline,
     CASSANDRA_AVAILABLE,
 )
-from ._pipelines.couchdb import (
+from ._pipelines.couchdb_pipeline import (
     CouchDBPipeline,
     AIOCOUCH_AVAILABLE,
 )
-from ._pipelines.dynamodb import (
+from ._pipelines.dynamodb_pipeline import (
     DynamoDBPipeline,
     AIOBOTO3_AVAILABLE,
 )
-from ._pipelines.duckdb import (
+from ._pipelines.duckdb_pipeline import (
     DuckDBPipeline,
     DUCKDB_AVAILABLE,
 )

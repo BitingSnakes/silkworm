@@ -55,7 +55,7 @@ class YAMLPipeline:
     async def close(self, spider: Spider) -> None:
         if self._items:
             with self.path.open("w", encoding="utf-8") as f:
-                yaml.dump(self._items, f, default_flow_style=False, allow_unicode=True)
+                yaml.dump(self._items, f, default_flow_style=False, allow_unicode=True)  # pyright: ignore[reportPossiblyUnboundVariable]
         self.logger.info("Closed YAML pipeline", path=str(self.path))
 
     async def process_item(self, item: JSONValue, spider: Spider) -> JSONValue:

@@ -71,7 +71,7 @@ class PostgreSQLPipeline:
         self.logger = get_logger(component="PostgreSQLPipeline")
 
     async def open(self, spider: Spider) -> None:
-        self._pool = await asyncpg.create_pool(
+        self._pool = await asyncpg.create_pool(  # pyright: ignore[reportPossiblyUnboundVariable]
             host=self.host,
             port=self.port,
             user=self.user,

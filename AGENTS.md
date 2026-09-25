@@ -561,9 +561,9 @@ just help          # Show all available commands
 just init          # Clean and initialize venv
 just fmt           # Format code with ruff
 just lint          # Lint code with ruff
-just typecheck     # Type check with mypy
+just typecheck     # Type check src with pyright
 just test          # Run tests with pytest
-just mypy          # Type check all code (src, tests, examples)
+just pyright       # Type check all code (src, tests, examples)
 just clean         # Remove all generated files
 just build         # Build distribution packages
 ```
@@ -591,10 +591,15 @@ just fmt && just lint && just typecheck && just test
 - Automatically formats code
 - Checks for common errors and anti-patterns
 
-**Mypy Configuration:**
-- Strict type checking enabled
+**Pyright Configuration** (`[tool.pyright]` in `pyproject.toml`):
+- `standard` type checking mode over `src`, `tests` and `examples`
 - All code must be properly typed
 - Use `TYPE_CHECKING` guard for imports only needed for type hints
+- Optional dependencies are imported in `try`/`except ImportError`; silence the
+  resulting "possibly unbound" report at the use site with
+  `# pyright: ignore[reportPossiblyUnboundVariable]`
+- Tests relax only the rules that clash with pytest idioms (possibly unbound
+  optional imports and optional member access/subscript)
 
 ### Testing
 
@@ -988,7 +993,7 @@ Add support for custom delay functions in DelayMiddleware
 ### Development Tools
 - uv: https://docs.astral.sh/uv/
 - ruff: https://docs.astral.sh/ruff/
-- mypy: https://mypy.readthedocs.io/
+- pyright: https://microsoft.github.io/pyright/
 - pytest: https://docs.pytest.org/
 
 ## Summary Checklist for AI Agents

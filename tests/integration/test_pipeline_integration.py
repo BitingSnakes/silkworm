@@ -19,6 +19,7 @@ import sys
 import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -450,7 +451,7 @@ async def test_avro_pipeline_integration():
 
         with open(output_path, "rb") as f:
             reader = fastavro.reader(f)
-            records = list(reader)
+            records = [cast("dict[str, Any]", record) for record in reader]
 
         assert len(records) == len(SAMPLE_QUOTES)
 
@@ -906,7 +907,7 @@ async def test_couchdb_pipeline_integration(couchdb_container):
         db = await client["test_db"]
 
         # Get all documents
-        all_docs = await db.akeys()
+        all_docs = [doc_id async for doc_id in db.akeys()]
         # CouchDB includes design documents, so we filter for our data
         # Note: This is fine for small test datasets; for production use cases,
         # consider using a view or _all_docs with startkey/endkey parameters

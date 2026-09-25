@@ -86,9 +86,9 @@ class SFTPPipeline:
     async def close(self, spider: Spider) -> None:
         if self._items:
             # Connect to SFTP server and upload all buffered items
+            conn: Any | None = None
+            sftp: Any | None = None
             try:
-                conn: Any | None = None
-                sftp: Any | None = None
                 connect_kwargs = {
                     "host": self.host,
                     "port": self.port,

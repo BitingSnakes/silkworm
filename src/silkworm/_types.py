@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 
 type JSONScalar = str | int | float | bool | None
 type JSONValue = JSONScalar | dict[str, JSONValue] | list[JSONValue]
+# Read-only counterpart of JSONValue. ``dict`` and ``list`` are invariant, so a
+# ``dict[str, str]`` is not a JSONValue; it is a JSONLike.
+type JSONLike = JSONScalar | Mapping[str, JSONLike] | Sequence[JSONLike]
 
 type Headers = dict[str, str]
 type QueryValue = (
@@ -25,6 +28,7 @@ type BodyData = (
 __all__ = [
     "BodyData",
     "Headers",
+    "JSONLike",
     "JSONScalar",
     "JSONValue",
     "MetaData",
