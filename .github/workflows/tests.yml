@@ -1,6 +1,12 @@
 name: Tests
 
 on:
+  push:
+    paths:
+      - "src/silkworm/**"
+  pull_request:
+    paths:
+      - "src/silkworm/**"
   workflow_dispatch:
 
 jobs:
