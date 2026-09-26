@@ -7,13 +7,7 @@ import inspect
 import reprlib
 import sys
 import time
-from collections.abc import (
-    AsyncIterable,
-    AsyncIterator,
-    Awaitable,
-    Callable,
-    Iterable,
-)
+from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass
 from datetime import timedelta
 from itertools import count
@@ -24,12 +18,13 @@ try:  # resource is POSIX-only
 except ImportError:  # pragma: no cover - platform dependent
     resource = None
 
+from ._scope import CrawlScope, enter_scope
 from ._types import JSONLike, JSONValue
 from ._validation import require_positive_int
 from .exceptions import SilkwormError, SpiderError
 from .http import DEFAULT_EMULATION, HttpClient
 from .logging import Logger, LogLevel, complete_logs, get_logger, log_at_level
-from .request import CallbackOutput, CallbackResult, Request
+from .request import Callback, Request
 from .response import HTMLResponse, Response
 
 if TYPE_CHECKING:
@@ -300,8 +295,12 @@ class Engine:
                 )
                 await pipe.open(self.spider)
 
-            async for req in self.spider.start_requests():
-                await self._enqueue(req)
+            await self._run_callback(
+                self.spider.start_requests,
+                name="start_requests",
+                url=None,
+                response=None,
+            )
         except BaseException as exc:
             cleanup_errors = await self._close_lifecycle_components()
             self._record_cleanup_failures(exc, cleanup_errors)
@@ -466,8 +465,12 @@ class Engine:
             error=str(exc),
             error_type=exc.__class__.__name__,
         )
-        produced = errback(req, exc)
-        await self._handle_callback_results(produced, callback_name=name, url=req.url)
+        await self._run_callback(
+            lambda: errback(req, exc),
+            name=name,
+            url=req.url,
+            response=None,
+        )
         return True
 
     async def _enqueue(self, req: Request) -> None:
@@ -609,17 +612,11 @@ class Engine:
             else:
                 callback_resp = processed
 
-            try:
-                produced: CallbackResult = effective_callback(callback_resp)
-            except Exception as exc:
-                raise SpiderError(
-                    f"Spider callback '{name}' failed for {self.spider.name}",
-                ) from exc
-
-            await self._handle_callback_results(
-                produced,
-                callback_name=name,
+            await self._run_callback(
+                lambda: effective_callback(callback_resp),
+                name=name,
                 url=processed.url,
+                response=callback_resp,
             )
         finally:
             primary = sys.exception()
@@ -638,81 +635,81 @@ class Engine:
             else:
                 self._raise_cleanup_errors(cleanup_errors)
 
-    async def _handle_callback_results(
+    async def _run_callback(
         self,
-        produced: CallbackResult,
+        invoke: Callable[[], object],
         *,
-        callback_name: str,
-        url: str,
+        name: str,
+        url: str | None,
+        response: Response | None,
     ) -> None:
-        last_yielded_type: str | None = None
-        last_yielded_repr: str | None = None
+        """Run a callback coroutine inside a scope wired to the engine sinks.
 
-        try:
-            async for x in self._iterate_callback_results(produced):
-                last_yielded_type = type(x).__name__
-                last_yielded_repr = self._safe_repr(x)
-                if isinstance(x, Request):
-                    await self._enqueue(x)
-                else:
-                    self.logger.debug(
-                        "Processing scraped item",
-                        spider=self.spider.name,
-                        pipelines=len(self.item_pipelines),
-                    )
-                    # Pipelines take JSONValue; callbacks may yield read-only
-                    # JSONLike shapes, which are the same objects at runtime.
-                    await self._process_item(cast(JSONValue, x))
-        except Exception as exc:
-            self.logger.exception(
-                "Callback yielded invalid results",
-                callback=callback_name,
-                produced_type=type(produced).__name__,
-                last_yielded_type=last_yielded_type,
-                last_yielded_repr=last_yielded_repr,
-                spider=self.spider.name,
-                url=url,
-                error=str(exc),
-                error_type=exc.__class__.__name__,
-            )
+        Items reported with ``emit`` reach the pipelines and requests reported
+        with ``follow`` reach the queue while the callback runs.
+        """
+        scope = CrawlScope(
+            owner=name,
+            emit_item=self._emit_item,
+            schedule_request=self._enqueue,
+            response=response,
+        )
+        with enter_scope(scope):
+            try:
+                produced = invoke()
+            except Exception as exc:
+                raise self._callback_failure(name, url, exc) from exc
+
+            if inspect.isasyncgen(produced):
+                raise SpiderError(
+                    f"Spider callback '{name}' is an async generator; callbacks "
+                    "must not yield. Replace `yield item` with "
+                    "`await self.emit(item)` and `yield request` with "
+                    "`await self.follow(request)`",
+                )
+            if not inspect.isawaitable(produced):
+                raise SpiderError(
+                    f"Spider callback '{name}' must be an async function, "
+                    f"got a {type(produced).__name__} result",
+                )
+
+            try:
+                returned: object = await produced
+            except Exception as exc:
+                raise self._callback_failure(name, url, exc) from exc
+
+        if returned is not None:
             raise SpiderError(
-                f"Spider callback '{callback_name}' yielded invalid results",
-            ) from exc
+                f"Spider callback '{name}' returned a {type(returned).__name__}; "
+                "callbacks must return None and report results with "
+                "`await self.emit(item)` / `await self.follow(request)`",
+            )
 
-    async def _iterate_callback_results(
+    def _callback_failure(
         self,
-        produced: CallbackResult,
-    ) -> AsyncIterator[Request | JSONLike]:
-        """
-        Normalize any supported callback return shape (single item, Request,
-        sync/async iterator, or awaitable) into an async iterator.
-        """
-        results: CallbackOutput
-        results = await produced if inspect.isawaitable(produced) else produced
+        name: str,
+        url: str | None,
+        exc: Exception,
+    ) -> SpiderError:
+        self.logger.exception(
+            "Spider callback failed",
+            callback=name,
+            spider=self.spider.name,
+            url=url,
+            error=str(exc),
+            error_type=exc.__class__.__name__,
+        )
+        return SpiderError(f"Spider callback '{name}' failed for {self.spider.name}")
 
-        if results is None:
-            return
-
-        if isinstance(results, Request):
-            yield results
-            return
-
-        if isinstance(results, (AsyncIterator, AsyncIterable)):
-            async for x in results:
-                yield x
-            return
-
-        if isinstance(results, Iterable) and not isinstance(
-            results,
-            (str, bytes, bytearray),
-        ):
-            for x in results:
-                yield x
-            return
-
-        # Fallback: treat any other value as a single item to avoid confusing
-        # TypeError from iterating over non-iterables.
-        yield cast(JSONLike, results)
+    async def _emit_item(self, item: JSONLike) -> None:
+        self.logger.debug(
+            "Processing scraped item",
+            spider=self.spider.name,
+            pipelines=len(self.item_pipelines),
+        )
+        # Pipelines take JSONValue; callbacks may emit read-only JSONLike
+        # shapes, which are the same objects at runtime.
+        await self._process_item(cast(JSONValue, item))
 
     async def _process_item(self, item: JSONValue) -> None:
         self._stats["items_scraped"] += 1
@@ -847,10 +844,7 @@ class Engine:
             )
             self._raise_cleanup_errors(await self._shutdown())
 
-    def _expects_html(
-        self,
-        callback: Callable[[Response], CallbackResult] | None,
-    ) -> bool:
+    def _expects_html(self, callback: Callback | None) -> bool:
         if callback is None:
             return True
 

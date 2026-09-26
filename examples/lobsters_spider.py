@@ -121,7 +121,7 @@ class LobstersSpider(Spider):
                 self.log.warning("Skipping invalid story", errors=exc.errors())
                 continue
 
-            yield story_item.model_dump()
+            await self.emit(story_item.model_dump())
 
         # Follow the "Page 2 >>" link until we reach the page limit.
         if self.pages_seen >= self.max_pages:
@@ -133,7 +133,7 @@ class LobstersSpider(Spider):
         if next_links:
             href = next_links[-1].attr("href")
             if href:
-                yield response.follow(href, callback=self.parse)
+                await response.follow(href, callback=self.parse)
 
 
 def main() -> None:

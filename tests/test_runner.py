@@ -19,7 +19,7 @@ class SimpleSpider(Spider):
     start_urls: tuple[str, ...] = ()
 
     async def parse(self, response):
-        yield {}
+        await self.emit({})
 
 
 @contextmanager
@@ -142,7 +142,7 @@ class ArgSpider(Spider):
         self.pages = pages
 
     async def parse(self, response):
-        yield {}
+        await self.emit({})
 
 
 def _record_engines(monkeypatch: pytest.MonkeyPatch) -> list[tuple[Spider, dict]]:

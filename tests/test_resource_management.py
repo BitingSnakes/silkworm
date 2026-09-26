@@ -116,9 +116,7 @@ async def test_engine_preserves_startup_error_and_attempts_every_rollback() -> N
         async def close(self) -> None:
             events.append("close:spider")
 
-        async def start_requests(self):
-            if False:
-                yield Request("https://example.com")
+        async def start_requests(self) -> None:
             raise RuntimeError("startup failed")
 
     engine = Engine(
@@ -130,7 +128,7 @@ async def test_engine_preserves_startup_error_and_attempts_every_rollback() -> N
         ],
     )
     try:
-        with pytest.raises(RuntimeError, match="startup failed") as error:
+        with pytest.raises(SpiderError, match="'start_requests' failed") as error:
             await engine.open_spider()
     finally:
         await engine.http.close()
@@ -145,13 +143,15 @@ async def test_engine_preserves_startup_error_and_attempts_every_rollback() -> N
         "close:spider",
         "close:middleware",
     ]
+    assert isinstance(error.value.__cause__, RuntimeError)
+    assert str(error.value.__cause__) == "startup failed"
     assert any("second cleanup failed" in note for note in error.value.__notes__)
 
 
 async def test_callback_failure_closes_response() -> None:
     spider = Spider()
 
-    def fail(response: Response) -> None:
+    async def fail(response: Response) -> None:
         raise ValueError("callback failed")
 
     request = Request("https://example.com", callback=fail)

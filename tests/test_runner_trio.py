@@ -16,7 +16,7 @@ class SimpleSpider(Spider):
     start_urls: tuple[str, ...] = ()
 
     async def parse(self, response):
-        yield {}
+        await self.emit({})
 
 
 def test_run_spider_trio_raises_when_trio_not_installed():

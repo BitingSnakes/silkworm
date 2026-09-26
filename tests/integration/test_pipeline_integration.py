@@ -4,7 +4,7 @@ Integration tests that run spiders with all available pipelines.
 These tests verify that pipelines produce correct output files when used
 with actual spider runs. Each test:
 1. Creates a temporary directory for output files
-2. Runs a test spider that yields sample data
+2. Runs a test spider that emits sample data through the engine
 3. Verifies the pipeline produces correctly formatted output files
 4. Validates the content matches the expected data
 
@@ -25,7 +25,7 @@ import anyio
 import pytest
 import rxml
 
-from silkworm import HTMLResponse, Request, Response, Spider
+from silkworm import Engine, HTMLResponse, Request, Response, Spider
 from silkworm.pipelines import (
     CSVPipeline,
     JsonLinesPipeline,
@@ -50,7 +50,7 @@ def _child(node: rxml.Node, name: str) -> rxml.Node:
 
 
 class TestSpider(Spider):
-    """A simple spider that yields test data."""
+    """A simple spider that emits test data."""
 
     __test__ = False  # prevent pytest from treating this helper as a test class
     name = "test"
@@ -60,41 +60,32 @@ class TestSpider(Spider):
         super().__init__(**kwargs)
         self.quotes_data = quotes_data or SAMPLE_QUOTES
 
-    async def parse(self, response: Response):
-        # Yield all test quotes
+    async def parse(self, response: Response) -> None:
         for quote in self.quotes_data:
-            yield quote
+            await self.emit(quote)
 
 
-def create_mock_response():
-    """Create a mock HTMLResponse for testing."""
-    mock_html = "<html><body>Test</body></html>"
-    mock_request = Request(url="http://example.com")
-    return HTMLResponse(
-        url=mock_request.url,
-        status=200,
-        headers={},
-        body=mock_html.encode("utf-8"),
-        request=mock_request,
-    )
+async def crawl_with_pipelines(spider: Spider, pipelines: list[Any]) -> None:
+    """Run ``spider`` through the engine against a canned HTML response."""
+    engine = Engine(spider, concurrency=1, item_pipelines=pipelines)
+
+    async def fake_fetch(request: Request) -> Response:
+        return HTMLResponse(
+            url=request.url,
+            status=200,
+            headers={},
+            body=b"<html><body>Test</body></html>",
+            request=request,
+        )
+
+    engine.http.fetch = fake_fetch  # type: ignore[method-assign]
+    await engine.run()
 
 
 async def run_spider_with_pipeline(spider_cls, pipeline, **spider_kwargs):
     """Helper to run a spider with a pipeline and return the spider instance."""
     spider = spider_cls(**spider_kwargs)
-    mock_response = create_mock_response()
-
-    # Open the pipeline
-    await pipeline.open(spider)
-
-    # Process items from the spider's parse method
-    async for item in spider.parse(mock_response):
-        if isinstance(item, dict):
-            await pipeline.process_item(item, spider)
-
-    # Close the pipeline
-    await pipeline.close(spider)
-
+    await crawl_with_pipelines(spider, [pipeline])
     return spider
 
 
@@ -520,25 +511,9 @@ async def test_multiple_pipelines_simultaneously():
         csv_pipeline = CSVPipeline(csv_path)
         xml_pipeline = XMLPipeline(xml_path)
 
-        spider = TestSpider()
-        mock_response = create_mock_response()
-
-        # Open all pipelines
-        await jl_pipeline.open(spider)
-        await csv_pipeline.open(spider)
-        await xml_pipeline.open(spider)
-
-        # Process items through all pipelines
-        async for item in spider.parse(mock_response):
-            if isinstance(item, dict):
-                await jl_pipeline.process_item(item, spider)
-                await csv_pipeline.process_item(item, spider)
-                await xml_pipeline.process_item(item, spider)
-
-        # Close all pipelines
-        await jl_pipeline.close(spider)
-        await csv_pipeline.close(spider)
-        await xml_pipeline.close(spider)
+        await crawl_with_pipelines(
+            TestSpider(), [jl_pipeline, csv_pipeline, xml_pipeline]
+        )
 
         # Verify all files exist
         assert jl_path.exists()

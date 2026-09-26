@@ -94,20 +94,22 @@ Per-request controls:
 from silkworm import Request
 
 # Add cookies only for this request, then let the jar manage them.
-yield Request(
-    url="https://example.com/account",
-    meta={"cookies": {"session": "abc"}},
+await self.follow(
+    Request(
+        url="https://example.com/account",
+        meta={"cookies": {"session": "abc"}},
+    )
 )
 
 # Use isolated cookie sessions within one crawl.
-yield Request(
-    url="https://example.com/account",
+await self.follow(
+    "https://example.com/account",
     meta={"cookiejar": "account-a"},
 )
 
 # Bypass cookie storage and cookie header merging for this exchange.
-yield Request(
-    url="https://example.com/public",
+await self.follow(
+    "https://example.com/public",
     meta={"dont_merge_cookies": True},
 )
 ```
@@ -234,10 +236,12 @@ run_spider(
 from silkworm import Request
 from silkworm.middlewares import CloudflareCrawlMiddleware
 
-yield Request(
-    url="https://example.com/",
-    callback=self.parse,
-    meta={"cloudflare_crawl": {"limit": 25, "render": True}},
+await self.follow(
+    Request(
+        url="https://example.com/",
+        callback=self.parse,
+        meta={"cloudflare_crawl": {"limit": 25, "render": True}},
+    )
 )
 
 run_spider(

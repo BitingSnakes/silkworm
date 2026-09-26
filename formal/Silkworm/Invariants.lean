@@ -3,12 +3,11 @@ import Silkworm.Engine
 
 namespace Silkworm
 
-theorem handle_no_callback_output_noop (st : EngineState) :
-    handleCallbackOutput CallbackOutput.none st = st := by
+theorem handle_no_callback_effects_noop (st : EngineState) :
+    handleCallbackEffects [] st = st := by
   simp [
-    handleCallbackOutput,
-    handleCallbackOutputWith,
-    normalizeCallbackOutput,
+    handleCallbackEffects,
+    handleCallbackEffectsWith,
     handleEventsWith,
   ]
 

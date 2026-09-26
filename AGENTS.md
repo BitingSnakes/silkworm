@@ -7,7 +7,7 @@
 ### Key Features
 - **Async-first engine** with configurable concurrency, bounded backpressure (defaults to `concurrency * 10`), and per-request timeouts
 - **wreq-powered HTTP client** with browser impersonation, redirect following with loop detection, query merging, and proxy support
-- **Typed spiders and callbacks** with `HTMLResponse` helpers (`follow`, selectors) and flexible callback outputs
+- **Typed async spiders** with a push-style callback API: `await self.emit(item)` / `await self.follow(...)` (plus `await response.follow(href)`) instead of `yield`
 - **Middleware system** for request/response processing
 - **Pipeline system** for data export to various formats and destinations
 - **Structured logging + crawl stats** via logly (`SILKWORM_LOG_LEVEL`, periodic + final summaries)
@@ -33,16 +33,8 @@ type Headers = dict[str, str]
 type MetaData = dict[str, JSONValue]
 
 # From src/silkworm/request.py
-type CallbackOutput = (
-    Request
-    | JSONValue
-    | Iterable[Request | JSONValue]
-    | AsyncIterable[Request | JSONValue]
-    | AsyncIterator[Request | JSONValue]
-    | None
-)
-type CallbackResult = CallbackOutput | Awaitable[CallbackOutput]
-type Callback = Callable[["Response"], CallbackResult]
+type Callback = Callable[["Response"], Awaitable[None]]
+type Errback = Callable[[Request, Exception], Awaitable[None]]
 ```
 
 #### ❌ Incorrect (Old Style - DO NOT USE)
@@ -157,14 +149,14 @@ class Request:
 
 ### PEP 698: Override Decorator (Python 3.12+)
 
-Use `@override` for overridden methods; it is already used in the codebase (e.g., `HTMLResponse` overrides `Response.follow`).
+Use `@override` for overridden methods; it is already used in the codebase (e.g., `HTMLResponse` overrides `Response.close`).
 
 ```python
 from typing import override
 
 class QuotesSpider(Spider):
     @override
-    async def parse(self, response: Response) -> CallbackOutput:
+    async def parse(self, response: Response) -> None:
         ...
 ```
 
@@ -243,6 +235,7 @@ PYTHON_GIL=0 uv run python examples/lobsters_spider.py --pages 30
 silkworm/
 ├── src/silkworm/          # Main package
 │   ├── __init__.py        # Public API exports
+│   ├── _scope.py          # Per-callback emit/follow routing (ContextVar)
 │   ├── _types.py          # Type aliases (using PEP 695)
 │   ├── api.py             # Convenience API (fetch_html)
 │   ├── engine.py          # Core crawling engine
@@ -274,16 +267,23 @@ class Spider:
     start_urls: tuple[str, ...] = ()
     custom_settings: MetaData = {}
     
-    async def parse(self, response: Response) -> CallbackOutput:
+    async def start_requests(self) -> None:  # schedules start_urls via follow()
+        ...
+
+    async def parse(self, response: Response) -> None:
         raise NotImplementedError
+
+    async def emit(self, item: JSONLike) -> None: ...  # item -> pipelines
+    async def follow(self, target: Request | str, callback=None, **kwargs) -> None: ...
+    async def follow_all(self, targets, callback=None, **kwargs) -> None: ...
 ```
-`Spider` accepts an optional `logger` (logly logger or context dict) and exposes `self.log` as a convenience accessor.
+Callbacks, errbacks and `start_requests()` are `async` functions returning `None`. They report results by awaiting `emit`/`follow`, which are routed to the running engine through a context variable (`src/silkworm/_scope.py`). Yielding or returning values raises `SpiderError`. `Spider` accepts an optional `logger` (logly logger or context dict) and exposes `self.log` as a convenience accessor.
 
 #### 2. Request/Response (`request.py`, `response.py`)
 Dataclasses representing HTTP requests and responses.
 
 - `Request`: Immutable request with URL, method, headers, params, data, json, timeout, meta, callback, dont_filter, priority
-- `Response`: Base response class with `.text`, `.encoding`, `.url_join(...)`, `.follow(...)`, `.follow_all(...)`, `.close()`
+- `Response`: Base response class with `.text`, `.encoding`, `.url_join(...)`, async `.follow(...)` / `.follow_all(...)` (resolve and schedule), `.close()`
 - `HTMLResponse`: Response with HTML parsing helpers via scraper-rs (`select`, `select_first`, `css`, `css_first`, `xpath`, `xpath_first`), respecting `doc_max_size_bytes`
 - `Request` fields used by the engine/client: `params`, `data`, `json`, `timeout`, `meta`, `dont_filter`; `priority` exists but is not used by the engine yet
 - `Request.meta` keys used by built-ins: `proxy` (ProxyMiddleware/HttpClient), `retry_times` (RetryMiddleware), `allow_non_html` (SkipNonHTMLMiddleware), `redirect_times` (HttpClient redirects)
@@ -328,7 +328,7 @@ class TitlesSpider(Spider):
     name = "titles"
     start_urls = ("https://example.com/articles",)
 
-    async def parse(self, response: Response):
+    async def parse(self, response: Response) -> None:
         if not isinstance(response, HTMLResponse):
             return
 
@@ -336,7 +336,7 @@ class TitlesSpider(Spider):
         for card in await html.select(".card"):
             title_el = await card.select_first("h2")
             if title_el is not None:
-                yield {"title": title_el.text.strip()}
+                await self.emit({"title": title_el.text.strip()})
 ```
 
 #### Example 2: Pagination with follow
@@ -350,7 +350,7 @@ class QuotesSpider(Spider):
     name = "quotes"
     start_urls = ("https://quotes.toscrape.com/",)
 
-    async def parse(self, response: Response):
+    async def parse(self, response: Response) -> None:
         if not isinstance(response, HTMLResponse):
             return
 
@@ -359,13 +359,13 @@ class QuotesSpider(Spider):
             text_el = await quote.select_first(".text")
             author_el = await quote.select_first(".author")
             if text_el is not None and author_el is not None:
-                yield {"text": text_el.text, "author": author_el.text}
+                await self.emit({"text": text_el.text, "author": author_el.text})
 
         next_link = await html.select_first("li.next > a")
         if next_link is not None:
             href = next_link.attr("href")
             if href:
-                yield html.follow(href, callback=self.parse)
+                await html.follow(href, callback=self.parse)
 ```
 
 #### Example 3: Custom start_requests + JSON endpoint
@@ -381,21 +381,21 @@ class ApiSpider(Spider):
     name = "api"
     start_urls = ("https://api.example.com/items?page=1",)
 
-    async def start_requests(self):
+    async def start_requests(self) -> None:
         for url in self.start_urls:
-            yield Request(
-                url=url,
+            await self.follow(
+                url,
                 headers={"accept": "application/json"},
                 callback=self.parse_api,
             )
 
-    async def parse_api(self, response: Response):
+    async def parse_api(self, response: Response) -> None:
         payload = json.loads(response.text)
         for item in payload.get("items", []):
-            yield {"id": item.get("id"), "name": item.get("name")}
+            await self.emit({"id": item.get("id"), "name": item.get("name")})
         next_url = payload.get("next")
         if next_url:
-            yield Request(url=next_url, callback=self.parse_api)
+            await self.follow(Request(url=next_url, callback=self.parse_api))
 ```
 
 ## Pipeline Reference (config + examples)
@@ -669,15 +669,15 @@ async def process_request(request, spider):
 
 ```python
 # ✅ Good
-async def parse(self, response: Response) -> CallbackOutput:
+async def parse(self, response: Response) -> None:
     html = response
     for item in await html.select(".item"):
         name_el = await item.select_first(".name")
         if name_el is not None:
-            yield {"name": name_el.text}
+            await self.emit({"name": name_el.text})
 
 # ❌ Bad (blocking operation in async context)
-async def parse(self, response: Response) -> CallbackOutput:
+async def parse(self, response: Response) -> None:
     time.sleep(1)  # Don't use blocking sleep in async!
     # Use: await asyncio.sleep(1)
 ```
@@ -752,28 +752,29 @@ class MyRequestMiddleware:
         ...
 ```
 
-### 8. Yielding Items and Requests
+### 8. Emitting Items and Following Requests
 
-Spiders can yield:
-- Items (dicts/objects)
-- Request objects for follow-up crawling
-- Iterables of items/requests
-- Async iterables
+Callbacks never `yield` or return results (since 0.11). They push them to the
+engine while running; every `await` applies backpressure:
+- `await self.emit(item)`: run a JSON-like item through all pipelines
+- `await self.follow(request)` or `await self.follow(url, callback=..., **fields)`: schedule a request (URLs resolve against the current response and inherit its callback)
+- `await response.follow(href)` / `await response.follow_all(hrefs)`: schedule links relative to a response
+- Spawned tasks may call `emit`/`follow` only while the callback is running (use `asyncio.TaskGroup`)
 
 ```python
-async def parse(self, response: Response) -> CallbackOutput:
-    # Yield single item
-    yield {"title": "Example"}
-    
-    # Yield follow-up request
-    yield Request(url="https://example.com/page2", callback=self.parse)
-    
-    # Yield multiple items
+async def parse(self, response: Response) -> None:
+    # Emit a single item
+    await self.emit({"title": "Example"})
+
+    # Follow-up request
+    await self.follow("https://example.com/page2", callback=self.parse)
+
+    # Multiple items
     for item in items:
-        yield item
-    
-    # Or yield iterable
-    yield [item1, item2, item3]
+        await self.emit(item)
+
+    # Several links at once
+    await response.follow_all(["/a", "/b"])
 ```
 
 ## Dependencies and Optional Features
@@ -942,7 +943,7 @@ def process(items: list[str] | None) -> dict[str, int | str]:
 By default, requests with the same URL are deduplicated (dedupe keys only on `Request.url`, not params/method/body). To allow duplicates:
 
 ```python
-yield Request(url=same_url, dont_filter=True)
+await self.follow(same_url, dont_filter=True)
 ```
 
 ## Version Compatibility Notes
@@ -1024,9 +1025,9 @@ The `silkworm` package exports the public API below (from `src/silkworm/__init__
 
 ### Core Types
 - `Request`: Immutable request dataclass with `url`, `method`, `headers`, `params`, `data`, `json`, `meta`, `timeout`, `callback`, `dont_filter`, `priority`, plus `replace(**kwargs)` for copy-with-updates.
-- `Response`: Base response dataclass with `.text`, `.encoding`, `.url_join(href)`, `.follow(href, callback=None, **kwargs)`, `.follow_all(hrefs, ...)`, and `.close()` for releasing payloads.
+- `Response`: Base response dataclass with `.text`, `.encoding`, `.url_join(href)`, async `.follow(href, callback=None, **kwargs)` / `.follow_all(hrefs, ...)` that schedule requests, and `.close()` for releasing payloads.
 - `HTMLResponse`: `Response` with async selectors `select`, `select_first`, `css`, `css_first`, `xpath`, `xpath_first`, and HTML size limit via `doc_max_size_bytes`.
-- `Spider`: Base spider with `name`, `start_urls`, `custom_settings`, `start_requests()`, `parse(response)`, and optional `open()`/`close()` hooks.
+- `Spider`: Base spider with `name`, `start_urls`, `custom_settings`, `start_requests()`, `parse(response)`, `emit(item)`, `follow(target, ...)`, `follow_all(targets, ...)`, and optional `open()`/`close()` hooks.
 - `Engine`: Crawl orchestrator; instantiate with a spider and options, then `await engine.run()`.
 
 ### Runner Helpers
@@ -1043,5 +1044,5 @@ The `silkworm` package exports the public API below (from `src/silkworm/__init__
 ### Exceptions
 - `SilkwormError`: Base framework exception.
 - `HttpError`: HTTP request failures.
-- `SpiderError`: Spider callback failures.
+- `SpiderError`: Spider callback failures, legacy (yielding/returning) callbacks, and `emit`/`follow` misuse.
 - `SelectorError`: Selector evaluation failures.

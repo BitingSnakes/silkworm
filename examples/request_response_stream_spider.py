@@ -54,16 +54,18 @@ class RequestResponseStreamSpider(Spider):
             if text_el is None or author_el is None:
                 continue
 
-            yield {
-                "text": text_el.text.strip(),
-                "author": author_el.text.strip(),
-            }
+            await self.emit(
+                {
+                    "text": text_el.text.strip(),
+                    "author": author_el.text.strip(),
+                }
+            )
 
         next_link = await response.select_first("li.next > a")
         if next_link is not None:
             href = next_link.attr("href")
             if href:
-                yield response.follow(href, callback=self.parse)
+                await response.follow(href, callback=self.parse)
 
 
 def main() -> None:

@@ -19,7 +19,7 @@ class SimpleSpider(Spider):
     start_urls: tuple[str, ...] = ()
 
     async def parse(self, response):
-        yield {}
+        await self.emit({})
 
 
 @contextmanager

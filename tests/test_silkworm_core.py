@@ -305,7 +305,7 @@ async def test_engine_uses_servo_fetch_client(
             self.seen_html = False
 
         async def start_requests(self):
-            yield Request(url="https://example.com", callback=self.parse)
+            await self.follow(Request(url="https://example.com", callback=self.parse))
 
         async def parse(self, response: Response):
             self.seen_html = isinstance(response, HTMLResponse)
@@ -355,48 +355,6 @@ async def test_fetch_html_servo_helper(
     assert parsed["html"] == text
     assert doc == "document"
     assert browser.closed is True
-
-
-def test_response_follow_inherits_callback_and_joins_url():
-    def callback(resp: Response) -> None:
-        return None
-
-    req = Request(url="http://example.com/dir/page", callback=callback)
-    resp = Response(url=req.url, status=200, headers={}, body=b"", request=req)
-
-    next_req = resp.follow("next")
-
-    assert next_req.url == "http://example.com/dir/next"
-    assert next_req.callback is callback
-
-
-def test_htmlresponse_follow_works_with_slots():
-    def callback(resp: Response) -> None:
-        return None
-
-    req = Request(url="http://example.com/dir/page", callback=callback)
-    resp = HTMLResponse(url=req.url, status=200, headers={}, body=b"", request=req)
-
-    next_req = resp.follow("next")
-
-    assert next_req.url == "http://example.com/dir/next"
-    assert next_req.callback is callback
-
-
-def test_response_follow_all_joins_urls_and_uses_callback():
-    def callback(resp: Response) -> None:
-        return None
-
-    req = Request(url="http://example.com/dir/page", callback=callback)
-    resp = Response(url=req.url, status=200, headers={}, body=b"", request=req)
-
-    next_reqs = resp.follow_all(["next", None, "../up"])
-
-    assert [req.url for req in next_reqs] == [
-        "http://example.com/dir/next",
-        "http://example.com/up",
-    ]
-    assert all(req.callback is callback for req in next_reqs)
 
 
 async def test_htmlresponse_css_aliases_select(monkeypatch: pytest.MonkeyPatch):
@@ -910,7 +868,7 @@ async def test_engine_uses_supplied_http_client():
         start_urls = ("http://example.com",)
 
         async def parse(self, response: Response):
-            yield {"url": response.url}
+            await self.emit({"url": response.url})
 
     class DummyHttp:
         concurrency = 1
@@ -1059,7 +1017,7 @@ async def test_engine_closes_responses(monkeypatch: pytest.MonkeyPatch):
         name = "closer"
 
         async def start_requests(self):
-            yield Request(url="http://example.com", callback=self.parse)
+            await self.follow(Request(url="http://example.com", callback=self.parse))
 
         async def parse(self, response: Response):
             return None
@@ -1120,7 +1078,7 @@ async def test_engine_retries_requests_even_if_url_seen(
         name = "retryer"
 
         async def start_requests(self):
-            yield Request(url="http://example.com", callback=self.parse)
+            await self.follow(Request(url="http://example.com", callback=self.parse))
 
         async def parse(self, response: Response):
             return None
@@ -1706,10 +1664,10 @@ async def test_engine_retries_failed_request_with_another_proxy():
         name = "proxy-retry"
 
         async def start_requests(self):
-            yield Request(url="http://example.com", callback=self.parse)
+            await self.follow(Request(url="http://example.com", callback=self.parse))
 
         async def parse(self, response: Response):
-            yield {"status": response.status}
+            await self.emit({"status": response.status})
 
     proxy_middleware = ProxyMiddleware(
         proxies=["http://proxy1:8080", "http://proxy2:8080", "http://proxy3:8080"]
@@ -1864,10 +1822,12 @@ async def test_cloudflare_crawl_middleware_runs_inside_engine(
             self.payload: dict[str, Any] | None = None
 
         async def start_requests(self):
-            yield Request(
-                url="https://example.com",
-                callback=self.parse,
-                meta={"cloudflare_crawl": True},
+            await self.follow(
+                Request(
+                    url="https://example.com",
+                    callback=self.parse,
+                    meta={"cloudflare_crawl": True},
+                )
             )
 
         async def parse(self, response: Response):

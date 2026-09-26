@@ -22,7 +22,6 @@ from typing import Any, cast
 
 from silkworm import (
     HTMLResponse,
-    Request,
     Response,
     ServoFetchClient,
     Spider,
@@ -37,8 +36,8 @@ class ServoRenderedSpider(Spider):
 
     async def start_requests(self):
         for url in self.start_urls:
-            yield Request(
-                url=url,
+            await self.follow(
+                url,
                 callback=self.parse,
                 meta={
                     # Wait 500 ms after the page loads, so scripts can finish.
@@ -64,13 +63,15 @@ class ServoRenderedSpider(Spider):
             if len(links) >= 20:
                 break
 
-        yield {
-            "url": response.url,
-            "title": title_el.text.strip() if title_el else "",
-            "render_engine": response.headers.get("x-silkworm-render-engine"),
-            "links": links,
-            "link_count": len(links),
-        }
+        await self.emit(
+            {
+                "url": response.url,
+                "title": title_el.text.strip() if title_el else "",
+                "render_engine": response.headers.get("x-silkworm-render-engine"),
+                "links": links,
+                "link_count": len(links),
+            }
+        )
 
 
 def main() -> None:

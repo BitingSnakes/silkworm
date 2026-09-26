@@ -63,16 +63,15 @@ theorem callbackEvents_mtr
       · exact EngineStep.callbackEvent
       · exact ih (handleEventWith key event st)
 
-theorem callbackOutput_mtr
+theorem callbackEffects_mtr
     (key : DedupKey)
-    (out : CallbackOutput)
+    (effects : CallbackEffects)
     (st : EngineState) :
     (engineLTS key).MTr
       st
-      (callbackEventLabels (normalizeCallbackOutput out))
-      (handleCallbackOutputWith key out st) := by
-  simpa [handleCallbackOutputWith] using
-    callbackEvents_mtr key (normalizeCallbackOutput out) st
+      (callbackEventLabels effects)
+      (handleCallbackEffectsWith key effects st) := by
+  simpa [handleCallbackEffectsWith] using callbackEvents_mtr key effects st
 
 theorem callbackEvents_default_mtr
     (events : List Event)
@@ -83,14 +82,14 @@ theorem callbackEvents_default_mtr
       (handleEvents events st) := by
   simpa [handleEvents] using callbackEvents_mtr defaultDedupKey events st
 
-theorem callbackOutput_default_mtr
-    (out : CallbackOutput)
+theorem callbackEffects_default_mtr
+    (effects : CallbackEffects)
     (st : EngineState) :
     (engineLTS defaultDedupKey).MTr
       st
-      (callbackEventLabels (normalizeCallbackOutput out))
-      (handleCallbackOutput out st) := by
-  simpa [handleCallbackOutput] using callbackOutput_mtr defaultDedupKey out st
+      (callbackEventLabels effects)
+      (handleCallbackEffects effects st) := by
+  simpa [handleCallbackEffects] using callbackEffects_mtr defaultDedupKey effects st
 
 theorem callbackEvents_execution
     (key : DedupKey)
@@ -150,12 +149,12 @@ theorem callbackEvents_preserve_prioritySorted
     PrioritySorted (handleEventsWith key events st).queue :=
   engineMTr_preserves_prioritySorted (callbackEvents_mtr key events st) hSorted
 
-theorem callbackOutput_preserve_prioritySorted
+theorem callbackEffects_preserve_prioritySorted
     (key : DedupKey)
-    (out : CallbackOutput)
+    (effects : CallbackEffects)
     (st : EngineState)
     (hSorted : PrioritySorted st.queue) :
-    PrioritySorted (handleCallbackOutputWith key out st).queue :=
-  engineMTr_preserves_prioritySorted (callbackOutput_mtr key out st) hSorted
+    PrioritySorted (handleCallbackEffectsWith key effects st).queue :=
+  engineMTr_preserves_prioritySorted (callbackEffects_mtr key effects st) hSorted
 
 end Silkworm

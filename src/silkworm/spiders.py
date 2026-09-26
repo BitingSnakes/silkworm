@@ -4,16 +4,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, overload, override
 
+from ._scope import current_scope
 from ._types import JSONValue
 from .logging import get_logger
 from .request import Request
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Iterable
+    from collections.abc import Iterable
 
-    from ._types import MetaData
+    from ._types import JSONLike, MetaData
     from .logging import Logger
-    from .request import CallbackResult
+    from .request import Callback
     from .response import Response
 
 
@@ -83,8 +84,10 @@ class Spider:
     """Base class defining a crawl's initial requests and response callback.
 
     Subclasses usually set :attr:`name` and :attr:`start_urls`, then override
-    :meth:`parse`. They may yield requests, JSON-compatible items, iterables,
-    async iterables, or ``None`` from callbacks.
+    :meth:`parse`. Callbacks are ``async`` functions returning ``None``; they
+    report results by awaiting :meth:`emit` for items and :meth:`follow` for
+    further requests. Both apply backpressure, so each ``await`` completes once
+    the item passed every pipeline or the request entered the queue.
 
     Args:
         name: Per-instance name overriding the class attribute.
@@ -102,11 +105,11 @@ class Spider:
         ...     name = "titles"
         ...     start_urls = ("https://example.com",)
         ...
-        ...     async def parse(self, response: Response):
+        ...     async def parse(self, response: Response) -> None:
         ...         if isinstance(response, HTMLResponse):
         ...             title = await response.select_first("title")
         ...             if title is not None:
-        ...                 yield {"title": title.text}
+        ...                 await self.emit({"title": title.text})
     """
 
     name: str = "spider"
@@ -150,26 +153,87 @@ class Spider:
             self.logger = get_logger(spider=self.name)
         return self.logger
 
-    async def start_requests(self) -> AsyncIterator[Request]:
-        """Yield one request per :attr:`start_urls` entry.
+    async def start_requests(self) -> None:
+        """Schedule one request per :attr:`start_urls` entry.
 
         Override this hook to customize methods, headers, metadata, or callbacks
-        for initial requests.
+        for initial requests; schedule each one with :meth:`follow`.
         """
         for url in self.start_urls:
-            yield Request(url=url, callback=self.parse)
+            await self.follow(Request(url=url, callback=self.parse))
 
-    def parse(self, response: Response) -> CallbackResult:
-        """Process a starting response and return supported callback output.
+    async def parse(self, response: Response) -> None:
+        """Process a starting response.
 
-        Subclasses must implement this method. It may be synchronous, async, or
-        an async generator as long as its result conforms to
-        :data:`~silkworm.types.CallbackOutput`.
+        Subclasses must implement this coroutine and report results with
+        :meth:`emit` and :meth:`follow`. The engine always passes an
+        :class:`~silkworm.HTMLResponse` to this callback.
 
         Raises:
             NotImplementedError: When the base implementation is called.
         """
         raise NotImplementedError
+
+    async def emit(self, item: JSONLike) -> None:
+        """Send a scraped item through the item pipelines.
+
+        Returns after every pipeline processed the item, so pipeline errors
+        surface at this call site.
+
+        Raises:
+            SpiderError: If awaited outside an engine-run callback, or after
+                the callback that owns the current scope finished.
+            TypeError: If ``item`` is a :class:`~silkworm.Request`.
+        """
+        await current_scope("emit").emit(item)
+
+    async def follow(
+        self,
+        target: Request | str,
+        callback: Callback | None = None,
+        **kwargs: object,
+    ) -> None:
+        """Schedule a request for crawling.
+
+        ``target`` is either a ready :class:`~silkworm.Request` or a URL. Inside
+        a response callback a URL is resolved against the response and inherits
+        its callback, exactly like :meth:`silkworm.Response.follow`. Requests
+        pass engine deduplication and wait for queue capacity.
+
+        Args:
+            target: Request to schedule, or an absolute or relative URL.
+            callback: Response callback for a URL target.
+            **kwargs: Additional :class:`~silkworm.Request` fields for a URL
+                target.
+
+        Raises:
+            SpiderError: If awaited outside an engine-run callback, or after
+                the callback that owns the current scope finished.
+            TypeError: If request fields are combined with a ``Request`` target.
+        """
+        scope = current_scope("follow")
+        if isinstance(target, Request):
+            if callback is not None or kwargs:
+                raise TypeError(
+                    "follow() accepts callback and request fields only with a URL; "
+                    "use Request.replace() to adjust an existing request"
+                )
+            await scope.follow(target)
+        elif scope.response is not None:
+            await scope.response.follow(target, callback=callback, **kwargs)
+        else:
+            await scope.follow(Request(url=target, callback=callback, **kwargs))  # type: ignore[arg-type]
+
+    async def follow_all(
+        self,
+        targets: Iterable[Request | str | None],
+        callback: Callback | None = None,
+        **kwargs: object,
+    ) -> None:
+        """Schedule every non-``None`` target in input order via :meth:`follow`."""
+        for target in targets:
+            if target is not None:
+                await self.follow(target, callback=callback, **kwargs)
 
     # hooks for pipelines / engine if desired later
     async def open(self) -> None:

@@ -322,16 +322,16 @@ def handleEventsWith (key : DedupKey) (events : List Event) (st : EngineState) :
 def handleEvents (events : List Event) (st : EngineState) : EngineState :=
   handleEventsWith defaultDedupKey events st
 
-def handleCallbackOutputWith
+def handleCallbackEffectsWith
     (key : DedupKey)
-    (out : CallbackOutput)
+    (effects : CallbackEffects)
     (st : EngineState) : EngineState :=
-  handleEventsWith key (normalizeCallbackOutput out) st
+  handleEventsWith key effects st
 
-def handleCallbackOutput
-    (out : CallbackOutput)
+def handleCallbackEffects
+    (effects : CallbackEffects)
     (st : EngineState) : EngineState :=
-  handleCallbackOutputWith defaultDedupKey out st
+  handleCallbackEffectsWith defaultDedupKey effects st
 
 theorem handleEventWith_preserves_prioritySorted
     (key : DedupKey)
@@ -360,16 +360,12 @@ theorem handleEventsWith_preserves_prioritySorted
       exact ih (handleEventWith key event st)
         (handleEventWith_preserves_prioritySorted key event st hSorted)
 
-theorem handleCallbackOutputWith_preserves_prioritySorted
+theorem handleCallbackEffectsWith_preserves_prioritySorted
     (key : DedupKey)
-    (out : CallbackOutput)
+    (effects : CallbackEffects)
     (st : EngineState)
     (hSorted : PrioritySorted st.queue) :
-    PrioritySorted (handleCallbackOutputWith key out st).queue := by
-  exact
-    handleEventsWith_preserves_prioritySorted key
-      (normalizeCallbackOutput out)
-      st
-      hSorted
+    PrioritySorted (handleCallbackEffectsWith key effects st).queue := by
+  exact handleEventsWith_preserves_prioritySorted key effects st hSorted
 
 end Silkworm

@@ -70,11 +70,13 @@ class TaskiqQuotesSpider(Spider):
                 continue
 
             tag_els = await quote_el.select(".tag")
-            yield {
-                "text": text_el.text,
-                "author": author_el.text,
-                "tags": [tag.text for tag in tag_els],
-            }
+            await self.emit(
+                {
+                    "text": text_el.text,
+                    "author": author_el.text,
+                    "tags": [tag.text for tag in tag_els],
+                }
+            )
 
         # Stop after `max_pages` pages.
         if self.pages_scraped >= self.max_pages:
@@ -84,7 +86,7 @@ class TaskiqQuotesSpider(Spider):
         if next_link is not None:
             href = next_link.attr("href")
             if href:
-                yield response.follow(href, callback=self.parse)
+                await response.follow(href, callback=self.parse)
 
 
 def main() -> None:
@@ -98,7 +100,7 @@ def main() -> None:
     args = parser.parse_args()
 
     # Step 4: connect the spider to the queue with TaskiqPipeline.
-    # Every item the spider yields is sent to `process_quote`.
+    # Every item the spider emits is sent to `process_quote`.
     pipeline = TaskiqPipeline(broker, task=process_quote)
 
     run_spider(

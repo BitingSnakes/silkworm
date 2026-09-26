@@ -24,7 +24,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from silkworm import HTMLResponse, Request, Response, Spider, run_spider
+from silkworm import HTMLResponse, Response, Spider, run_spider
 from silkworm.middlewares import RetryMiddleware, UserAgentMiddleware
 from silkworm.pipelines import JsonLinesPipeline
 
@@ -48,8 +48,8 @@ class StartUrlsFromFileSpider(Spider):
                 if not url or url.startswith("#"):
                     continue  # Skip blank lines and comments.
 
-                yield Request(
-                    url=url,
+                await self.follow(
+                    url,
                     callback=self.parse_page,  # Which method handles the response.
                     headers={"Accept": "text/html,application/xhtml+xml"},
                     # `meta` is a dict that travels with the request, so we can
@@ -65,13 +65,15 @@ class StartUrlsFromFileSpider(Spider):
             if title_el is not None:
                 title = title_el.text.strip()
 
-        yield {
-            "url": response.url,
-            "status": response.status,
-            "title": title,
-            "source_file": str(self.urls_file),
-            "source_line": response.request.meta.get("source_line"),
-        }
+        await self.emit(
+            {
+                "url": response.url,
+                "status": response.status,
+                "title": title,
+                "source_file": str(self.urls_file),
+                "source_line": response.request.meta.get("source_line"),
+            }
+        )
 
 
 def main() -> None:

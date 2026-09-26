@@ -56,11 +56,13 @@ class ExportFormatsSpider(Spider):
             if text_el is None or author_el is None:
                 continue
 
-            yield {
-                "text": text_el.text.strip(),
-                "author": author_el.text.strip(),
-                "tags": [tag.text.strip() for tag in tag_els],
-            }
+            await self.emit(
+                {
+                    "text": text_el.text.strip(),
+                    "author": author_el.text.strip(),
+                    "tags": [tag.text.strip() for tag in tag_els],
+                }
+            )
 
         # Stop once we have scraped enough pages.
         if self.pages_scraped >= self.max_pages:
@@ -71,7 +73,7 @@ class ExportFormatsSpider(Spider):
         if next_link is not None:
             href = next_link.attr("href")
             if href:
-                yield response.follow(href, callback=self.parse)
+                await response.follow(href, callback=self.parse)
 
 
 def main() -> None:

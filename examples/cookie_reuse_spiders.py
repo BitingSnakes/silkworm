@@ -49,12 +49,14 @@ class CaptureCookiesSpider(Spider):
     name = "capture_cookies"
 
     async def parse(self, response: Response):
-        yield {
-            "phase": "capture",
-            "url": response.url,
-            "status": response.status,
-            "set_cookie": response.headers.get("set-cookie"),
-        }
+        await self.emit(
+            {
+                "phase": "capture",
+                "url": response.url,
+                "status": response.status,
+                "set_cookie": response.headers.get("set-cookie"),
+            }
+        )
 
 
 class ReuseCookiesSpider(Spider):
@@ -68,13 +70,15 @@ class ReuseCookiesSpider(Spider):
         except json.JSONDecodeError:
             payload = {"body": response.text[:500]}
 
-        yield {
-            "phase": "reuse",
-            "url": response.url,
-            "status": response.status,
-            "payload": payload,
-            "sent_cookie": response.request.headers.get("Cookie"),
-        }
+        await self.emit(
+            {
+                "phase": "reuse",
+                "url": response.url,
+                "status": response.status,
+                "payload": payload,
+                "sent_cookie": response.request.headers.get("Cookie"),
+            }
+        )
 
 
 def run_cookie_reuse_demo(

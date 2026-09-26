@@ -7,7 +7,7 @@ Silkworm gives you two places to react:
 1. A middleware's `process_exception()` method. It can return a NEW request to
    try again, or return None to let the error continue.
 2. The request's `errback`. Like `callback`, but called with the error instead
-   of a response. You can log it or yield an item describing the failure.
+   of a response. You can log it or emit an item describing the failure.
 
 This example does not use the internet. A small middleware fakes the failures
 so you get the same result every time:
@@ -82,15 +82,15 @@ class ExceptionHandlingSpider(Spider):
 
     async def start_requests(self):
         # This one fails once, then is retried and succeeds.
-        yield Request(
-            url="https://example.test/retry",
+        await self.follow(
+            "https://example.test/retry",
             callback=self.parse,
             errback=self.handle_error,
             meta={"force_failure": True, "retry_once": True},
         )
         # This one fails and is NOT retried, so handle_error() is called.
-        yield Request(
-            url="https://example.test/errback",
+        await self.follow(
+            "https://example.test/errback",
             callback=self.parse,
             errback=self.handle_error,
             meta={"force_failure": True},
@@ -98,21 +98,25 @@ class ExceptionHandlingSpider(Spider):
 
     async def parse(self, response: Response):
         """Called when a request succeeds."""
-        yield {
-            "url": response.url,
-            "status": response.status,
-            "source": "callback",
-            "body": response.text,
-        }
+        await self.emit(
+            {
+                "url": response.url,
+                "status": response.status,
+                "source": "callback",
+                "body": response.text,
+            }
+        )
 
     async def handle_error(self, request: Request, exception: Exception):
         """Called when a request fails for good."""
-        yield {
-            "url": request.url,
-            "source": "errback",
-            "error_type": type(exception).__name__,
-            "error": str(exception),
-        }
+        await self.emit(
+            {
+                "url": request.url,
+                "source": "errback",
+                "error_type": type(exception).__name__,
+                "error": str(exception),
+            }
+        )
 
 
 if __name__ == "__main__":

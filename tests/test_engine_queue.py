@@ -78,15 +78,19 @@ async def test_engine_uses_custom_dedup_key(monkeypatch: pytest.MonkeyPatch):
         name = "params"
 
         async def start_requests(self):
-            yield Request(
-                url="http://example.com/search",
-                params={"page": 1},
-                callback=self.parse,
+            await self.follow(
+                Request(
+                    url="http://example.com/search",
+                    params={"page": 1},
+                    callback=self.parse,
+                )
             )
-            yield Request(
-                url="http://example.com/search",
-                params={"page": 2},
-                callback=self.parse,
+            await self.follow(
+                Request(
+                    url="http://example.com/search",
+                    params={"page": 2},
+                    callback=self.parse,
+                )
             )
 
         async def parse(self, response):
@@ -125,30 +129,38 @@ async def test_engine_dequeues_higher_priority_requests_first(
         name = "priority"
 
         async def start_requests(self):
-            yield Request("http://example.com/seed", callback=self.parse)
+            await self.follow(Request("http://example.com/seed", callback=self.parse))
 
         async def parse(self, response):
             if response.url != "http://example.com/seed":
                 return
 
-            yield Request(
-                "http://example.com/low",
-                callback=self.parse,
-                priority=-10,
+            await self.follow(
+                Request(
+                    "http://example.com/low",
+                    callback=self.parse,
+                    priority=-10,
+                )
             )
-            yield Request(
-                "http://example.com/high-a",
-                callback=self.parse,
-                priority=10,
+            await self.follow(
+                Request(
+                    "http://example.com/high-a",
+                    callback=self.parse,
+                    priority=10,
+                )
             )
-            yield Request(
-                "http://example.com/high-b",
-                callback=self.parse,
-                priority=10,
+            await self.follow(
+                Request(
+                    "http://example.com/high-b",
+                    callback=self.parse,
+                    priority=10,
+                )
             )
-            yield Request(
-                "http://example.com/default",
-                callback=self.parse,
+            await self.follow(
+                Request(
+                    "http://example.com/default",
+                    callback=self.parse,
+                )
             )
 
     fetched_urls: list[str] = []
@@ -179,10 +191,12 @@ async def test_engine_does_not_track_dont_filter_requests(
 
         async def start_requests(self):
             for i in range(3):
-                yield Request(
-                    url=f"http://example.com/{i}",
-                    callback=self.parse,
-                    dont_filter=True,
+                await self.follow(
+                    Request(
+                        url=f"http://example.com/{i}",
+                        callback=self.parse,
+                        dont_filter=True,
+                    )
                 )
 
         async def parse(self, response):
@@ -228,7 +242,7 @@ async def test_engine_calls_exception_middleware_from_response_middlewares(
         name = "exception-middleware"
 
         async def start_requests(self):
-            yield Request(url="http://example.com", callback=self.parse)
+            await self.follow(Request(url="http://example.com", callback=self.parse))
 
         async def parse(self, response):
             return None
@@ -265,20 +279,24 @@ async def test_engine_runs_request_errback_for_unhandled_exception(
         name = "errback"
 
         async def start_requests(self):
-            yield Request(
-                url="http://example.com",
-                callback=self.parse,
-                errback=self.handle_error,
+            await self.follow(
+                Request(
+                    url="http://example.com",
+                    callback=self.parse,
+                    errback=self.handle_error,
+                )
             )
 
         async def parse(self, response):
             return None
 
         async def handle_error(self, request: Request, exception: Exception):
-            yield {
-                "url": request.url,
-                "error_type": exception.__class__.__name__,
-            }
+            await self.emit(
+                {
+                    "url": request.url,
+                    "error_type": exception.__class__.__name__,
+                }
+            )
 
     engine = Engine(ErrbackSpider(), concurrency=1)
 

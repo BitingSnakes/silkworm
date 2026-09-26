@@ -25,7 +25,7 @@ class QuotesSpider(Spider):
     name = "quotes"
     start_urls = ("https://quotes.toscrape.com/",)
 
-    async def parse(self, response: Response):
+    async def parse(self, response: Response) -> None:
         if not isinstance(response, HTMLResponse):
             return
 
@@ -36,15 +36,17 @@ class QuotesSpider(Spider):
             if text_el is None or author_el is None:
                 continue
             tags = await el.select(".tag")
-            yield {
-                "text": text_el.text,
-                "author": author_el.text,
-                "tags": [t.text for t in tags],
-            }
+            await self.emit(
+                {
+                    "text": text_el.text,
+                    "author": author_el.text,
+                    "tags": [t.text for t in tags],
+                }
+            )
 
         if next_link := await html.select_first("li.next > a"):
             if href := next_link.attr("href"):
-                yield html.follow(href, callback=self.parse)
+                await html.follow(href, callback=self.parse)
 
 
 run_spider(

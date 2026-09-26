@@ -9,8 +9,10 @@ Key attributes and hooks:
 - **`name`**: Spider identifier used in logs and stats.
 - **`start_urls`**: Seed URLs for `start_requests()`.
 - **`custom_settings`**: Per-spider settings storage (copied on init).
-- **`start_requests()`**: Async generator that yields initial `Request` objects.
+- **`start_requests()`**: Coroutine that schedules initial requests with `await self.follow(...)`.
 - **`parse(response)`**: Main callback (auto-wrapped to `HTMLResponse`).
+- **`await emit(item)`**: Send a scraped item through the item pipelines.
+- **`await follow(request_or_url, callback=None, **kwargs)`** / **`await follow_all(...)`**: Schedule requests for crawling.
 - **`open()` / `close()`**: Lifecycle hooks called by the engine.
 
 ```python
@@ -21,8 +23,8 @@ class MySpider(Spider):
     name = "my_spider"
     start_urls = ("https://example.com",)
 
-    async def parse(self, response: Response):
-        yield {"url": response.url, "status": response.status}
+    async def parse(self, response: Response) -> None:
+        await self.emit({"url": response.url, "status": response.status})
 ```
 
 ## Request
@@ -31,8 +33,8 @@ class MySpider(Spider):
 Important fields:
 - **`url`**, **`method`**, **`headers`**, **`params`**, **`data`**, **`json`**
 - **`timeout`**: Per-request timeout (seconds or `timedelta`).
-- **`callback`**: Callback to run with the response.
-- **`errback`**: Callback to run when the request fails and no middleware retries it.
+- **`callback`**: Async callback to run with the response.
+- **`errback`**: Async callback to run when the request fails and no middleware retries it.
 - **`meta`**: Free-form dict for middlewares and custom logic.
 - **`dont_filter`**: Bypass request deduplication.
 - **`priority`**: Higher values are dequeued first; requests with the same priority keep FIFO order.
@@ -55,24 +57,27 @@ request = Request(
 ### Request Error Handling
 Use `Request.errback` for per-request recovery from fetch, middleware, or callback
 exceptions that were not handled by exception middlewares. The errback receives the
-failed `Request` and the raised exception, and it can return or yield the same shapes
-as a normal callback: items, follow-up requests, iterables, async iterables, or `None`.
+failed `Request` and the raised exception. Like a normal callback it is an `async`
+function returning `None` that may `await self.emit(...)` items and
+`await self.follow(...)` follow-up requests.
 
 ```python
 from silkworm import Request
 
-async def start_requests(self):
-    yield Request(
-        url="https://example.com/maybe-down",
+async def start_requests(self) -> None:
+    await self.follow(
+        "https://example.com/maybe-down",
         callback=self.parse,
         errback=self.handle_error,
     )
 
-async def handle_error(self, request: Request, exception: Exception):
-    yield {
-        "url": request.url,
-        "error_type": exception.__class__.__name__,
-    }
+async def handle_error(self, request: Request, exception: Exception) -> None:
+    await self.emit(
+        {
+            "url": request.url,
+            "error_type": exception.__class__.__name__,
+        }
+    )
 ```
 
 ### Built-in `meta` Keys
@@ -95,8 +100,8 @@ Core APIs:
 - **`text`**: Decoded body text with charset detection.
 - **`encoding`**: Detected or default encoding.
 - **`url_join(href)`**: Resolve a relative URL against the response URL.
-- **`follow(href, callback=None, **kwargs)`**: URL join + callback reuse.
-- **`follow_all(hrefs, callback=None, **kwargs)`**: Convenience helper for multiple follow-up requests.
+- **`await follow(href, callback=None, **kwargs)`**: URL join + callback reuse, then schedule the request.
+- **`await follow_all(hrefs, callback=None, **kwargs)`**: Schedule every non-`None` link in order.
 - **`close()`**: Release payload references to save memory.
 - **`await to_markdown(mode="full" | "minimal" | "mdream", options=None)`**: Convert an `HTMLResponse` to Markdown via `fast-h2m` (runs off the event-loop thread).
 - **`await to_markdown_result(...)`**: Return `fast-h2m`'s structured conversion result.
@@ -104,13 +109,13 @@ Core APIs:
 ```python
 from silkworm import HTMLResponse, Response
 
-async def parse(self, response: Response):
+async def parse(self, response: Response) -> None:
     if not isinstance(response, HTMLResponse):
         return
 
     title = await response.select_first("title")
     if title:
-        yield {"title": title.text.strip()}
+        await self.emit({"title": title.text.strip()})
 ```
 
 Selector helpers on `HTMLResponse` (async):
@@ -153,30 +158,84 @@ parts.append(stream.finish())
 markdown = "".join(parts)
 ```
 
-## Callback Results (What `parse` Can Return)
-Callback output is normalized by the engine. See [src/silkworm/engine.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/engine.py).
+## Reporting Results: `emit` and `follow`
+Callbacks are `async` functions that return `None`. Instead of yielding or
+returning results, they push them to the engine while they run. See
+[src/silkworm/spiders.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/spiders.py).
 
-Valid outputs:
-- A single **item** (JSON-like object)
-- A **Request**
-- An **iterable** of items and/or requests
-- An **async iterable** of items and/or requests
-- An **awaitable** that resolves to any of the above
-- **`None`**
+| Call | Effect |
+| --- | --- |
+| `await self.emit(item)` | Runs `item` through every item pipeline, in order. |
+| `await self.follow(request)` | Schedules a ready `Request` (deduplicated, then queued). |
+| `await self.follow(url, callback=None, **fields)` | Builds and schedules a `Request`. Inside a response callback the URL is resolved against the response and the callback is inherited, like `response.follow`. |
+| `await self.follow_all(targets, ...)` | Calls `follow` for every non-`None` target, in order. |
+| `await response.follow(href, ...)` / `await response.follow_all(hrefs, ...)` | Schedules links relative to that response. |
 
-Example of mixed results:
+Each `await` finishes only when the work is done: the item has passed every
+pipeline, or the request has been deduplicated and placed in the bounded queue.
+This gives you natural backpressure and means pipeline errors surface at the
+`emit` call site, where you can catch them.
 
 ```python
-from silkworm import Request
+from silkworm import Request, Response, Spider
 
-async def parse(self, response: Response):
-    return [
-        {"url": response.url},
-        Request(url="https://example.com/page2", callback=self.parse),
-        {"ok": True},
-        {"ok": False},
-    ]
+
+class MixedSpider(Spider):
+    name = "mixed"
+    start_urls = ("https://example.com",)
+
+    async def parse(self, response: Response) -> None:
+        await self.emit({"url": response.url})
+        await self.follow("/page2")  # relative to response.url, reuses parse
+        await self.follow(
+            Request(url="https://example.com/api", callback=self.parse_api)
+        )
+
+    async def parse_api(self, response: Response) -> None:
+        await self.emit({"ok": response.status == 200})
 ```
+
+### Concurrency inside a callback
+`emit` and `follow` are bound to the running callback through a context
+variable, so tasks spawned inside a callback can use them too. Wait for those
+tasks before the callback returns; `asyncio.TaskGroup` does this for you:
+
+```python
+import asyncio
+
+
+async def parse(self, response: HTMLResponse) -> None:
+    async with asyncio.TaskGroup() as tg:
+        for card in await response.select(".card"):
+            tg.create_task(self.parse_card(card))
+
+
+async def parse_card(self, card) -> None:
+    title = await card.select_first("h2")
+    if title is not None:
+        await self.emit({"title": title.text})
+```
+
+### Rules the engine enforces
+- `emit`/`follow` raise `SpiderError` when awaited outside `start_requests()`, a
+  request callback, or an errback, and when a task calls them after its callback
+  has returned.
+- A callback that is an async generator (uses `yield`), is not `async`, or
+  returns a value other than `None` fails with a `SpiderError` explaining the fix.
+- `emit` rejects `Request` objects (use `follow`), and `follow` accepts request
+  fields only together with a URL target.
+
+### Migrating from 0.10 (`yield`-based callbacks)
+
+| 0.10 | 0.11 |
+| --- | --- |
+| `yield {"a": 1}` | `await self.emit({"a": 1})` |
+| `yield Request(url, callback=cb)` | `await self.follow(url, callback=cb)` or `await self.follow(Request(...))` |
+| `yield response.follow(href)` | `await response.follow(href)` |
+| `for r in response.follow_all(hrefs): yield r` | `await response.follow_all(hrefs)` |
+| `return [item, request]` | one `emit`/`follow` call per result |
+| `async def start_requests(self): yield Request(...)` | `async def start_requests(self) -> None: await self.follow(...)` |
+| `-> CallbackOutput` / `-> AsyncIterator[...]` | `-> None` |
 
 > **Note:** The engine auto-wraps **only** the spider's `parse` callback to `HTMLResponse`. Other callbacks receive the `Response` produced by the HTTP client, which may already be an `HTMLResponse` for HTML content.
 
@@ -186,7 +245,7 @@ All framework exceptions derive from `SilkwormError` and are importable from `si
 | Exception | Raised when |
 | --- | --- |
 | `HttpError` | A fetch fails: network errors, timeouts, redirect loops, a closed client, or CDP/Servo/OnionLink failures. |
-| `SpiderError` | A spider callback raises, or yields a value the engine cannot handle. The original exception is chained as `__cause__`. |
+| `SpiderError` | A spider callback (or `start_requests`/errback) raises, is not an `async` function returning `None`, or calls `emit`/`follow` outside its scope. The original exception is chained as `__cause__`. |
 | `SelectorError` | CSS/XPath selector evaluation or HTML parsing fails. |
 | `MarkdownConversionError` | HTML-to-Markdown conversion fails. |
 | `DeclarativeError` (and subclasses) | Declarative item extraction fails; see [Declarative Extraction](declarative.md#errors). |
@@ -197,9 +256,7 @@ Recover from failed requests with `Request.errback` or an exception middleware (
 The engine keeps a set of seen request keys. The default key is `Request.url`; pass `dedup_key` to `Engine`, `crawl`, or `run_spider` if params, method, or body should be part of the key.
 
 ```python
-from silkworm import Request
-
-yield Request(url=same_url, dont_filter=True)
+await self.follow(same_url, dont_filter=True)
 ```
 
 Or customize the key globally for a run:
@@ -226,9 +283,9 @@ from silkworm.types import Callback, JSONValue, Logger, MetaData
 
 It covers:
 
-- **JSON item shapes**: `JSONScalar`, `JSONValue`, and the read-only `JSONLike` that callbacks may yield.
+- **JSON item shapes**: `JSONScalar`, `JSONValue`, and the read-only `JSONLike` accepted by `Spider.emit`.
 - **Request data**: `Headers`, `QueryParams`, `QueryValue`, `MetaData`, `BodyData`.
-- **Callbacks**: `Callback`, `CallbackOutput`, `CallbackResult`, `Errback`.
+- **Callbacks**: `Callback` and `Errback` (async callables returning `None`).
 - **Engine and runners**: `EngineOptions`, `DedupKey`, `LoopFactory`.
 - **Logging**: the `Logger` protocol and `LogLevel`.
 - **Middleware and pipeline protocols**: `RequestMiddleware`, `ResponseMiddleware`, `ExceptionMiddleware`, `ItemPipeline`, plus `ItemCallback` (for `CallbackPipeline`) and `ZenohKeyResolver` (for `ZenohPipeline`).

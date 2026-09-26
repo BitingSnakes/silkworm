@@ -31,18 +31,18 @@ class Product(Item):
 class ProductsSpider(Spider):
     start_urls = ("https://shop.example.com/products/",)
 
-    async def parse(self, response: Response):
+    async def parse(self, response: Response) -> None:
         if not isinstance(response, HTMLResponse):
             return
 
         async for product in Product.extract(response):
             # Existing pipelines consume JSON-compatible values.
-            yield product.to_dict()
+            await self.emit(product.to_dict())
 ```
 
 - **`Text(selector)`** reads the text of the matching element.
 - **`Attr(selector, attribute)`** reads an HTML attribute of the matching element.
-- **`Item.extract(response)`** yields one item per element matching `__selector__`.
+- **`Item.extract(response)`** is an async iterator producing one item per element matching `__selector__`.
 - **`item.to_dict()`** returns a JSON-compatible dict for pipelines.
 
 ## Cardinality From Annotations

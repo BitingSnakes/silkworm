@@ -1,7 +1,6 @@
 import pytest
 
 from silkworm.engine import Engine
-from silkworm.request import CallbackOutput
 from silkworm.response import Response
 from silkworm.spiders import Spider
 
@@ -10,8 +9,8 @@ class MockSpider(Spider):
     name = "mock"
     start_urls: tuple[str, ...] = ()
 
-    async def parse(self, response: Response) -> CallbackOutput:
-        return {"data": "test"}
+    async def parse(self, response: Response) -> None:
+        await self.emit({"data": "test"})
 
 
 async def test_engine_tracks_statistics() -> None:
@@ -145,9 +144,7 @@ async def test_final_log_includes_event_loop() -> None:
         name = "noop"
         start_urls: tuple[str, ...] = ()
 
-        async def parse(
-            self, response: Response
-        ) -> CallbackOutput:  # pragma: no cover - not invoked
+        async def parse(self, response: Response) -> None:  # pragma: no cover
             return None
 
     engine = Engine(NoopSpider(), concurrency=1)

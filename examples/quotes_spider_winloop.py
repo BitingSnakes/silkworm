@@ -37,18 +37,20 @@ class QuotesSpider(Spider):
                 continue
 
             tag_els = await quote_el.select(".tag")
-            yield {
-                "text": text_el.text,
-                "author": author_el.text,
-                "tags": [tag.text for tag in tag_els],
-            }
+            await self.emit(
+                {
+                    "text": text_el.text,
+                    "author": author_el.text,
+                    "tags": [tag.text for tag in tag_els],
+                }
+            )
 
         # Go to the next page, if there is one.
         next_link = await response.select_first("li.next > a")
         if next_link is not None:
             href = next_link.attr("href")
             if href:
-                yield response.follow(href, callback=self.parse)
+                await response.follow(href, callback=self.parse)
 
 
 if __name__ == "__main__":

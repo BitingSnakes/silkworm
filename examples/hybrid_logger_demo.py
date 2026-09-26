@@ -78,7 +78,9 @@ class HybridLoggerSpider(Spider):
                 quote_number=self.quotes_count,
                 author=author_el.text.strip(),
             )
-            yield {"text": text_el.text.strip(), "author": author_el.text.strip()}
+            await self.emit(
+                {"text": text_el.text.strip(), "author": author_el.text.strip()}
+            )
 
         if self.pages_seen >= self.max_pages:
             self.log.info("Reached page limit", total_quotes=self.quotes_count)
@@ -88,7 +90,7 @@ class HybridLoggerSpider(Spider):
         if next_link is not None:
             href = next_link.attr("href")
             if href:
-                yield response.follow(href, callback=self.parse)
+                await response.follow(href, callback=self.parse)
 
 
 def summarize_log_file(log_file: Path) -> None:

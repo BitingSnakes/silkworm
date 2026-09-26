@@ -58,7 +58,7 @@ class RedactedEngineLogger(EngineLogger):
 
 
 class TokenizedApiSpider(Spider):
-    """Pretends to call a JSON API and yields every item it returns."""
+    """Pretends to call a JSON API and emits every item it returns."""
 
     name = "tokenized_api_logging"
 
@@ -79,24 +79,26 @@ class TokenizedApiSpider(Spider):
             )
         fake_body = json.dumps({"items": items})
 
-        yield Request(
-            # Note the secret token in the URL.
-            url="https://api.example.test/items?access_token=secret-token",
-            callback=self.parse_api,
-            # Return this fake response instead of really downloading the URL.
-            meta={
-                MOCK_RESPONSE_META_KEY: {
-                    "status": 200,
-                    "headers": {"content-type": "application/json"},
-                    "body": fake_body,
-                }
-            },
+        await self.follow(
+            Request(
+                # Note the secret token in the URL.
+                url="https://api.example.test/items?access_token=secret-token",
+                callback=self.parse_api,
+                # Return this fake response instead of really downloading the URL.
+                meta={
+                    MOCK_RESPONSE_META_KEY: {
+                        "status": 200,
+                        "headers": {"content-type": "application/json"},
+                        "body": fake_body,
+                    }
+                },
+            )
         )
 
     async def parse_api(self, response: Response):
         data = json.loads(response.text)
         for item in data.get("items", []):
-            yield item
+            await self.emit(item)
 
 
 def main() -> None:

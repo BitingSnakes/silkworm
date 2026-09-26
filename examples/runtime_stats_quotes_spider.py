@@ -65,7 +65,9 @@ class RuntimeStatsQuotesSpider(Spider):
             self.authors.add(author)
             self.longest_quote_chars = max(self.longest_quote_chars, len(text))
 
-            yield {"text": text, "author": author, "page": self.pages_crawled}
+            await self.emit(
+                {"text": text, "author": author, "page": self.pages_crawled}
+            )
 
         self.update_stats()
         self.log.info(
@@ -82,7 +84,7 @@ class RuntimeStatsQuotesSpider(Spider):
         if next_link is not None:
             href = next_link.attr("href")
             if href:
-                yield response.follow(href, callback=self.parse)
+                await response.follow(href, callback=self.parse)
 
 
 def main() -> None:

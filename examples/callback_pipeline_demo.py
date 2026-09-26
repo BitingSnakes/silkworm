@@ -1,7 +1,7 @@
 """
 Process scraped items with your own functions using CallbackPipeline.
 
-A pipeline is something that receives every item your spider yields.
+A pipeline is something that receives every item your spider emits.
 `CallbackPipeline` lets you write a plain function and use it as a pipeline,
 without creating a pipeline class.
 
@@ -39,11 +39,13 @@ class QuotesSpider(Spider):
             author_el = await quote_el.select_first(".author")
             tag_els = await quote_el.select(".tag")
 
-            yield {
-                "text": text_el.text if text_el else "",
-                "author": author_el.text if author_el else "",
-                "tags": [tag.text for tag in tag_els],
-            }
+            await self.emit(
+                {
+                    "text": text_el.text if text_el else "",
+                    "author": author_el.text if author_el else "",
+                    "tags": [tag.text for tag in tag_els],
+                }
+            )
 
         # We don't follow the next page here, to keep the demo short.
 

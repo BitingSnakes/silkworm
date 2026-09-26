@@ -31,7 +31,6 @@ from pathlib import Path
 
 from silkworm import (
     HTMLResponse,
-    Request,
     Response,
     Spider,
     run_spider,
@@ -97,8 +96,8 @@ class UrlTitlesSpider(Spider):
         count = 0
         for record in self.read_records():
             count += 1
-            yield Request(
-                url=record["url"],
+            await self.follow(
+                record["url"],
                 callback=self.parse,
                 # Keep the original record so we can copy its fields to the output.
                 meta={"record": record},
@@ -121,12 +120,14 @@ class UrlTitlesSpider(Spider):
                 page_title = title_el.text.strip()
 
         # `**record` copies all fields from the input line into the new dict.
-        yield {
-            **record,
-            "page_title": page_title,
-            "final_url": response.url,  # May differ from "url" after redirects.
-            "status": response.status,
-        }
+        await self.emit(
+            {
+                **record,
+                "page_title": page_title,
+                "final_url": response.url,  # May differ from "url" after redirects.
+                "status": response.status,
+            }
+        )
 
 
 def main() -> None:

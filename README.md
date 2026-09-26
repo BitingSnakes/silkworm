@@ -14,7 +14,7 @@ Async-first web scraping framework built on [wreq](https://github.com/0x676e67/w
 - wreq-powered HTTP client: browser impersonation, redirect following with loop detection, query merging, and proxy support via `request.meta["proxy"]`.
 - Optional OnionLink client integration for scraping Tor v3 `.onion` sites without routing through wreq.
 - Optional Servo rendering via `ServoFetchClient` for JavaScript-rendered pages without changing the default HTTP client.
-- Typed spiders and callbacks that can return items or `Request` objects; `HTMLResponse` ships helper methods plus `Response.follow` to reuse callbacks.
+- Typed async spiders with a push-style callback API: `await self.emit(item)` streams items to pipelines and `await self.follow(...)` / `await response.follow(href)` schedule requests, both with backpressure; `HTMLResponse` ships selector helpers.
 - Optional declarative extraction with compiled `Item`, `Text`, and `Attr` field plans while keeping the callback API available.
 - HTML-to-Markdown conversion via `fast-h2m`, including rich `full`, lean `minimal`, and streaming modes.
 - Middlewares: User-Agent rotation/default, proxy rotation, cookie jars with save/load, retry with exponential backoff + optional sleep codes, flexible delays (fixed/random/custom), robots.txt delay enforcement, `SkipNonHTMLMiddleware` to drop non-HTML callbacks, and `CloudflareCrawlMiddleware` for Browser Rendering crawl jobs.
@@ -48,7 +48,7 @@ uv pip install -e .
 Targets Python 3.13+; dependencies are pinned in `pyproject.toml`.
 
 ## Quick start
-Define a spider by subclassing `Spider`, implementing `parse`, and yielding items or follow-up `Request` objects. This example writes quotes to `data/quotes.jl` and enables basic user agent, retry, and non-HTML filtering middlewares.
+Define a spider by subclassing `Spider` and implementing an async `parse` that reports items with `await self.emit(...)` and schedules follow-up pages with `await response.follow(...)`. This example writes quotes to `data/quotes.jl` and enables basic user agent, retry, and non-HTML filtering middlewares.
 
 ```python
 from silkworm import HTMLResponse, Response, Spider, run_spider
@@ -64,7 +64,7 @@ class QuotesSpider(Spider):
     name = "quotes"
     start_urls = ("https://quotes.toscrape.com/",)
 
-    async def parse(self, response: Response):
+    async def parse(self, response: Response) -> None:
         if not isinstance(response, HTMLResponse):
             return
 
@@ -75,14 +75,17 @@ class QuotesSpider(Spider):
             if text_el is None or author_el is None:
                 continue
             tags = await quote.select(".tag")
-            yield {
-                "text": text_el.text,
-                "author": author_el.text,
-                "tags": [t.text for t in tags],
-            }
+            await self.emit(
+                {
+                    "text": text_el.text,
+                    "author": author_el.text,
+                    "tags": [t.text for t in tags],
+                }
+            )
 
         if next_link := await html.select_first("li.next > a"):
-            yield html.follow(next_link.attr("href"), callback=self.parse)
+            if href := next_link.attr("href"):
+                await html.follow(href, callback=self.parse)
 
 
 if __name__ == "__main__":
@@ -99,6 +102,15 @@ if __name__ == "__main__":
         log_stats_interval=30,
     )
 ```
+
+### Upgrading from 0.10
+Silkworm 0.11 replaced `yield`/`return`-based callbacks with `emit`/`follow`.
+Callbacks, errbacks and `start_requests()` are now `async` functions returning
+`None`: turn `yield item` into `await self.emit(item)`, `yield request` into
+`await self.follow(request)`, and `yield response.follow(href)` into
+`await response.follow(href)`. Legacy generator callbacks fail with a
+`SpiderError` that explains the fix. See the
+[migration table](https://bitingsnakes.github.io/silkworm/core-concepts.html#migrating-from-0-10-yield-based-callbacks).
 
 ## Declarative extraction
 
@@ -127,13 +139,13 @@ class Product(Item):
 class ProductsSpider(Spider):
     start_urls = ("https://shop.example.com/products/",)
 
-    async def parse(self, response: Response):
+    async def parse(self, response: Response) -> None:
         if not isinstance(response, HTMLResponse):
             return
 
         async for product in Product.extract(response):
             # Existing pipelines consume JSON-compatible values.
-            yield product.to_dict()
+            await self.emit(product.to_dict())
 ```
 
 The annotation controls selector cardinality:
@@ -487,10 +499,10 @@ class RenderedSpider(Spider):
     name = "rendered"
     start_urls = ("https://example.com/",)
 
-    async def parse(self, response: Response):
+    async def parse(self, response: Response) -> None:
         if isinstance(response, HTMLResponse):
             title = await response.select_first("title")
-            yield {"title": title.text if title else ""}
+            await self.emit({"title": title.text if title else ""})
 
 
 run_spider(RenderedSpider, http_client=ServoFetchClient(settle_ms=500))
@@ -556,7 +568,7 @@ class LightpandaSpider(Spider):
         super().__init__(**kwargs)
         self._cdp_client = None
 
-    async def start_requests(self):
+    async def start_requests(self) -> None:
         # Connect to CDP endpoint
         self._cdp_client = CDPClient(
             ws_endpoint="ws://127.0.0.1:9222",
@@ -565,9 +577,9 @@ class LightpandaSpider(Spider):
         await self._cdp_client.connect()
         
         for url in self.start_urls:
-            yield Request(url=url, callback=self.parse)
+            await self.follow(url, callback=self.parse)
 
-    async def parse(self, response: Response):
+    async def parse(self, response: Response) -> None:
         if not isinstance(response, HTMLResponse):
             return
         
@@ -575,7 +587,7 @@ class LightpandaSpider(Spider):
         for link in await response.select("a"):
             href = link.attr("href")
             if href:
-                yield {"url": href}
+                await self.emit({"url": href})
 
     async def close(self):
         if self._cdp_client:
@@ -601,10 +613,10 @@ class OnionSpider(Spider):
     name = "onion"
     start_urls = ("http://exampleexampleexampleexampleexampleexampleexampleexampleexampleexample.onion/",)
 
-    async def parse(self, response: Response):
+    async def parse(self, response: Response) -> None:
         if isinstance(response, HTMLResponse):
             title = await response.select_first("title")
-            yield {"title": title.text if title else ""}
+            await self.emit({"title": title.text if title else ""})
 
 
 run_spider(
@@ -632,7 +644,7 @@ run_spider(
 - `python examples/quotes_spider_winloop.py` → `data/quotes_winloop.jl` (demonstrates winloop backend for Windows)
 - `python examples/hackernews_spider.py --pages 5` → `data/hackernews.jl`
 - `python examples/lobsters_spider.py --pages 2` → `data/lobsters.jl`
-- `python examples/start_urls_from_file_spider.py --urls-file data/start_urls.txt --output data/start_urls_from_file.jl` (reads one URL per line and initializes custom `Request` objects in `start_requests`)
+- `python examples/start_urls_from_file_spider.py --urls-file data/start_urls.txt --output data/start_urls_from_file.jl` (reads one URL per line and schedules custom requests with `await self.follow(...)` in `start_requests`)
 - `python examples/url_titles_spider.py --urls-file data/url_titles.jl --output data/titles.jl` (includes `SkipNonHTMLMiddleware` and stricter HTML size limits)
 - `python examples/exception_handling_spider.py` → `data/exception_handling.jl` (demonstrates `process_exception` and request `errback`)
 - `python examples/cookie_reuse_spiders.py` → `data/cookie_reuse.jl` and `data/cookies.txt` (captures cookies in one run, saves them, then loads them for a second run)
@@ -702,14 +714,16 @@ class MarkdownSpider(Spider):
     name = "markdown"
     start_urls = ("https://example.com",)
 
-    async def parse(self, response: Response):
+    async def parse(self, response: Response) -> None:
         if not isinstance(response, HTMLResponse):
             return
 
-        yield {
-            "url": response.url,
-            "markdown": await response.to_markdown(mode="full"),
-        }
+        await self.emit(
+            {
+                "url": response.url,
+                "markdown": await response.to_markdown(mode="full"),
+            }
+        )
 ```
 
 Modes are `full` for rich conversion, `minimal` for the lean Fast DOM path, and `mdream` for the mdream-backed converter. `to_markdown_result(...)` and `convert_html_to_markdown(...)` return `fast-h2m`'s structured result.

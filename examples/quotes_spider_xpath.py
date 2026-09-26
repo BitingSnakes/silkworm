@@ -49,11 +49,13 @@ class QuotesSpiderXPath(Spider):
                 self.log.warning("Skipping quote with missing fields")
                 continue
 
-            yield {
-                "text": text_el.text.strip(),
-                "author": author_el.text.strip(),
-                "tags": [tag.text.strip() for tag in tag_els],
-            }
+            await self.emit(
+                {
+                    "text": text_el.text.strip(),
+                    "author": author_el.text.strip(),
+                    "tags": [tag.text.strip() for tag in tag_els],
+                }
+            )
 
         # Find the "Next" link and follow it.
         next_link = await response.xpath_first("//li[@class='next']/a")
@@ -61,7 +63,7 @@ class QuotesSpiderXPath(Spider):
             href = next_link.attr("href")
             if href:
                 self.log.info("Following next page", href=href)
-                yield response.follow(href, callback=self.parse)
+                await response.follow(href, callback=self.parse)
 
 
 if __name__ == "__main__":

@@ -27,7 +27,7 @@ class LoggingSpider(Spider):
     async def parse(self, response: Response):
         # `self.log` is always available, whichever way the logger was set up.
         self.log.info("Parsing page", url=response.url)
-        yield {"url": response.url, "status": response.status}
+        await self.emit({"url": response.url, "status": response.status})
 
 
 def demo_default_logger() -> None:

@@ -17,7 +17,7 @@ class SimpleSpider(Spider):
     start_urls: tuple[str, ...] = ()
 
     async def parse(self, response):
-        yield {}
+        await self.emit({})
 
 
 def test_install_winloop_when_available():

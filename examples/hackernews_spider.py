@@ -141,7 +141,7 @@ class HackerNewsSpider(Spider):
                 self.log.warning("Skipping invalid post", errors=exc.errors())
                 continue
 
-            yield post.model_dump()
+            await self.emit(post.model_dump())
 
         # Follow the "More" link until we reach the page limit.
         if self.pages_seen >= self.max_pages:
@@ -151,7 +151,7 @@ class HackerNewsSpider(Spider):
         if more_link is not None:
             href = more_link.attr("href")
             if href:
-                yield response.follow(href, callback=self.parse)
+                await response.follow(href, callback=self.parse)
 
 
 def main() -> None:

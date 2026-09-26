@@ -58,10 +58,10 @@ run_spider(MySpider, dedup_key=dedup_with_params)
 ```
 
 ### Lifecycle
-`Engine.run()` calls `open_spider()`, which opens middlewares (each instance once, even when registered in both lists), then the spider's `open()`, then pipelines in order, and enqueues `start_requests()`. When the queue drains, `close_spider()` closes pipelines, the spider, and middlewares in reverse order, and the HTTP client is closed. Middlewares and pipelines may implement optional async `open(spider)` / `close(spider)` hooks.
+`Engine.run()` calls `open_spider()`, which opens middlewares (each instance once, even when registered in both lists), then the spider's `open()`, then pipelines in order, and runs `start_requests()`, whose `follow` calls enqueue the initial requests. When the queue drains, `close_spider()` closes pipelines, the spider, and middlewares in reverse order, and the HTTP client is closed. Middlewares and pipelines may implement optional async `open(spider)` / `close(spider)` hooks.
 
-### Callback Normalization
-Engine accepts a wide range of callback outputs (single item, iterable, async iterable, awaitable). Any non-iterable value is treated as a single item to avoid confusing TypeErrors.
+### Callback Execution
+Every callback, errback, and `start_requests()` runs inside a crawl scope bound to the current task through a context variable. `emit` sends items straight to the pipelines and `follow` straight to the deduplicating, bounded queue, so both apply backpressure while the callback is still running. Callbacks must be `async` functions returning `None`; async generators, synchronous callables, and non-`None` return values raise `SpiderError` with migration hints. The scope closes when the callback returns, so detached tasks cannot report results after the response has been released. See [Core Concepts](core-concepts.md#reporting-results-emit-and-follow).
 
 ## HttpClient
 HttpClient wraps wreq and is responsible for request serialization, redirects, and HTML detection. See [src/silkworm/http.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/http.py).

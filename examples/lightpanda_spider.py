@@ -56,11 +56,13 @@ class LightpandaSpider(Spider):
             if len(links) >= 20:
                 break
 
-        yield {
-            "source_url": response.url,
-            "links": links,
-            "link_count": len(links),
-        }
+        await self.emit(
+            {
+                "source_url": response.url,
+                "links": links,
+                "link_count": len(links),
+            }
+        )
 
 
 async def main() -> None:

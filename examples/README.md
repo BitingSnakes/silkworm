@@ -14,8 +14,8 @@ python examples/quotes_spider.py
 
 - **Spider**: a class that says where to start (`start_urls`) and how to read a
   page (`parse()`).
-- **`yield {...}`** in `parse()` produces an *item* (scraped data).
-- **`yield response.follow(href, callback=...)`** asks Silkworm to download
+- **`await self.emit({...})`** in `parse()` produces an *item* (scraped data).
+- **`await response.follow(href, callback=...)`** asks Silkworm to download
   another page (for example the next page).
 - **Middlewares** change requests before they are sent, or responses after they
   arrive (retry, user agent, delays, cookies...).
@@ -39,7 +39,7 @@ python examples/quotes_spider.py
 | --- | --- |
 | `hackernews_spider.py` | Combine data from neighbouring rows, polite delays, `--pages` option. |
 | `lobsters_spider.py` | Optional fields, regular expressions, uvloop, retry on 429. |
-| `start_urls_from_file_spider.py` | Read URLs from a text file in `start_requests()`, use `meta`. |
+| `start_urls_from_file_spider.py` | Read URLs from a text file and `follow()` them in `start_requests()`, use `meta`. |
 | `url_titles_spider.py` | Fetch titles for many URLs from a JSONL file, choose an event loop. |
 | `sitemap_spider.py` | Parse `sitemap.xml`, two callbacks, collect SEO/Open Graph tags. |
 

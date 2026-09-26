@@ -322,13 +322,31 @@ class Response:
 
         return None
 
-    def follow(
+    def _follow_request(
+        self,
+        href: str,
+        callback: Callback | None,
+        kwargs: dict[str, object],
+    ) -> Request:
+        from .request import Request  # local import to avoid cycle
+
+        return Request(
+            url=self.url_join(href),
+            callback=callback or self.request.callback,
+            **kwargs,  # type: ignore[arg-type]
+        )
+
+    async def follow(
         self,
         href: str,
         callback: Callback | None = None,
         **kwargs: object,
-    ) -> Request:
-        """Create a request for a link relative to this response.
+    ) -> None:
+        """Schedule a request for a link relative to this response.
+
+        Must be awaited inside a spider callback, errback, or
+        :meth:`~silkworm.Spider.start_requests`. The request passes through
+        engine deduplication and waits for queue capacity (backpressure).
 
         Args:
             href: Absolute or relative target URL.
@@ -336,34 +354,29 @@ class Response:
                 inherited when this is omitted.
             **kwargs: Additional :class:`~silkworm.Request` fields.
 
-        Returns:
-            A new request with a resolved absolute URL.
+        Raises:
+            SpiderError: If awaited outside an engine-run callback.
         """
-        from .request import Request  # local import to avoid cycle
+        from ._scope import current_scope  # local import to avoid cycle
 
-        url = self.url_join(href)
-        return Request(
-            url=url,
-            callback=callback or self.request.callback,
-            **kwargs,  # type: ignore[arg-type]
+        await current_scope("follow").follow(
+            self._follow_request(href, callback, kwargs)
         )
 
-    def follow_all(
+    async def follow_all(
         self,
         hrefs: Iterable[str | None],
         callback: Callback | None = None,
         **kwargs: object,
-    ) -> list[Request]:
-        """Create requests for every non-``None`` link in ``hrefs``.
+    ) -> None:
+        """Schedule requests for every non-``None`` link in ``hrefs``.
 
-        The callback and extra request fields are applied to every generated
-        request in input order.
+        The callback and extra request fields are applied to every request,
+        which are scheduled in input order.
         """
-        return [
-            self.follow(href, callback=callback, **kwargs)
-            for href in hrefs
-            if href is not None
-        ]
+        for href in hrefs:
+            if href is not None:
+                await self.follow(href, callback=callback, **kwargs)
 
     def close(self) -> None:
         """Release payload references so a retained response does not pin memory.
@@ -569,17 +582,6 @@ class HTMLResponse(Response):
             mode=mode,
             options=options,
         )
-
-    @override
-    def follow(
-        self,
-        href: str,
-        callback: Callback | None = None,
-        **kwargs: object,
-    ) -> Request:
-        """Create a request for a link relative to this HTML response."""
-        # Explicit base call avoids zero-arg super issues with slotted dataclasses.
-        return Response.follow(self, href, callback=callback, **kwargs)
 
     @override
     def close(self) -> None:

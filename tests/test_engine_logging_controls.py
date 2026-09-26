@@ -6,7 +6,7 @@ from typing import cast
 from silkworm.engine import Engine, EngineLogger
 from silkworm.logging import LogLevel, log_at_level
 from silkworm.pipelines import JsonLinesPipeline, LoggedPipeline
-from silkworm.request import CallbackOutput, Request
+from silkworm.request import Request
 from silkworm.response import Response
 from silkworm.spiders import Spider
 from silkworm.types import JSONValue
@@ -49,7 +49,7 @@ class _NoopSpider(Spider):
     name = "noop"
     start_urls: tuple[str, ...] = ()
 
-    async def parse(self, response: Response) -> CallbackOutput:
+    async def parse(self, response: Response) -> None:
         return None
 
 

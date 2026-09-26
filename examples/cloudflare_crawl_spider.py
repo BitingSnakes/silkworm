@@ -26,7 +26,7 @@ import json
 import os
 from typing import Any
 
-from silkworm import Request, Response, Spider, run_spider
+from silkworm import Response, Spider, run_spider
 from silkworm.middlewares import CloudflareCrawlMiddleware
 from silkworm.pipelines import JsonLinesPipeline
 
@@ -45,8 +45,8 @@ class CloudflareCrawlSpider(Spider):
         self.crawl_options = crawl_options or {}
 
     async def start_requests(self):
-        yield Request(
-            url=self.start_url,
+        await self.follow(
+            self.start_url,
             callback=self.parse,
             # This meta key tells CloudflareCrawlMiddleware to handle the request.
             # Its value holds the crawl options (or True for the defaults).
@@ -68,7 +68,7 @@ class CloudflareCrawlSpider(Spider):
         # Each record describes one crawled page; save each one as an item.
         for record in records:
             if isinstance(record, dict):
-                yield record
+                await self.emit(record)
 
 
 def find_records(data: object) -> list[Any] | None:

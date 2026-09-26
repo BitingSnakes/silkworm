@@ -106,7 +106,7 @@ class SitemapSpider(Spider):
 
     async def start_requests(self):
         self.log.info("Fetching sitemap", url=self.sitemap_url)
-        yield self.sitemap_request(self.sitemap_url)
+        await self.follow(self.sitemap_request(self.sitemap_url))
 
     def sitemap_request(self, url: str) -> Request:
         """Build a request for a sitemap file."""
@@ -148,7 +148,7 @@ class SitemapSpider(Spider):
         if sub_sitemaps:
             self.log.info("Found sitemap index", sub_sitemaps=len(sub_sitemaps))
             for url in sub_sitemaps:
-                yield self.sitemap_request(url)
+                await self.follow(self.sitemap_request(url))
             return
 
         # Case 2: a normal sitemap. Request each page with parse_page().
@@ -161,8 +161,8 @@ class SitemapSpider(Spider):
                 return
 
             self.pages_requested += 1
-            yield Request(
-                url=url,
+            await self.follow(
+                url,
                 callback=self.parse_page,
                 dont_filter=True,
                 # Remember the sitemap URL; the final URL can differ after redirects.
@@ -202,7 +202,7 @@ class SitemapSpider(Spider):
             if field_name is not None:
                 item[field_name] = content.strip()
 
-        yield item
+        await self.emit(item)
 
 
 def main() -> None:

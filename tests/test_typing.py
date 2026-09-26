@@ -6,7 +6,6 @@ no-op at runtime, so these tests also run under pytest.
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
 from datetime import timedelta
 from typing import assert_type
 
@@ -30,7 +29,6 @@ from silkworm.types import (
     Callback,
     Headers,
     ItemCallback,
-    JSONLike,
     JSONValue,
     Logger,
     MetaData,
@@ -45,11 +43,11 @@ class ArticleSpider(Spider):
         super().__init__()
         self.section = section
 
-    async def parse(self, response: Response) -> AsyncIterator[Request | JSONLike]:
+    async def parse(self, response: Response) -> None:
         if isinstance(response, HTMLResponse):
-            # Plain dict literals are valid callback output.
-            yield {"title": response.url, "section": self.section}
-            yield response.follow("/next", callback=self.parse)
+            # Plain dict literals are valid items.
+            await self.emit({"title": response.url, "section": self.section})
+            await response.follow("/next", callback=self.parse)
 
 
 def test_logger_types() -> None:

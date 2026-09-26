@@ -5,7 +5,8 @@ What you will learn:
 - How a Spider works: it starts at `start_urls` and Silkworm calls `parse()`
   with each downloaded page.
 - How to pick elements out of HTML with CSS selectors.
-- How to `yield` scraped items (dicts) and follow-up requests (next page).
+- How to `await self.emit(...)` scraped items (dicts) and
+  `await response.follow(...)` follow-up requests (next page).
 - How to validate data with Pydantic before saving it.
 - How to plug in middlewares (retry, user agent) and pipelines (save to file).
 
@@ -102,16 +103,18 @@ class QuotesSpider(Spider):
                 self.log.warning("Skipping invalid quote", errors=exc.errors())
                 continue
 
-            # Step 4: yield the item. Pipelines expect plain dicts, so convert it.
-            yield quote.model_dump()
+            # Step 4: emit the item. Pipelines expect plain dicts, so convert it.
+            # `emit()` returns once every pipeline has processed the item.
+            await self.emit(quote.model_dump())
 
         # Step 5: go to the next page, if there is one.
-        # `follow()` turns a relative link like "/page/2/" into a full Request.
+        # `follow()` turns a relative link like "/page/2/" into a full URL and
+        # schedules it for crawling.
         next_link = await response.select_first("li.next > a")
         if next_link is not None:
             href = next_link.attr("href")
             if href:
-                yield response.follow(href, callback=self.parse)
+                await response.follow(href, callback=self.parse)
 
 
 def main() -> None:
@@ -131,7 +134,7 @@ def main() -> None:
         RetryMiddleware(max_times=3),  # Retry failed requests up to 3 times.
     ]
 
-    # Pipelines receive every item your spider yields, e.g. to save it.
+    # Pipelines receive every item your spider emits, e.g. to save it.
     item_pipelines: list[ItemPipeline] = [
         JsonLinesPipeline("data/quotes.jl", use_opendal=False),
         # Want a database instead? Try:

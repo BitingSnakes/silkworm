@@ -48,16 +48,16 @@ class DeclarativeQuotesSpider(Spider):
         if not isinstance(response, HTMLResponse):
             return
 
-        # Extract every Quote on the page and yield it as a dict.
+        # Extract every Quote on the page and emit it as a dict.
         async for quote in Quote.extract(response):
-            yield quote.to_dict()
+            await self.emit(quote.to_dict())
 
         # Follow the "Next" button to the next page.
         next_link = await response.select_first("li.next > a")
         if next_link is not None:
             href = next_link.attr("href")
             if href:
-                yield response.follow(href, callback=self.parse)
+                await response.follow(href, callback=self.parse)
 
 
 if __name__ == "__main__":

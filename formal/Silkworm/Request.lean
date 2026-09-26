@@ -40,15 +40,12 @@ inductive Event where
   | item (item : Item)
 deriving Repr, DecidableEq
 
-inductive CallbackOutput where
-  | none
-  | one (event : Event)
-  | many (events : List Event)
-deriving Repr, DecidableEq
-
-def normalizeCallbackOutput : CallbackOutput -> List Event
-  | CallbackOutput.none => []
-  | CallbackOutput.one event => [event]
-  | CallbackOutput.many events => events
+/--
+  Ordered trace of the `await spider.emit(item)` (`Event.item`) and
+  `await spider.follow(request)` (`Event.request`) calls made by one callback,
+  errback, or `start_requests()` run. Each effect is applied to the engine as
+  soon as it is awaited, so a callback is modelled by the sequence of its effects.
+-/
+abbrev CallbackEffects := List Event
 
 end Silkworm
