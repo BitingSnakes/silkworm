@@ -39,6 +39,7 @@ jobs:
           # extras it doesn't list. cassandra-driver's marker skips it on Python 3.14+.
           uv sync --group dev \
             --extra taskiq \
+            --extra zenoh \
             --extra msgpack \
             --extra polars \
             --extra excel \
@@ -68,6 +69,7 @@ jobs:
         run: |
           uv sync --group dev \
             --extra taskiq \
+            --extra zenoh \
             --extra msgpack \
             --extra polars \
             --extra excel \

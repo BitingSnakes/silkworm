@@ -20,7 +20,12 @@ from silkworm import (
     get_logger,
     run_spider,
 )
-from silkworm.pipelines import CallbackPipeline, ItemPipeline, JsonLinesPipeline
+from silkworm.pipelines import (
+    CallbackPipeline,
+    ItemPipeline,
+    JsonLinesPipeline,
+    ZenohKeyResolver,
+)
 from silkworm.types import (
     Callback,
     Headers,
@@ -96,3 +101,11 @@ def test_callback_and_pipeline_protocols() -> None:
         JsonLinesPipeline("items.jl"),
     ]
     assert len(callbacks) == len(pipelines) == 2
+
+
+def test_zenoh_key_resolver_type() -> None:
+    async def resolve(item: JSONValue, spider: Spider) -> str:
+        return f"{spider.name}/{item}"
+
+    resolver: ZenohKeyResolver = resolve
+    assert callable(resolver)

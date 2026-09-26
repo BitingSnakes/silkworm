@@ -29,7 +29,7 @@ run_spider(
 ```
 
 ## Streaming vs Buffered Pipelines
-- **Streaming (per item)**: `JsonLinesPipeline`, `CSVPipeline`, `XMLPipeline`, `SQLitePipeline`, `WebhookPipeline` (batch_size=1).
+- **Streaming (per item)**: `JsonLinesPipeline`, `CSVPipeline`, `XMLPipeline`, `SQLitePipeline`, `WebhookPipeline` (batch_size=1), `ZenohPipeline`.
 - **Buffered (write on close)**: `PolarsPipeline`, `ExcelPipeline`, `YAMLPipeline`, `AvroPipeline`, `VortexPipeline`, `S3JsonLinesPipeline`, `FTPPipeline`, `SFTPPipeline`, `RssPipeline`.
 - **Batching**: `WebhookPipeline` (batch_size > 1), `GoogleSheetsPipeline`.
 
@@ -126,6 +126,20 @@ CSVPipeline("data/items.csv", fieldnames=["author", "text", "tags"])
 
 ```python
 TaskiqPipeline(broker, task_name=".:process_item")
+```
+
+### ZenohPipeline
+- **Purpose**: Publish JSON-serialized items to Zenoh immediately.
+- **Options**: `key_expr` (static string or sync/async `(item, spider)` resolver), `config` or `session`, plus Zenoh publisher QoS options.
+- **Lifecycle**: Opens and closes its own session by default. An injected `session` remains caller-owned. All publishers created by the pipeline are undeclared on close.
+- **Routing**: Dynamic publishers are declared lazily and cached by key expression until close.
+- **Extras**: `zenoh`.
+- **Code**: [src/silkworm/_pipelines/zenoh_pipeline.py](../src/silkworm/_pipelines/zenoh_pipeline.py)
+
+```python
+from silkworm.pipelines import ZenohPipeline
+
+ZenohPipeline("scraping/items")
 ```
 
 ### PolarsPipeline

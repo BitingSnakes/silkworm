@@ -65,6 +65,9 @@ rsloop = [
 taskiq = [
   "taskiq==0.12.6",
 ]
+zenoh = [
+  "eclipse-zenoh==1.10.1",
+]
 uvloop = [
   "uvloop==0.22.1",
 ]

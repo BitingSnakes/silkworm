@@ -202,6 +202,7 @@ from silkworm.pipelines import (
     SQLitePipeline,
     XMLPipeline,
     TaskiqPipeline,  # requires: pip install silkworm-rs[taskiq]
+    ZenohPipeline,  # requires: pip install silkworm-rs[zenoh]
     PolarsPipeline,  # requires: pip install silkworm-rs[polars]
     ExcelPipeline,  # requires: pip install silkworm-rs[excel]
     YAMLPipeline,  # requires: pip install silkworm-rs[yaml]
@@ -267,6 +268,7 @@ run_spider(
 - `RssPipeline` writes buffered RSS 2.0 feeds from items with configurable title/link/description fields.
 - `MsgPackPipeline` writes items in binary MessagePack format using [ormsgpack](https://github.com/aviramha/ormsgpack) for fast and compact serialization (requires `pip install silkworm-rs[msgpack]`).
 - `TaskiqPipeline` sends items to a [Taskiq](https://taskiq-python.github.io/) queue for distributed processing (requires `pip install silkworm-rs[taskiq]`).
+- `ZenohPipeline` publishes JSON items to a static or dynamically resolved [Zenoh](https://zenoh.io/) key expression (requires `pip install silkworm-rs[zenoh]`).
 - `PolarsPipeline` writes items to a Parquet file using Polars for efficient columnar storage (requires `pip install silkworm-rs[polars]`).
 - `ExcelPipeline` writes items to an Excel .xlsx file (requires `pip install silkworm-rs[excel]`).
 - `YAMLPipeline` writes items to a YAML file (requires `pip install silkworm-rs[yaml]`).
@@ -344,6 +346,32 @@ run_spider(MySpider, item_pipelines=[pipeline])
 ```
 
 This enables distributed processing, retries, rate limiting, and other Taskiq features. See `examples/taskiq_quotes_spider.py` for a complete example.
+
+## Publishing items with ZenohPipeline
+Publish every item immediately to a Zenoh key expression:
+
+```python
+from silkworm.pipelines import ZenohPipeline
+
+pipeline = ZenohPipeline("scraping/quotes")
+run_spider(MySpider, item_pipelines=[pipeline])
+```
+
+Use a sync or async resolver when items need separate keys:
+
+```python
+async def item_key(item, spider):
+    return f"scraping/{spider.name}/{item['category']}"
+
+pipeline = ZenohPipeline(item_key)
+```
+
+The pipeline opens and closes its own session by default. Pass a configured
+`zenoh.Config` instance to customize that session, or `session=existing_session` to
+reuse a caller-owned session.
+Injected sessions remain open when the pipeline closes. Publisher options include `encoding`,
+`congestion_control`, `priority`, `express`, `reliability`, and `allowed_destination`.
+Dynamic publishers are cached by key until pipeline shutdown.
 
 ## Handling non-HTML responses
 Keep crawls cheap when URLs mix HTML and binaries/APIs:

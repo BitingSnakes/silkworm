@@ -98,6 +98,11 @@ from ._pipelines.yaml_pipeline import (
     YAML_AVAILABLE,
     YAMLPipeline,
 )
+from ._pipelines.zenoh_pipeline import (
+    ZENOH_AVAILABLE,
+    ZenohKeyResolver,
+    ZenohPipeline,
+)
 
 __all__ = [
     "AIOBOTO3_AVAILABLE",
@@ -121,6 +126,7 @@ __all__ = [
     "VORTEX_AVAILABLE",
     "WREQ_AVAILABLE",
     "YAML_AVAILABLE",
+    "ZENOH_AVAILABLE",
     "AvroPipeline",
     "CSVPipeline",
     "CallbackPipeline",
@@ -151,4 +157,6 @@ __all__ = [
     "WebhookPipeline",
     "XMLPipeline",
     "YAMLPipeline",
+    "ZenohKeyResolver",
+    "ZenohPipeline",
 ]

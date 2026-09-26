@@ -22,7 +22,7 @@ from ._types import (
 from .engine import DedupKey, EngineOptions
 from .logging import Logger, LogLevel
 from .middlewares import ExceptionMiddleware, RequestMiddleware, ResponseMiddleware
-from .pipelines import ItemCallback, ItemPipeline
+from .pipelines import ItemCallback, ItemPipeline, ZenohKeyResolver
 from .request import Callback, CallbackOutput, CallbackResult, Errback
 from .runner import LoopFactory
 
@@ -49,4 +49,5 @@ __all__ = [
     "QueryValue",
     "RequestMiddleware",
     "ResponseMiddleware",
+    "ZenohKeyResolver",
 ]

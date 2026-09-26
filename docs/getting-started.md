@@ -58,6 +58,7 @@ pip install "silkworm-rs[rsloop,polars]"
 | `dynamodb` | DynamoDB export | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
 | `duckdb` | DuckDB export | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
 | `taskiq` | Taskiq queue pipeline | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
+| `zenoh` | Zenoh pub/sub pipeline | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
 | `memray` | Memory profiling | [justfile](../justfile) |
 | `cdp` | CDP browser client and rendered HTML fetch | [src/silkworm/cdp.py](../src/silkworm/cdp.py) |
 | `onionlink` | Tor v3 onion-service client | [src/silkworm/onionlink.py](../src/silkworm/onionlink.py) |
