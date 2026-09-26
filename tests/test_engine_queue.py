@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from silkworm.engine import Engine
@@ -18,7 +20,7 @@ def test_engine_defaults_to_bounded_queue():
     spider = SmallSpider()
     engine = Engine(spider, concurrency=3)
 
-    assert engine._queue.maxsize == 30  # concurrency * 10
+    assert engine.max_pending_requests == 30  # concurrency * 10
 
 
 def test_engine_rejects_non_positive_concurrency():
@@ -69,7 +71,7 @@ async def test_engine_runs_with_limited_queue(monkeypatch: pytest.MonkeyPatch):
 
     await engine.run()
 
-    assert engine._queue.maxsize == 2
+    assert engine.max_pending_requests == 2
     assert engine._queue.empty()
 
 
@@ -319,3 +321,112 @@ async def test_engine_runs_request_errback_for_unhandled_exception(
         }
     ]
     assert engine._stats["errors"] == 1
+
+
+def _track_max_queue_size(engine: Engine) -> list[int]:
+    """Record the largest queue size observed after every enqueue."""
+    observed = [0]
+    put_nowait = engine._queue.put_nowait
+
+    def tracking_put_nowait(entry):
+        put_nowait(entry)
+        observed[0] = max(observed[0], engine._queue.qsize())
+
+    engine._queue.put_nowait = tracking_put_nowait  # type: ignore[method-assign]
+    return observed
+
+
+def _ok_fetch(engine: Engine, fetched: list[str] | None = None) -> None:
+    async def fake_fetch(req: Request) -> Response:
+        if fetched is not None:
+            fetched.append(req.url)
+        return Response(url=req.url, status=200, headers={}, body=b"", request=req)
+
+    engine.http.fetch = fake_fetch  # type: ignore[method-assign]
+
+
+async def test_single_worker_fan_out_past_full_queue_does_not_deadlock():
+    class FanOut(Spider):
+        start_urls = ("http://example.com/",)
+
+        async def parse(self, response: Response) -> None:
+            if response.url == "http://example.com/":
+                for i in range(20):
+                    await self.follow(f"http://example.com/{i}")
+
+    fetched: list[str] = []
+    engine = Engine(FanOut(), concurrency=1, max_pending_requests=2)
+    _ok_fetch(engine, fetched)
+
+    async with asyncio.timeout(5):
+        await engine.run()
+
+    assert len(fetched) == 21
+    assert engine._stalled_workers == {}
+    assert not engine._capacity_waiters
+
+
+async def test_all_workers_fanning_out_do_not_deadlock():
+    class NestedFanOut(Spider):
+        start_urls = tuple(f"http://example.com/{i}" for i in range(3))
+
+        async def parse(self, response: Response) -> None:
+            depth = response.url.count("/") - 2
+            if depth < 3:
+                async with asyncio.TaskGroup() as tg:
+                    for i in range(4):
+                        tg.create_task(self.follow(f"{response.url}/{i}"))
+
+    fetched: list[str] = []
+    engine = Engine(NestedFanOut(), concurrency=3, max_pending_requests=2)
+    _ok_fetch(engine, fetched)
+
+    async with asyncio.timeout(5):
+        await engine.run()
+
+    # 3 seeds, each expanding 4-way twice more: 3 * (1 + 4 + 16).
+    assert len(fetched) == 63
+    assert len(set(fetched)) == 63
+
+
+async def test_start_requests_never_exceed_max_pending_requests():
+    class ManySeeds(Spider):
+        start_urls = tuple(f"http://example.com/{i}" for i in range(50))
+
+        async def parse(self, response: Response) -> None:
+            return None
+
+    fetched: list[str] = []
+    engine = Engine(ManySeeds(), concurrency=2, max_pending_requests=3)
+    observed = _track_max_queue_size(engine)
+    _ok_fetch(engine, fetched)
+
+    async with asyncio.timeout(5):
+        await engine.run()
+
+    assert len(fetched) == 50
+    assert observed[0] <= 3
+
+
+async def test_callbacks_keep_backpressure_while_another_worker_progresses():
+    class OneFanOut(Spider):
+        start_urls = ("http://example.com/",)
+
+        async def parse(self, response: Response) -> None:
+            if response.url == "http://example.com/":
+                for i in range(30):
+                    await self.follow(f"http://example.com/leaf/{i}")
+            else:
+                await asyncio.sleep(0)  # leaf pages never schedule requests
+
+    fetched: list[str] = []
+    engine = Engine(OneFanOut(), concurrency=2, max_pending_requests=2)
+    observed = _track_max_queue_size(engine)
+    _ok_fetch(engine, fetched)
+
+    async with asyncio.timeout(5):
+        await engine.run()
+
+    assert len(fetched) == 31
+    # The idle worker keeps draining, so the fan-out waits instead of overflowing.
+    assert observed[0] <= 2

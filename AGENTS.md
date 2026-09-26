@@ -5,7 +5,7 @@
 **Silkworm** is an async-first web scraping framework built on top of `wreq` (HTTP client with browser impersonation) and [scraper-rs](https://github.com/RustedBytes/scraper-rs) (fast HTML parsing). It provides a minimal Spider/Request/Response model, middlewares, and pipelines for building web scrapers and crawlers without boilerplate.
 
 ### Key Features
-- **Async-first engine** with configurable concurrency, bounded backpressure (defaults to `concurrency * 10`), and per-request timeouts
+- **Async-first engine** with configurable concurrency, bounded, deadlock-free backpressure (defaults to `concurrency * 10`; the last running worker overflows instead of blocking), and per-request timeouts
 - **wreq-powered HTTP client** with browser impersonation, redirect following with loop detection, query merging, and proxy support
 - **Typed async spiders** with a push-style callback API: `await self.emit(item)` / `await self.follow(...)` (plus `await response.follow(href)`) instead of `yield`
 - **Middleware system** for request/response processing
@@ -310,7 +310,7 @@ See "Pipeline Reference" below for the full list, configuration options, and exa
 #### 5. Engine (`engine.py`)
 Core async engine managing:
 - Concurrent request processing
-- Queue management with backpressure
+- Queue management with backpressure: `_wait_for_queue_capacity` enforces `max_pending_requests` (the queue itself is unbounded); `start_requests()` always waits, callbacks wait unless every other worker is stalled, then the last worker overflows so workers never deadlock
 - Middleware and pipeline execution
 - Request deduplication
 - Statistics tracking
@@ -823,7 +823,7 @@ Available extras:
 run_spider(
     MySpider,
     concurrency=16,  # Number of concurrent requests
-    max_pending_requests=160,  # Queue size (concurrency * 10 default)
+    max_pending_requests=160,  # Queue capacity (concurrency * 10 default; soft for callbacks)
     request_timeout=10,  # Per-request timeout
 )
 ```

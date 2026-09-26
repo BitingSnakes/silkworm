@@ -7,7 +7,9 @@ import inspect
 import reprlib
 import sys
 import time
+from collections import Counter, deque
 from collections.abc import Awaitable, Callable, Iterable
+from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import timedelta
 from itertools import count
@@ -136,6 +138,13 @@ type DedupKey = Callable[[Request], str]
 type PrioritizedRequest = tuple[int, int, Request]
 type LifecycleCloser = tuple[str, Callable[[], Awaitable[object]]]
 
+# Index of the engine worker whose callback (or a task it spawned) is running;
+# ``None`` outside workers, e.g. while ``start_requests()`` seeds the queue.
+_CURRENT_WORKER: ContextVar[int | None] = ContextVar(
+    "silkworm_engine_worker",
+    default=None,
+)
+
 
 def default_dedup_key(req: Request) -> str:
     """Return the request URL used by the engine's default deduplicator.
@@ -176,8 +185,11 @@ class Engine:
     Args:
         spider: Spider instance to execute.
         concurrency: Maximum simultaneous HTTP requests for the default client.
-        max_pending_requests: Bounded queue capacity. Defaults to ten times the
-            effective HTTP client concurrency.
+        max_pending_requests: Queue capacity used for backpressure. Defaults to
+            ten times the effective HTTP client concurrency. Scheduling waits
+            while the queue is full, except that the last worker able to make
+            progress enqueues past the bound instead of waiting, so callbacks
+            can never deadlock the crawl.
         emulation: Browser profile used by the default ``wreq`` client; pass
             ``None`` to disable impersonation.
         request_timeout: Default per-request timeout.
@@ -236,15 +248,19 @@ class Engine:
         default_queue_size = self.http.concurrency * 10
         if max_pending_requests is not None:
             require_positive_int(max_pending_requests, "max_pending_requests")
-        queue_size = (
+        self.max_pending_requests: int = (
             max_pending_requests
             if max_pending_requests is not None
             else default_queue_size
         )
         self._request_order = count()
-        self._queue: asyncio.PriorityQueue[PrioritizedRequest] = asyncio.PriorityQueue(
-            maxsize=queue_size,
-        )
+        # The queue itself is unbounded: ``_wait_for_queue_capacity`` enforces
+        # ``max_pending_requests`` so it can let a worker overflow the bound
+        # rather than deadlock (see that method).
+        self._queue: asyncio.PriorityQueue[PrioritizedRequest] = asyncio.PriorityQueue()
+        self._capacity_waiters: deque[asyncio.Future[None]] = deque()
+        self._stalled_workers: Counter[int] = Counter()
+        self._worker_count = 0
         self._seen: set[str] = set()
         self.dedup_key: DedupKey = dedup_key or default_dedup_key
         self._stop_event = asyncio.Event()
@@ -490,12 +506,68 @@ class Engine:
             dont_filter=req.dont_filter,
             priority=req.priority,
         )
-        await self._queue.put(self._priority_entry(req))
+        await self._wait_for_queue_capacity(req)
+        self._queue.put_nowait(self._priority_entry(req))
+
+    async def _wait_for_queue_capacity(self, req: Request) -> None:
+        """Wait until the queue holds fewer than ``max_pending_requests`` entries.
+
+        Workers are the only consumers, so a worker waiting for space depends on
+        another worker dequeuing. A worker counts as stalled while it, or a task
+        spawned by its callback, waits here. When every other worker is already
+        stalled, the caller enqueues past the bound instead of waiting, so at
+        least one worker always keeps making progress. Requests scheduled
+        outside workers (``start_requests()``) always wait.
+        """
+        worker = _CURRENT_WORKER.get()
+        while self._queue.qsize() >= self.max_pending_requests:
+            if (
+                worker is not None
+                and worker not in self._stalled_workers
+                and len(self._stalled_workers) + 1 >= self._worker_count
+            ):
+                self.logger.debug(
+                    "Queue full; enqueuing past max_pending_requests so the "
+                    "last running worker cannot deadlock",
+                    url=req.url,
+                    queue_size=self._queue.qsize(),
+                    max_pending_requests=self.max_pending_requests,
+                )
+                return
+
+            waiter = asyncio.get_running_loop().create_future()
+            self._capacity_waiters.append(waiter)
+            if worker is not None:
+                self._stalled_workers[worker] += 1
+            try:
+                await waiter
+            except asyncio.CancelledError:
+                if waiter.done() and not waiter.cancelled():
+                    # Woken but cancelled before using the slot; pass it on.
+                    self._wake_capacity_waiter()
+                raise
+            finally:
+                if not waiter.done():
+                    self._capacity_waiters.remove(waiter)
+                if worker is not None:
+                    self._stalled_workers[worker] -= 1
+                    if not self._stalled_workers[worker]:
+                        del self._stalled_workers[worker]
+
+    def _wake_capacity_waiter(self) -> None:
+        while self._capacity_waiters:
+            waiter = self._capacity_waiters.popleft()
+            if not waiter.done():
+                waiter.set_result(None)
+                return
 
     def _priority_entry(self, req: Request) -> PrioritizedRequest:
         return (-req.priority, next(self._request_order), req)
 
-    async def _worker(self) -> None:
+    async def _worker(self, index: int = 0) -> None:
+        # Each worker runs in its own task, so this only tags this worker and the
+        # tasks its callbacks spawn.
+        _CURRENT_WORKER.set(index)
         while not self._stop_event.is_set():
             try:
                 async with asyncio.timeout(1.0):
@@ -506,6 +578,7 @@ class Engine:
                 continue
             except asyncio.CancelledError:
                 break
+            self._wake_capacity_waiter()
 
             try:
                 req = await self._apply_request_mw(req)
@@ -811,8 +884,9 @@ class Engine:
 
         try:
             async with asyncio.TaskGroup() as tg:
-                for _ in range(self.http.concurrency):
-                    tg.create_task(self._worker())
+                self._worker_count = self.http.concurrency
+                for index in range(self._worker_count):
+                    tg.create_task(self._worker(index))
 
                 if self.log_stats_interval is not None and self.log_stats_interval > 0:
                     tg.create_task(self._log_statistics())

@@ -3,7 +3,7 @@
 **Silkworm** is an async-first web scraping framework built on `wreq` (HTTP client with browser impersonation) and [scraper-rs](https://github.com/RustedBytes/scraper-rs) (fast HTML parsing). It provides a small, typed Spider/Request/Response model, middlewares, and pipelines so you can ship scrapers quickly without boilerplate.
 
 ## Features
-- **Async engine** with configurable concurrency, bounded queue backpressure, request priorities, deduplication, and crawl statistics.
+- **Async engine** with configurable concurrency, deadlock-free bounded queue backpressure, request priorities, deduplication, and crawl statistics.
 - **wreq-powered HTTP client** with browser impersonation, redirect handling, keep-alive, proxies, and HTML detection.
 - **Typed spiders and callbacks** with `HTMLResponse` CSS/XPath selectors, `follow` helpers, and flexible callback outputs.
 - **Declarative extraction** with `Item`, `Text`, and `Attr` field plans.

@@ -172,7 +172,10 @@ returning results, they push them to the engine while they run. See
 | `await response.follow(href, ...)` / `await response.follow_all(hrefs, ...)` | Schedules links relative to that response. |
 
 Each `await` finishes only when the work is done: the item has passed every
-pipeline, or the request has been deduplicated and placed in the bounded queue.
+pipeline, or the request has been deduplicated and placed in the queue. `follow`
+waits while the queue is full unless every other worker is also waiting, in which
+case it enqueues past the bound so the crawl cannot deadlock (see
+[Queue Capacity](engine-and-http.md#queue-capacity-and-deadlock-freedom)).
 This gives you natural backpressure and means pipeline errors surface at the
 `emit` call site, where you can catch them.
 

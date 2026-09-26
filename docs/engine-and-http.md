@@ -7,7 +7,7 @@ Engine runs the request queue, applies middlewares, invokes callbacks, and sends
 
 Key behaviors:
 - **Concurrency**: worker pool sized by positive `concurrency`.
-- **Backpressure**: queue size defaults to `concurrency * 10` (override with positive `max_pending_requests`).
+- **Backpressure**: `max_pending_requests` (default `concurrency * 10`) bounds the queue; see [Queue Capacity and Deadlock Freedom](#queue-capacity-and-deadlock-freedom) for the exact guarantee.
 - **Priority**: higher `Request.priority` values are dequeued first; equal priorities keep FIFO order.
 - **Deduplication**: request keys are cached unless `dont_filter=True`; the default key is `Request.url` (`default_dedup_key`).
 - **Middleware flow**: request middlewares -> HTTP fetch -> response middlewares -> callbacks.
@@ -16,7 +16,7 @@ Key behaviors:
 
 Common Engine options (also exposed by `run_spider` and `crawl` in [src/silkworm/runner.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/runner.py)):
 - **`concurrency`**: max concurrent requests; must be positive.
-- **`max_pending_requests`**: queue bound for backpressure; must be positive when provided.
+- **`max_pending_requests`**: queue capacity for backpressure (a hard bound for `start_requests()`, a soft one for callbacks); must be positive when provided.
 - **`request_timeout`**: per-request timeout (seconds or `timedelta`).
 - **`html_max_size_bytes`**: HTML parsing size limit for selectors.
 - **`log_stats_interval`**: periodic stats logging interval (seconds).
@@ -60,8 +60,18 @@ run_spider(MySpider, dedup_key=dedup_with_params)
 ### Lifecycle
 `Engine.run()` calls `open_spider()`, which opens middlewares (each instance once, even when registered in both lists), then the spider's `open()`, then pipelines in order, and runs `start_requests()`, whose `follow` calls enqueue the initial requests. When the queue drains, `close_spider()` closes pipelines, the spider, and middlewares in reverse order, and the HTTP client is closed. Middlewares and pipelines may implement optional async `open(spider)` / `close(spider)` hooks.
 
+### Queue Capacity and Deadlock Freedom
+Workers are the only consumers of the request queue, and callbacks run inside workers. A plain bounded queue would therefore deadlock as soon as every worker waits to schedule a request into a full queue. The engine enforces `max_pending_requests` itself instead:
+
+- **`start_requests()`** runs outside the workers and always waits for space, so seeding never pushes the queue past `max_pending_requests`.
+- **Callbacks and errbacks** (and tasks they spawn) also wait for space while another worker can still make progress. A worker counts as stalled while it, or a task spawned by its callback, is waiting for space.
+- **The last running worker never waits.** If every other worker is stalled, it enqueues past the bound instead, keeps crawling, and its dequeues then wake the stalled workers in FIFO order.
+- Middleware retries use the same rules because they are also scheduled from workers.
+
+So the queue stays at or below `max_pending_requests` except when every worker is busy fanning out at the same time. It then grows only by the requests the last worker schedules until the others can continue. For example, `concurrency=1` never waits inside callbacks, so a single-worker crawl always finishes. Priority ordering and deduplication are unaffected: dedup runs before any waiting, and all requests share one priority queue.
+
 ### Callback Execution
-Every callback, errback, and `start_requests()` runs inside a crawl scope bound to the current task through a context variable. `emit` sends items straight to the pipelines and `follow` straight to the deduplicating, bounded queue, so both apply backpressure while the callback is still running. Callbacks must be `async` functions returning `None`; async generators, synchronous callables, and non-`None` return values raise `SpiderError` with migration hints. The scope closes when the callback returns, so detached tasks cannot report results after the response has been released. See [Core Concepts](core-concepts.md#reporting-results-emit-and-follow).
+Every callback, errback, and `start_requests()` runs inside a crawl scope bound to the current task through a context variable. `emit` sends items straight to the pipelines and `follow` straight to the deduplicating, bounded queue, so both apply backpressure while the callback is still running (without ever deadlocking the workers; see above). Callbacks must be `async` functions returning `None`; async generators, synchronous callables, and non-`None` return values raise `SpiderError` with migration hints. The scope closes when the callback returns, so detached tasks cannot report results after the response has been released. See [Core Concepts](core-concepts.md#reporting-results-emit-and-follow).
 
 ## HttpClient
 HttpClient wraps wreq and is responsible for request serialization, redirects, and HTML detection. See [src/silkworm/http.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/http.py).
