@@ -100,3 +100,23 @@ async def test_cdp_client_uses_explicit_browser_endpoint_without_discovery(
         monkeypatch.setattr(client, "_discover_ws_endpoint", fail_discovery)
         await client.connect()
         await client.close()
+
+
+async def test_cdp_client_wraps_discovery_failures_from_non_http_servers() -> None:
+    async def not_http(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+        await reader.read(1024)
+        writer.write(b"NOT-HTTP garbage\r\n\r\n")
+        await writer.drain()
+        writer.close()
+
+    server = await asyncio.start_server(not_http, "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    try:
+        for endpoint in (f"ws://127.0.0.1:{port}", "ws://user:pa ss@127.0.0.1:1"):
+            client = CDPClient(ws_endpoint=endpoint, timeout=3)
+            with pytest.raises(HttpError, match="Failed to connect to CDP endpoint"):
+                await client.connect()
+            assert client._ws is None
+    finally:
+        server.close()
+        await server.wait_closed()

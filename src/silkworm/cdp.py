@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from http.client import HTTPException
 from importlib import import_module
 from typing import TYPE_CHECKING, Any, Self
 from urllib.parse import urlsplit, urlunsplit
@@ -194,7 +195,9 @@ class CDPClient:
 
         try:
             payload = await asyncio.to_thread(fetch_version)
-        except (OSError, ValueError):
+        except (OSError, ValueError, HTTPException):
+            # Discovery is best effort: unreachable ports, non-HTTP servers,
+            # invalid URLs, and malformed JSON all mean "nothing advertised".
             return None
         advertised = (
             payload.get("webSocketDebuggerUrl") if isinstance(payload, dict) else None
