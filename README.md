@@ -2,12 +2,12 @@
 
 [![PyPI - Version](https://img.shields.io/pypi/v/silkworm-rs)](https://pypi.org/project/silkworm-rs/)
 [![Tests](https://github.com/BitingSnakes/silkworm/actions/workflows/tests.yml/badge.svg)](https://github.com/BitingSnakes/silkworm/actions/workflows/tests.yml)
-[![Documentation](https://readthedocs.org/projects/silkworm-rs/badge/?version=latest)](https://silkworm-rs.readthedocs.io/en/latest/)
+[![Docs](https://github.com/BitingSnakes/silkworm/actions/workflows/docs.yml/badge.svg)](https://bitingsnakes.github.io/silkworm/)
 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/silkworm-rs?period=total&units=INTERNATIONAL_SYSTEM&left_color=BLACK&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/silkworm-rs)
 
 Async-first web scraping framework built on [wreq](https://github.com/0x676e67/wreq-python) (HTTP with browser impersonation) and [scraper-rs](https://github.com/RustedBytes/scraper-rs) (fast HTML parsing). Silkworm gives you a minimal Spider/Request/Response model, middlewares, and pipelines so you can script quick scrapes or build larger crawlers without boilerplate.
 
-📖 **Documentation:** https://silkworm-rs.readthedocs.io/
+📖 **Documentation:** https://bitingsnakes.github.io/silkworm/
 
 ## Features
 - Async engine with configurable concurrency, priority-aware queueing, bounded backpressure (defaults to `concurrency * 10`), and per-request timeouts.

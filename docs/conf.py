@@ -1,10 +1,9 @@
-"""Sphinx configuration for the Silkworm documentation (built on Read the Docs)."""
+"""Sphinx configuration for the Silkworm documentation (published to GitHub Pages)."""
 
 from __future__ import annotations
 
-import os
 import sys
-from datetime import date
+from datetime import UTC, datetime
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as package_version
 from pathlib import Path
@@ -14,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 project = "Silkworm"
 author = "Yehor Smoliakov"
-copyright = f"{date.today().year}, {author}"
+copyright = f"{datetime.now(tz=UTC).year}, {author}"
 
 try:
     release = package_version("silkworm-rs")
@@ -23,8 +22,7 @@ except PackageNotFoundError:
 version = ".".join(release.split(".")[:2])
 
 github_url = "https://github.com/BitingSnakes/silkworm"
-# Read the Docs sets this to the branch or tag being built.
-github_ref = os.environ.get("READTHEDOCS_GIT_IDENTIFIER", "main")
+github_ref = "main"
 
 extensions = [
     "myst_parser",
@@ -67,6 +65,7 @@ suppress_warnings = ["myst.xref_missing"]
 # -- HTML ---------------------------------------------------------------------
 
 html_theme = "furo"
+html_baseurl = "https://bitingsnakes.github.io/silkworm/"
 html_title = f"Silkworm {release}"
 html_theme_options = {
     "source_repository": f"{github_url}/",

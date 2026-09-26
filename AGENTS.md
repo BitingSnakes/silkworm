@@ -565,7 +565,7 @@ just typecheck     # Type check src with pyright
 just test          # Run tests with pytest
 just pyright       # Type check all code (src, tests, examples)
 just verifytypes   # Check the public API is fully typed (100% completeness)
-just docs          # Build the Sphinx docs (Read the Docs) into docs/_build/html
+just docs          # Build the Sphinx docs (GitHub Pages) into docs/_build/html
 just clean         # Remove all generated files
 just build         # Build distribution packages
 ```

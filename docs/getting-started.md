@@ -186,4 +186,4 @@ just test
 just docs
 ```
 
-`just docs` builds this documentation into `docs/_build/html` with the same settings Read the Docs uses.
+`just docs` builds this documentation into `docs/_build/html` with the same settings the GitHub Pages deployment uses.
