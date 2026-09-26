@@ -1,3 +1,27 @@
+"""
+Send a copy of every request and response to a remote server while crawling.
+
+`RequestResponseStreamMiddleware` records each request and response (URL,
+status, headers, and part of the body) and POSTs them in batches to a
+"collector" URL that you provide. This is handy for debugging or monitoring
+a crawl from another service.
+
+The same middleware object is added to BOTH middleware lists, because it needs
+to see the requests going out and the responses coming back.
+
+You need a collector URL. For a quick test you can use a request-bin service
+such as https://webhook.site.
+
+How to run:
+    python examples/request_response_stream_spider.py --collector-url https://webhook.site/<your-id>
+
+    # Or with environment variables:
+    SILKWORM_STREAM_URL=https://... python examples/request_response_stream_spider.py
+
+Output:
+    data/request_response_stream_quotes.jl (the scraped quotes)
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -10,11 +34,12 @@ from silkworm import (
     Spider,
     run_spider,
 )
-from silkworm.middlewares import RequestMiddleware, ResponseMiddleware
-from silkworm.pipelines import ItemPipeline, JsonLinesPipeline
+from silkworm.pipelines import JsonLinesPipeline
 
 
 class RequestResponseStreamSpider(Spider):
+    """A normal quotes spider. It doesn't need to know about the streaming."""
+
     name = "request_response_stream"
     start_urls = ("https://quotes.toscrape.com/",)
 
@@ -23,10 +48,9 @@ class RequestResponseStreamSpider(Spider):
             self.log.warning("Skipping non-HTML response", url=response.url)
             return
 
-        html = response
-        for quote in await html.select(".quote"):
-            text_el = await quote.select_first(".text")
-            author_el = await quote.select_first(".author")
+        for quote_el in await response.select(".quote"):
+            text_el = await quote_el.select_first(".text")
+            author_el = await quote_el.select_first(".author")
             if text_el is None or author_el is None:
                 continue
 
@@ -35,16 +59,14 @@ class RequestResponseStreamSpider(Spider):
                 "author": author_el.text.strip(),
             }
 
-        next_link = await html.select_first("li.next > a")
-        if next_link is None:
-            return
-
-        href = next_link.attr("href")
-        if href:
-            yield html.follow(href, callback=self.parse)
+        next_link = await response.select_first("li.next > a")
+        if next_link is not None:
+            href = next_link.attr("href")
+            if href:
+                yield response.follow(href, callback=self.parse)
 
 
-def parse_args() -> argparse.Namespace:
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Run a spider while streaming request/response telemetry."
     )
@@ -67,41 +89,34 @@ def parse_args() -> argparse.Namespace:
         "--batch-size",
         type=int,
         default=10,
-        help="How many telemetry events to send per collector request.",
+        help="How many events to send per collector request.",
     )
     parser.add_argument(
         "--body-limit",
         type=int,
         default=8_192,
-        help="Maximum request/response body bytes to include in telemetry.",
+        help="Maximum request/response body bytes to include in each event.",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
 
-
-def main() -> None:
-    args = parse_args()
     if not args.collector_url:
-        msg = "Collector URL required. Pass --collector-url or set SILKWORM_STREAM_URL."
-        raise SystemExit(msg)
+        raise SystemExit(
+            "Collector URL required. Pass --collector-url or set SILKWORM_STREAM_URL."
+        )
 
     stream = RequestResponseStreamMiddleware(
         args.collector_url,
-        auth_token=args.collector_token,
+        auth_token=args.collector_token,  # Sent as "Authorization: Bearer ...".
         batch_size=args.batch_size,
-        max_body_bytes=args.body_limit,
+        max_body_bytes=args.body_limit,  # Cut long bodies to keep events small.
     )
-
-    request_middlewares: list[RequestMiddleware] = [stream]
-    response_middlewares: list[ResponseMiddleware] = [stream]
-    item_pipelines: list[ItemPipeline] = [
-        JsonLinesPipeline(args.output, use_opendal=False),
-    ]
 
     run_spider(
         RequestResponseStreamSpider,
-        request_middlewares=request_middlewares,
-        response_middlewares=response_middlewares,
-        item_pipelines=item_pipelines,
+        # The same object in both lists: it sees requests AND responses.
+        request_middlewares=[stream],
+        response_middlewares=[stream],
+        item_pipelines=[JsonLinesPipeline(args.output, use_opendal=False)],
         request_timeout=10,
         log_stats_interval=10,
     )

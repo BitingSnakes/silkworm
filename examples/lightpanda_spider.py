@@ -1,148 +1,97 @@
+"""
+Run a whole spider through a headless browser, for JavaScript-heavy websites.
+
+Normally Silkworm downloads pages with a plain HTTP client. Here we swap that
+client for `CDPClient`, which asks a real (headless) browser to load each page
+and run its JavaScript. The spider code itself doesn't change at all: it still
+receives an `HTMLResponse` in `parse()`.
+
+See `lightpanda_simple.py` for a smaller example that fetches just one page.
+
+Before running:
+1. Install CDP support:
+       pip install "silkworm-rs[cdp]"
+2. Start a browser with CDP enabled, in another terminal:
+       lightpanda --remote-debugging-port=9222
+   or:
+       chromium --headless --remote-debugging-port=9222
+
+How to run:
+    python examples/lightpanda_spider.py
+
+Output:
+    data/lightpanda_links.jl
+"""
+
 from __future__ import annotations
 
 import asyncio
+from typing import Any, cast
 
-from silkworm import HTMLResponse, Request, Response, Spider, get_logger
+from silkworm import HTMLResponse, Response, Spider, crawl
 from silkworm.cdp import CDPClient
 from silkworm.exceptions import HttpError
 from silkworm.pipelines import JsonLinesPipeline
 
-"""
-Example spider using Lightpanda via CDP (Chrome DevTools Protocol).
-
-Lightpanda is a lightweight browser that supports CDP, allowing you to scrape
-JavaScript-rendered pages. This example demonstrates how to use the CDPClient
-to fetch pages from Lightpanda.
-
-Prerequisites:
-1. Install silkworm with CDP support:
-   pip install silkworm-rs[cdp]
-   or
-   uv pip install silkworm-rs[cdp]
-
-2. Start Lightpanda with CDP enabled:
-   lightpanda --remote-debugging-port=9222
-
-   Or use another CDP-compatible browser like Chrome/Chromium:
-   chromium --remote-debugging-port=9222 --headless
-
-Usage:
-   python examples/lightpanda_spider.py
-"""
+BROWSER_URL = "ws://127.0.0.1:9222"
 
 
 class LightpandaSpider(Spider):
-    """
-    Example spider using Lightpanda via CDP to scrape Wikipedia.
-
-    This spider demonstrates:
-    - Connecting to Lightpanda via CDP
-    - Navigating to pages with JavaScript rendering
-    - Extracting links from the rendered page
-    """
-
     name = "lightpanda"
     start_urls = ("https://wikipedia.com/",)
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.logger = get_logger(component="LightpandaSpider", spider=self.name)
-        self._cdp_client: CDPClient | None = None
-
-    async def start_requests(self):
-        """Initialize CDP client and yield start requests."""
-        # Create and connect to CDP endpoint
-        self._cdp_client = CDPClient(
-            ws_endpoint="ws://127.0.0.1:9222",
-            timeout=30.0,
-            html_max_size_bytes=10_000_000,
-        )
-
-        try:
-            await self._cdp_client.connect()
-            self.log.info("Connected to Lightpanda CDP endpoint")
-        except HttpError as exc:
-            self.log.error("Failed to connect to CDP endpoint", error=str(exc))
-            self.log.info(
-                "Make sure Lightpanda is running with: lightpanda --remote-debugging-port=9222"
-            )
-            return
-
-        for url in self.start_urls:
-            yield Request(url=url, callback=self.parse)
-
     async def parse(self, response: Response):
-        """Parse the response and extract links."""
         if not isinstance(response, HTMLResponse):
             self.log.warning("Skipping non-HTML response", url=response.url)
             return
 
-        html = response
         self.log.info("Parsing page", url=response.url)
 
-        # Extract all links from the page
-        links = await html.select("a")
-
-        extracted_links = []
-        for link in links[:20]:  # Limit to first 20 links for demo
-            href = link.attr("href")
+        # Keep the first 20 absolute links on the page.
+        links = []
+        for link_el in await response.select("a"):
+            href = link_el.attr("href")
             if href and href.startswith("http"):
-                extracted_links.append(href)
-                self.log.debug("Found link", href=href)
+                links.append(href)
+            if len(links) >= 20:
+                break
 
-        if extracted_links:
-            yield {
-                "source_url": response.url,
-                "links": extracted_links,
-                "link_count": len(extracted_links),
-            }
-
-    async def close(self):
-        """Clean up CDP client when spider is done."""
-        if self._cdp_client:
-            await self._cdp_client.close()
-            self.log.info("Closed CDP client")
+        yield {
+            "source_url": response.url,
+            "links": links,
+            "link_count": len(links),
+        }
 
 
-async def main():
-    """Run the spider with CDP client."""
-    from silkworm import Engine
+async def main() -> None:
+    # Step 1: create the browser client and connect to the browser.
+    client = CDPClient(
+        ws_endpoint=BROWSER_URL,
+        timeout=30.0,
+        html_max_size_bytes=10_000_000,
+    )
+    try:
+        await client.connect()
+    except HttpError as exc:
+        print(f"Could not connect to the browser at {BROWSER_URL}: {exc}")
+        print("Start it with: lightpanda --remote-debugging-port=9222")
+        return
 
-    spider = LightpandaSpider()
-    pipelines = [JsonLinesPipeline("data/lightpanda_links.jl")]
-
-    # Create custom engine that uses CDP client for fetching
-    engine = Engine(
-        spider=spider,
-        item_pipelines=pipelines,
+    # Step 2: run the spider with `http_client=client`, so every page is
+    # loaded by the browser. Silkworm closes the client when the crawl ends.
+    # We use `crawl()` (the async version of run_spider) because we are
+    # already inside an async function.
+    await crawl(
+        LightpandaSpider,
+        http_client=cast(Any, client),  # cast: CDPClient works like HttpClient.
+        item_pipelines=[JsonLinesPipeline("data/lightpanda_links.jl")],
         request_timeout=30,
         log_stats_interval=10,
     )
 
-    # Override the HTTP client with CDP client
-    if spider._cdp_client:
-        engine._http = spider._cdp_client  # type: ignore[assignment]
-
-    try:
-        await engine.run()
-    finally:
-        # Ensure cleanup
-        if spider._cdp_client:
-            await spider._cdp_client.close()
-
 
 if __name__ == "__main__":
-    print("\n" + "=" * 80)
-    print("Lightpanda CDP Spider Example")
-    print("=" * 80)
-    print("\nMake sure Lightpanda is running:")
-    print("  lightpanda --remote-debugging-port=9222")
-    print("\nOr use Chrome/Chromium:")
-    print("  chromium --remote-debugging-port=9222 --headless")
-    print("\nPress Ctrl+C to stop the spider.")
-    print("=" * 80 + "\n")
-
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("\n\nSpider stopped by user.")
+        print("Spider stopped by user.")

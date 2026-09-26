@@ -1,13 +1,19 @@
 """
-Example spider using Servo rendering through servofetch.
+Render JavaScript pages with the Servo browser engine, built into Python.
 
-ServoFetchClient embeds Servo via the optional servofetch package, so it does not
-require a separate browser process like the CDP/Lightpanda examples.
+Like `lightpanda_spider.py`, this spider uses a browser to run each page's
+JavaScript before parsing it. The difference: `ServoFetchClient` embeds the
+Servo engine through the `servofetch` package, so you don't need to start a
+separate browser program.
 
-Prerequisites: servofetch
+Before running:
+    pip install servofetch
 
-Usage:
-   python examples/servo_spider.py
+How to run:
+    python examples/servo_spider.py
+
+Output:
+    data/servo_links.jl
 """
 
 from __future__ import annotations
@@ -26,15 +32,8 @@ from silkworm.pipelines import JsonLinesPipeline
 
 
 class ServoRenderedSpider(Spider):
-    """
-    Render a page with Servo and extract a small sample of links.
-    """
-
     name = "servo_rendered"
     start_urls = ("https://wikipedia.com/",)
-
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs)
 
     async def start_requests(self):
         for url in self.start_urls:
@@ -42,7 +41,9 @@ class ServoRenderedSpider(Spider):
                 url=url,
                 callback=self.parse,
                 meta={
+                    # Wait 500 ms after the page loads, so scripts can finish.
                     "servo_settle_ms": 500,
+                    # Run this JavaScript in the page after it loads.
                     "servo_javascript": "document.title",
                 },
             )
@@ -53,12 +54,13 @@ class ServoRenderedSpider(Spider):
             return
 
         title_el = await response.select_first("title")
+
+        # Keep the first 20 absolute links, with their text.
         links = []
-        for link in await response.select("a"):
-            href = link.attr("href")
-            label = link.text.strip()
+        for link_el in await response.select("a"):
+            href = link_el.attr("href")
             if href and href.startswith("http"):
-                links.append({"href": href, "label": label})
+                links.append({"href": href, "label": link_el.text.strip()})
             if len(links) >= 20:
                 break
 
@@ -74,18 +76,20 @@ class ServoRenderedSpider(Spider):
 def main() -> None:
     try:
         client = ServoFetchClient(
-            concurrency=2,
+            concurrency=2,  # Render at most 2 pages at the same time.
             timeout=30.0,
             settle_ms=500,
             html_max_size_bytes=10_000_000,
         )
     except ImportError as exc:
+        # Raised when the servofetch package isn't installed.
         print(exc)
         return
 
     run_spider(
         ServoRenderedSpider,
-        http_client=cast(Any, client),
+        # Use Servo instead of the normal HTTP client for every request.
+        http_client=cast(Any, client),  # cast: ServoFetchClient works like HttpClient.
         item_pipelines=[JsonLinesPipeline("data/servo_links.jl")],
         request_timeout=30,
         log_stats_interval=10,

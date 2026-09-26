@@ -1,3 +1,26 @@
+"""
+Fetch one JavaScript-rendered page with a headless browser (no spider needed).
+
+Some websites build their pages with JavaScript. A normal HTTP request only
+gets the empty "skeleton" HTML. A headless browser runs the JavaScript first,
+so you get the finished page.
+
+`fetch_html_cdp()` connects to a browser through CDP (Chrome DevTools
+Protocol), opens the URL, and returns the rendered HTML. It works with
+Lightpanda (a small, fast headless browser) or with Chrome/Chromium.
+
+Before running:
+1. Install CDP support:
+       pip install "silkworm-rs[cdp]"
+2. Start a browser with CDP enabled, in another terminal:
+       lightpanda --remote-debugging-port=9222
+   or:
+       chromium --headless --remote-debugging-port=9222
+
+How to run:
+    python examples/lightpanda_simple.py
+"""
+
 from __future__ import annotations
 
 import asyncio
@@ -5,74 +28,41 @@ import asyncio
 from silkworm import fetch_html_cdp
 from silkworm.exceptions import HttpError
 
-"""
-Simple example using Lightpanda CDP client - similar to the Node.js example.
-
-This example closely follows the Node.js Puppeteer example from the issue:
-- Connect to Lightpanda CDP endpoint
-- Navigate to a page
-- Extract links
-- Cleanup
-
-Prerequisites:
-1. Install silkworm with CDP support:
-   pip install silkworm-rs[cdp]
-
-2. Start Lightpanda with CDP enabled:
-   lightpanda --remote-debugging-port=9222
-
-Usage:
-   python examples/lightpanda_simple.py
-"""
+BROWSER_URL = "ws://127.0.0.1:9222"
+PAGE_URL = "https://wikipedia.com/"
 
 
-async def main():
-    """
-    Simple example demonstrating CDP usage similar to the Node.js Puppeteer example.
-    """
-    print("Connecting to Lightpanda at ws://127.0.0.1:9222...")
+async def main() -> None:
+    print(f"Connecting to the browser at {BROWSER_URL}...")
 
     try:
-        # Fetch HTML using CDP (similar to puppeteer.connect + page.goto)
+        # `text` is the raw HTML string, `doc` is a parsed document you can query.
         text, doc = await fetch_html_cdp(
-            "https://wikipedia.com/",
-            ws_endpoint="ws://127.0.0.1:9222",
-            timeout=30.0,
+            PAGE_URL, ws_endpoint=BROWSER_URL, timeout=30.0
         )
-
-        print(f"\nSuccessfully fetched page ({len(text)} bytes)")
-
-        links = []
-        for element in await doc.select("a"):
-            href = element.attr("href")
-            if href:
-                links.append(href)
-
-        print(f"\nFound {len(links)} links:")
-        for i, link in enumerate(links[:10], 1):  # Show first 10 links
-            print(f"  {i}. {link}")
-
-        if len(links) > 10:
-            print(f"  ... and {len(links) - 10} more")
-
     except ImportError:
-        print("\nError: websockets package not installed.")
-        print("Install with: pip install silkworm-rs[cdp]")
+        print("The websockets package is missing. Install it with:")
+        print('    pip install "silkworm-rs[cdp]"')
+        return
     except HttpError as exc:
-        print(f"\nError: {exc}")
-        print("\nMake sure Lightpanda is running:")
-        print("  lightpanda --remote-debugging-port=9222")
-        print("\nOr use Chrome/Chromium:")
-        print("  chromium --remote-debugging-port=9222 --headless")
+        print(f"Error: {exc}")
+        print("Is the browser running? Start it with:")
+        print("    lightpanda --remote-debugging-port=9222")
+        return
+
+    print(f"Fetched {len(text)} characters of HTML")
+
+    # Collect the href of every <a> link on the page.
+    links = []
+    for link_el in await doc.select("a"):
+        href = link_el.attr("href")
+        if href:
+            links.append(href)
+
+    print(f"Found {len(links)} links. The first 10:")
+    for number, link in enumerate(links[:10], 1):
+        print(f"  {number}. {link}")
 
 
 if __name__ == "__main__":
-    print("\n" + "=" * 80)
-    print("Lightpanda CDP Simple Example")
-    print("=" * 80 + "\n")
-
     asyncio.run(main())
-
-    print("\n" + "=" * 80)
-    print("Done!")
-    print("=" * 80 + "\n")

@@ -1,81 +1,80 @@
+"""
+Read the list of pages to crawl from a text file.
+
+Instead of hard-coding `start_urls`, this spider overrides `start_requests()`
+to read URLs from a file. That gives you full control over each Request, for
+example to add headers or attach extra information with `meta`.
+
+The input file has one URL per line. Blank lines and lines starting with "#"
+are skipped:
+
+    # my_urls.txt
+    https://example.com/
+    https://quotes.toscrape.com/
+
+How to run:
+    python examples/start_urls_from_file_spider.py --urls-file my_urls.txt
+
+Output:
+    data/start_urls_from_file.jl  (change it with --output)
+"""
+
 from __future__ import annotations
 
 import argparse
-from collections.abc import AsyncIterator, Iterable, Iterator
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from silkworm import HTMLResponse, Request, Response, Spider, run_spider
 from silkworm.middlewares import RetryMiddleware, UserAgentMiddleware
 from silkworm.pipelines import JsonLinesPipeline
 
-if TYPE_CHECKING:
-    from silkworm.types import Logger, MetaData
-
 
 class StartUrlsFromFileSpider(Spider):
-    """
-    Reads initial URLs from a text file and turns each URL into a Request.
-
-    The input file should contain one URL per line. Empty lines and lines
-    starting with "#" are ignored.
-    """
-
     name = "start_urls_from_file"
 
-    def __init__(
-        self,
-        urls_file: str,
-        *,
-        name: str | None = None,
-        start_urls: Iterable[str] | None = None,
-        custom_settings: MetaData | None = None,
-        logger: Logger | dict[str, object] | None = None,
-    ) -> None:
-        super().__init__(
-            name=name,
-            start_urls=start_urls,
-            custom_settings=custom_settings,
-            logger=logger,
-        )
+    def __init__(self, urls_file: str, **kwargs) -> None:
+        super().__init__(**kwargs)
         self.urls_file = Path(urls_file)
+        # Fail early with a clear message if the file doesn't exist.
         if not self.urls_file.exists():
             raise FileNotFoundError(f"URLs file not found: {self.urls_file}")
 
-    def _iter_urls(self) -> Iterator[tuple[int, str]]:
-        with self.urls_file.open("r", encoding="utf-8") as fp:
-            for line_no, raw in enumerate(fp, 1):
-                url = raw.strip()
+    async def start_requests(self):
+        """Create one Request per URL in the file."""
+        with self.urls_file.open("r", encoding="utf-8") as file:
+            # enumerate(..., 1) gives us line numbers starting at 1.
+            for line_number, line in enumerate(file, 1):
+                url = line.strip()
                 if not url or url.startswith("#"):
-                    continue
-                yield line_no, url
+                    continue  # Skip blank lines and comments.
 
-    async def start_requests(self) -> AsyncIterator[Request]:
-        for line_no, url in self._iter_urls():
-            yield Request(
-                url=url,
-                callback=self.parse_page,
-                headers={"Accept": "text/html,application/xhtml+xml"},
-                meta={"source_file": str(self.urls_file), "source_line": line_no},
-                priority=line_no,
-            )
+                yield Request(
+                    url=url,
+                    callback=self.parse_page,  # Which method handles the response.
+                    headers={"Accept": "text/html,application/xhtml+xml"},
+                    # `meta` is a dict that travels with the request, so we can
+                    # read it back later from `response.request.meta`.
+                    meta={"source_line": line_number},
+                )
 
     async def parse_page(self, response: Response):
+        # Read the page <title>, if this is an HTML page.
         title = ""
         if isinstance(response, HTMLResponse):
             title_el = await response.select_first("title")
-            title = title_el.text.strip() if title_el and title_el.text else ""
+            if title_el is not None:
+                title = title_el.text.strip()
 
         yield {
             "url": response.url,
             "status": response.status,
             "title": title,
-            "source_file": response.request.meta.get("source_file"),
+            "source_file": str(self.urls_file),
             "source_line": response.request.meta.get("source_line"),
         }
 
 
-def parse_args() -> argparse.Namespace:
+def main() -> None:
     parser = argparse.ArgumentParser(
         description="Read start URLs from a text file and fetch each page.",
     )
@@ -89,11 +88,8 @@ def parse_args() -> argparse.Namespace:
         default="data/start_urls_from_file.jl",
         help="Output JSON Lines path.",
     )
-    return parser.parse_args()
+    args = parser.parse_args()
 
-
-def main() -> None:
-    args = parse_args()
     run_spider(
         StartUrlsFromFileSpider(urls_file=args.urls_file),
         request_middlewares=[UserAgentMiddleware()],
