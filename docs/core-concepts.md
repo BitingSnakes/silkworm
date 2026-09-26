@@ -219,7 +219,8 @@ async def parse_card(self, card) -> None:
 ### Rules the engine enforces
 - `emit`/`follow` raise `SpiderError` when awaited outside `start_requests()`, a
   request callback, or an errback, and when a task calls them after its callback
-  has returned.
+  has returned. Calls already in progress when the callback returns are awaited
+  before the request is marked done.
 - A callback that is an async generator (uses `yield`), is not `async`, or
   returns a value other than `None` fails with a `SpiderError` explaining the fix.
 - `emit` rejects `Request` objects (use `follow`), and `follow` accepts request

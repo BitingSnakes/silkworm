@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Iterator
-from contextlib import contextmanager
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any
 
 import pytest
@@ -14,10 +14,10 @@ from silkworm._scope import CrawlScope, enter_scope
 from silkworm._types import JSONLike
 
 
-@contextmanager
-def recording_scope(
+@asynccontextmanager
+async def recording_scope(
     response: Response | None = None,
-) -> Iterator[tuple[list[JSONLike], list[Request]]]:
+) -> AsyncIterator[tuple[list[JSONLike], list[Request]]]:
     items: list[JSONLike] = []
     requests: list[Request] = []
 
@@ -33,7 +33,7 @@ def recording_scope(
         schedule_request=schedule_request,
         response=response,
     )
-    with enter_scope(scope):
+    async with enter_scope(scope):
         yield items, requests
 
 
@@ -55,7 +55,7 @@ def _ok_client_fetch(engine: Engine) -> None:
 
 async def test_response_follow_schedules_joined_url_and_inherits_callback() -> None:
     response = _response()
-    with recording_scope(response) as (_, requests):
+    async with recording_scope(response) as (_, requests):
         await response.follow("next", meta={"page": 2})
 
     assert [req.url for req in requests] == ["http://example.com/dir/next"]
@@ -65,7 +65,7 @@ async def test_response_follow_schedules_joined_url_and_inherits_callback() -> N
 
 async def test_html_response_follow_schedules_requests() -> None:
     response = _response(HTMLResponse)
-    with recording_scope(response) as (_, requests):
+    async with recording_scope(response) as (_, requests):
         await response.follow("next")
 
     assert [req.url for req in requests] == ["http://example.com/dir/next"]
@@ -77,7 +77,7 @@ async def test_response_follow_all_skips_none_and_keeps_order() -> None:
     async def other(resp: Response) -> None:
         return None
 
-    with recording_scope(response) as (_, requests):
+    async with recording_scope(response) as (_, requests):
         await response.follow_all(["next", None, "../up"], callback=other)
 
     assert [req.url for req in requests] == [
@@ -91,7 +91,7 @@ async def test_spider_follow_resolves_urls_against_current_response() -> None:
     spider = Spider()
     response = _response()
     ready = Request(url="http://example.org/ready")
-    with recording_scope(response) as (_, requests):
+    async with recording_scope(response) as (_, requests):
         await spider.follow("next")
         await spider.follow(ready)
         await spider.follow_all(["a", None, "/b"])
@@ -108,7 +108,7 @@ async def test_spider_follow_resolves_urls_against_current_response() -> None:
 
 async def test_spider_follow_url_without_response_is_used_verbatim() -> None:
     spider = Spider()
-    with recording_scope() as (_, requests):
+    async with recording_scope() as (_, requests):
         await spider.follow("http://example.com/seed", priority=5)
 
     assert requests[0].url == "http://example.com/seed"
@@ -118,13 +118,14 @@ async def test_spider_follow_url_without_response_is_used_verbatim() -> None:
 
 async def test_spider_follow_rejects_fields_with_request_target() -> None:
     spider = Spider()
-    with recording_scope(), pytest.raises(TypeError, match="only with a URL"):
-        await spider.follow(Request(url="http://example.com"), priority=1)
+    async with recording_scope():
+        with pytest.raises(TypeError, match="only with a URL"):
+            await spider.follow(Request(url="http://example.com"), priority=1)
 
 
 async def test_spider_emit_forwards_items_and_rejects_requests() -> None:
     spider = Spider()
-    with recording_scope() as (items, _):
+    async with recording_scope() as (items, _):
         await spider.emit({"title": "a"})
         with pytest.raises(TypeError, match="use follow"):
             await spider.emit(Request(url="http://example.com"))  # type: ignore[arg-type]
@@ -144,7 +145,7 @@ async def test_emit_and_follow_outside_engine_scope_raise() -> None:
 
 async def test_default_start_requests_follows_start_urls() -> None:
     spider = Spider(start_urls=["http://example.com/a", "http://example.com/b"])
-    with recording_scope() as (_, requests):
+    async with recording_scope() as (_, requests):
         await spider.start_requests()
 
     assert [req.url for req in requests] == [
@@ -268,6 +269,40 @@ async def test_emit_after_callback_finished_raises() -> None:
             await leaked[0]
     finally:
         await engine.http.close()
+
+
+async def test_in_flight_emit_from_detached_task_is_drained() -> None:
+    events: list[str] = []
+    detached: list[asyncio.Task[None]] = []
+
+    class SlowPipeline:
+        async def open(self, spider: Spider) -> None:
+            return None
+
+        async def close(self, spider: Spider) -> None:
+            return None
+
+        async def process_item(self, item: Any, spider: Spider) -> Any:
+            await asyncio.sleep(0.05)
+            events.append("processed")
+            return item
+
+    class DetachedSpider(Spider):
+        async def parse(self, response: Response) -> None:
+            detached.append(asyncio.create_task(self.emit({"late": True})))
+            await asyncio.sleep(0)  # the task is now inside emit()
+
+    spider = DetachedSpider()
+    engine = Engine(spider, item_pipelines=[SlowPipeline()])
+    request = Request(url="http://example.com", callback=spider.parse)
+    try:
+        await engine._handle_response(Response(request.url, 200, {}, b"", request))
+        events.append("response handled")
+        await detached[0]
+    finally:
+        await engine.http.close()
+
+    assert events == ["processed", "response handled"]
 
 
 @pytest.mark.parametrize(

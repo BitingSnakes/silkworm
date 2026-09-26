@@ -654,7 +654,7 @@ class Engine:
             schedule_request=self._enqueue,
             response=response,
         )
-        with enter_scope(scope):
+        async with enter_scope(scope):
             try:
                 produced = invoke()
             except Exception as exc:

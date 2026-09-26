@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-from contextlib import contextmanager
+import asyncio
+from contextlib import asynccontextmanager
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from .exceptions import SpiderError
 from .request import Request
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable, Callable, Iterator
+    from collections.abc import AsyncIterator, Awaitable, Callable
 
     from ._types import JSONLike
     from .response import Response
@@ -23,8 +24,9 @@ class CrawlScope:
 
     Tasks spawned by the callback (for example with ``asyncio.TaskGroup``)
     inherit the scope through context-variable copying. The scope closes when
-    the callback returns, so late calls from detached tasks fail loudly instead
-    of racing engine shutdown.
+    the callback returns: new calls from detached tasks fail loudly, and calls
+    already in progress are drained before the engine marks the request done,
+    so they never race pipeline or engine shutdown.
     """
 
     owner: str
@@ -32,12 +34,17 @@ class CrawlScope:
     schedule_request: Callable[[Request], Awaitable[None]]
     response: Response | None = None
     closed: bool = False
+    _in_flight: int = field(default=0, init=False, repr=False)
+    _idle: asyncio.Event = field(default_factory=asyncio.Event, init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        self._idle.set()
 
     async def emit(self, item: JSONLike) -> None:
         self._ensure_open("emit")
         if isinstance(item, Request):
             raise TypeError("emit() received a Request; use follow() to schedule it")
-        await self.emit_item(item)
+        await self._track(self.emit_item(item))
 
     async def follow(self, request: Request) -> None:
         self._ensure_open("follow")
@@ -45,7 +52,22 @@ class CrawlScope:
             raise TypeError(
                 f"follow() expects a Request or URL, got {type(request).__name__}"
             )
-        await self.schedule_request(request)
+        await self._track(self.schedule_request(request))
+
+    async def drain(self) -> None:
+        """Close the scope and wait for ``emit``/``follow`` calls in progress."""
+        self.closed = True
+        await self._idle.wait()
+
+    async def _track(self, operation: Awaitable[None]) -> None:
+        self._in_flight += 1
+        self._idle.clear()
+        try:
+            await operation
+        finally:
+            self._in_flight -= 1
+            if self._in_flight == 0:
+                self._idle.set()
 
     def _ensure_open(self, action: str) -> None:
         if self.closed:
@@ -72,12 +94,20 @@ def current_scope(action: str) -> CrawlScope:
     return scope
 
 
-@contextmanager
-def enter_scope(scope: CrawlScope) -> Iterator[CrawlScope]:
-    """Activate ``scope`` for the current task and close it on exit."""
+@asynccontextmanager
+async def enter_scope(scope: CrawlScope) -> AsyncIterator[CrawlScope]:
+    """Activate ``scope`` for the current task, then close and drain it on exit.
+
+    Draining is skipped on cancellation so shutdown is never blocked.
+    """
     token = _CURRENT_SCOPE.set(scope)
     try:
         yield scope
+    except Exception:
+        await scope.drain()
+        raise
+    else:
+        await scope.drain()
     finally:
         scope.closed = True
         _CURRENT_SCOPE.reset(token)
