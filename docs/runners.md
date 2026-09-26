@@ -35,12 +35,15 @@ await crawl(MySpider, concurrency=16, request_timeout=10)
 ```
 
 ## Sync Entry Point: `run_spider`
-`run_spider` wraps `crawl` with `asyncio.run`. Pass `loop_factory=` to run on a custom asyncio event loop.
+`run_spider` wraps `crawl` with `asyncio.run`. Pass `loop_factory=` (a `LoopFactory`, i.e. a zero-argument callable returning an event loop) to run on a custom asyncio event loop.
 
 ```python
+import asyncio
+
 from silkworm import run_spider
 
 run_spider(MySpider, concurrency=16, request_timeout=10)
+run_spider(MySpider, loop_factory=asyncio.new_event_loop)
 ```
 
 ## rsloop
@@ -105,5 +108,7 @@ spider = CustomSpider(name="custom")
 engine = Engine(spider, concurrency=4)
 # await engine.run()
 ```
+
+`Engine.run()` opens middlewares, the spider, and pipelines (`open_spider()`), processes the queue until it is empty, then closes everything in reverse order (`close_spider()`) and logs final stats. Exceptions from requests, callbacks, middlewares, or pipelines propagate to the caller after being logged.
 
 Engine details: [src/silkworm/engine.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/engine.py)

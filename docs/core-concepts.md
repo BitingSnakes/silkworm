@@ -98,8 +98,8 @@ Core APIs:
 - **`follow(href, callback=None, **kwargs)`**: URL join + callback reuse.
 - **`follow_all(hrefs, callback=None, **kwargs)`**: Convenience helper for multiple follow-up requests.
 - **`close()`**: Release payload references to save memory.
-- **`to_markdown(mode="full" | "minimal" | "mdream")`**: Convert an `HTMLResponse` to Markdown via `fast-h2m`.
-- **`to_markdown_result(...)`**: Return `fast-h2m`'s structured conversion result.
+- **`await to_markdown(mode="full" | "minimal" | "mdream", options=None)`**: Convert an `HTMLResponse` to Markdown via `fast-h2m` (runs off the event-loop thread).
+- **`await to_markdown_result(...)`**: Return `fast-h2m`'s structured conversion result.
 
 ```python
 from silkworm import HTMLResponse, Response
@@ -120,6 +120,8 @@ Selector helpers on `HTMLResponse` (async):
 - **`css_first(selector)`**
 - **`xpath(xpath)`**
 - **`xpath_first(xpath)`**
+- **`find(selector)`**: Alias for `select_first`.
+- **`prettify()`**: Return the parsed document formatted as readable HTML.
 
 Elements returned from these helpers also expose async selectors, so nested lookups should be awaited:
 
@@ -130,7 +132,26 @@ for card in await response.select(".card"):
 
 The selector engine uses `scraper-rs` and respects `doc_max_size_bytes` (see [HttpClient](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/http.py)). Errors are raised as `SelectorError` in [src/silkworm/exceptions.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/exceptions.py).
 
-Markdown conversion is also available as standalone helpers from `silkworm`: `html_to_markdown`, `convert_html_to_markdown`, `MarkdownStream`, `stream_html_to_markdown`, and `stream_html_to_markdown_async`. `full` mode uses the rich converter, `minimal` uses the lean Fast DOM path, and streaming uses `fast-h2m`'s stream processor.
+## HTML to Markdown
+Markdown conversion is available on `HTMLResponse` (above) and as standalone helpers from `silkworm`. See [src/silkworm/markdown.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/markdown.py).
+
+- **`html_to_markdown(html, mode="full", options=None)`**: Convert a complete document to a Markdown string.
+- **`convert_html_to_markdown(html, mode="full", options=None)`**: Return `fast-h2m`'s structured result (`MarkdownResult`, a dict).
+- **`MarkdownStream(mode="minimal", options=None)`**: Incremental converter; call `process_chunk(html)` for each fragment and `finish()` at the end. Each call returns the Markdown available so far.
+- **`stream_html_to_markdown(chunks, ...)`** / **`stream_html_to_markdown_async(chunks, ...)`**: Convert an iterable / async iterable of HTML chunks into one string.
+
+`MarkdownMode` is `"full"` (rich converter, the default for whole documents), `"minimal"` (lean Fast DOM path, the default for streaming), or `"mdream"` (mdream-backed lean path). `options` (`MarkdownOptions`) is a mapping of extra `fast-h2m` options that override the mode defaults. Conversion failures raise `MarkdownConversionError`; an unknown mode raises `ValueError`.
+
+```python
+from silkworm import MarkdownStream, html_to_markdown
+
+markdown = html_to_markdown("<h1>Title</h1><p>Hello</p>")
+
+stream = MarkdownStream()
+parts = [stream.process_chunk(chunk) for chunk in ("<h1>Ti", "tle</h1><p>Hi</p>")]
+parts.append(stream.finish())
+markdown = "".join(parts)
+```
 
 ## Callback Results (What `parse` Can Return)
 Callback output is normalized by the engine. See [src/silkworm/engine.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/engine.py).
@@ -158,6 +179,19 @@ async def parse(self, response: Response):
 ```
 
 > **Note:** The engine auto-wraps **only** the spider's `parse` callback to `HTMLResponse`. Other callbacks receive the `Response` produced by the HTTP client, which may already be an `HTMLResponse` for HTML content.
+
+## Errors
+All framework exceptions derive from `SilkwormError` and are importable from `silkworm`. See [src/silkworm/exceptions.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/exceptions.py).
+
+| Exception | Raised when |
+| --- | --- |
+| `HttpError` | A fetch fails: network errors, timeouts, redirect loops, a closed client, or CDP/Servo/OnionLink failures. |
+| `SpiderError` | A spider callback raises, or yields a value the engine cannot handle. The original exception is chained as `__cause__`. |
+| `SelectorError` | CSS/XPath selector evaluation or HTML parsing fails. |
+| `MarkdownConversionError` | HTML-to-Markdown conversion fails. |
+| `DeclarativeError` (and subclasses) | Declarative item extraction fails; see [Declarative Extraction](declarative.md#errors). |
+
+Recover from failed requests with `Request.errback` or an exception middleware (see [Middlewares](middlewares.md)).
 
 ## Deduplication
 The engine keeps a set of seen request keys. The default key is `Request.url`; pass `dedup_key` to `Engine`, `crawl`, or `run_spider` if params, method, or body should be part of the key.
@@ -190,4 +224,13 @@ Public type aliases and protocols live in [`silkworm.types`](https://github.com/
 from silkworm.types import Callback, JSONValue, Logger, MetaData
 ```
 
-It covers JSON item shapes (`JSONValue`, and the read-only `JSONLike` that callbacks may yield), request data (`Headers`, `QueryParams`, `MetaData`, `BodyData`), callbacks (`Callback`, `CallbackResult`, `Errback`), the `Logger` protocol and `LogLevel`, and the middleware and pipeline protocols.
+It covers:
+
+- **JSON item shapes**: `JSONScalar`, `JSONValue`, and the read-only `JSONLike` that callbacks may yield.
+- **Request data**: `Headers`, `QueryParams`, `QueryValue`, `MetaData`, `BodyData`.
+- **Callbacks**: `Callback`, `CallbackOutput`, `CallbackResult`, `Errback`.
+- **Engine and runners**: `EngineOptions`, `DedupKey`, `LoopFactory`.
+- **Logging**: the `Logger` protocol and `LogLevel`.
+- **Middleware and pipeline protocols**: `RequestMiddleware`, `ResponseMiddleware`, `ExceptionMiddleware`, `ItemPipeline`, plus `ItemCallback` (for `CallbackPipeline`) and `ZenohKeyResolver` (for `ZenohPipeline`).
+
+See the [`silkworm.types` reference](api/types.md) for each definition.

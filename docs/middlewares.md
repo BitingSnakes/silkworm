@@ -115,6 +115,8 @@ yield Request(
 Useful constructor and helper options:
 
 - `CookiesMiddleware(cookies={"name": "value"})`: seed the default jar with cookies.
+- `CookiesMiddleware(enabled=False)`: keep the middleware registered but disable cookie processing.
+- `CookiesMiddleware(rfc2965=True)`: enable RFC 2965 cookie handling in addition to Netscape cookies.
 - `CookiesMiddleware(allow_domains=["example.com"])`: accept/send cookies only for allowed domains.
 - `CookiesMiddleware(block_domains=["tracking.example"])`: reject blocked domains.
 - `CookiesMiddleware(hide_cookie_header=False)`: preserve a manually supplied `Cookie` header instead of replacing it with the jar-managed header.
@@ -169,10 +171,14 @@ Constructor options:
 - `fallback_delay`: optional delay to apply when robots.txt has no delay directive or cannot be fetched.
 - `timeout`: robots.txt fetch timeout in seconds or `timedelta`; defaults to `10.0`.
 - `ignore_fetch_errors`: when `True` (default), fetch failures fall back to `fallback_delay`; when `False`, the fetch error is raised.
+- `fetcher`: optional `RobotsTxtFetcher` (`async (robots_url: str) -> str`) that loads robots.txt text, for custom transports or tests.
+
+`silkworm.middlewares` also exports the `RobotsTxtFetcher` and `RobotsOrigin` (`(scheme, host, port)`) type aliases.
 
 ### RetryMiddleware
-- Retries on HTTP codes (defaults include 500, 502, 503, 504, 522, 524, 408, 429).
-- Exponential backoff via `backoff_base`.
+- Retries on HTTP codes in `retry_http_codes` (defaults: 500, 502, 503, 504, 522, 524, 408, 429).
+- `max_times` caps retries after the initial request (default 3).
+- Codes in `sleep_http_codes` wait `backoff_base * 2 ** (attempt - 1)` seconds (non-blocking) before re-enqueueing. By default every retry code sleeps; codes listed only in `sleep_http_codes` are added to the retry set automatically.
 - Uses `request.meta["retry_times"]` and sets `dont_filter=True` on retries.
 - Code: [src/silkworm/_middlewares/retry.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/_middlewares/retry.py)
 
@@ -194,6 +200,7 @@ SkipNonHTMLMiddleware(allowed_types=["html"], sniff_bytes=2048)
 - Use the same instance in `request_middlewares` and `response_middlewares`.
 - Adds internal exchange IDs to request metadata so downstream systems can join events.
 - Supports authorization headers, bounded sender queue, body truncation, batching, and `open`/`close` lifecycle flushing.
+- Options: `url`, `method` (default `"POST"`), `headers`, `timeout` (default 10s), `max_body_bytes` (default 64,000), `queue_size` (default 1,000), `auth_token`, `auth_scheme` (default `"Bearer"`), `batch_size` (default 1), and `batch_envelope_key` (JSON key wrapping batched events, default `"events"`).
 - Code: [src/silkworm/_middlewares/stream.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/_middlewares/stream.py)
 - Example: [examples/request_response_stream_spider.py](https://github.com/BitingSnakes/silkworm/blob/main/examples/request_response_stream_spider.py)
 
@@ -219,6 +226,7 @@ run_spider(
 - Enable per request with `request.meta["cloudflare_crawl"] = True` or pass a dict of per-request crawl options.
 - The callback receives a synthetic JSON `Response` containing the final Cloudflare API payload.
 - Requires Cloudflare account credentials; there is no package extra for this middleware.
+- Options: `account_id`, `api_token`, `crawl_options` (defaults merged into every crawl submission), `api_base_url`, `poll_interval` (seconds between job polls, default 1.0), `timeout` (overall job timeout, default 300s), and `api_timeout` (per API call, default 30s).
 - Code: [src/silkworm/_middlewares/cloudflare.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/_middlewares/cloudflare.py)
 - Example: [examples/cloudflare_crawl_spider.py](https://github.com/BitingSnakes/silkworm/blob/main/examples/cloudflare_crawl_spider.py)
 

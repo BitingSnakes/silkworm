@@ -7,6 +7,10 @@ from datetime import UTC, datetime
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as package_version
 from pathlib import Path
+from typing import TYPE_CHECKING, TypeAliasType
+
+if TYPE_CHECKING:
+    from sphinx.application import Sphinx
 
 # Allow building from a checkout without installing the package.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -58,9 +62,6 @@ napoleon_numpy_docstring = False
 
 intersphinx_mapping = {"python": ("https://docs.python.org/3", None)}
 
-# Type hints refer to third-party and private names that have no docs target.
-nitpicky = False
-suppress_warnings = ["myst.xref_missing"]
 
 # -- HTML ---------------------------------------------------------------------
 
@@ -94,3 +95,52 @@ html_theme_options = {
 }
 copybutton_prompt_text = r"\$ |>>> "
 copybutton_prompt_is_regexp = True
+
+
+# -- PEP 695 type aliases -----------------------------------------------------
+# Autodoc renders ``type X = ...`` aliases natively, but it evaluates their
+# values, which fails when they refer to names imported only under
+# TYPE_CHECKING. Resolve those names from the public API before building, and
+# document aliases even when they have no docstring.
+
+
+def _resolve_type_alias_names() -> None:
+    import importlib
+    import pkgutil
+
+    import silkworm
+
+    modules = [silkworm] + [
+        importlib.import_module(info.name)
+        for info in pkgutil.walk_packages(silkworm.__path__, "silkworm.")
+    ]
+    public = {
+        name: value
+        for module in modules
+        for name, value in vars(module).items()
+        if not name.startswith("_")
+    }
+    for module in modules:
+        for alias in list(vars(module).values()):
+            if not isinstance(alias, TypeAliasType):
+                continue
+            namespace = vars(sys.modules[alias.__module__])
+            while True:
+                try:
+                    alias.__value__  # noqa: B018
+                    break
+                except NameError as exc:
+                    if exc.name not in public:
+                        raise
+                    namespace[exc.name] = public[exc.name]
+
+
+def _keep_type_aliases(
+    _app: Sphinx, _what: str, _name: str, obj: object, _skip: bool, _options: object
+) -> bool | None:
+    return False if isinstance(obj, TypeAliasType) else None
+
+
+def setup(app: Sphinx) -> None:
+    _resolve_type_alias_names()
+    app.connect("autodoc-skip-member", _keep_type_aliases)

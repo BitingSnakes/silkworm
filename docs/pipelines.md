@@ -35,11 +35,49 @@ run_spider(
 
 > **Note:** Buffered pipelines keep items in memory. Prefer streaming ones for large crawls.
 
+## Optional Dependencies
+Pipelines backed by optional extras are always importable; constructing one without its extra installed raises `ImportError` with the install command. Each module also exports an availability flag you can check first:
+
+| Flag | Pipelines |
+| --- | --- |
+| `FASTAVRO_AVAILABLE` | `AvroPipeline` |
+| `CASSANDRA_AVAILABLE` | `CassandraPipeline` |
+| `AIOCOUCH_AVAILABLE` | `CouchDBPipeline` |
+| `DUCKDB_AVAILABLE` | `DuckDBPipeline` |
+| `AIOBOTO3_AVAILABLE` | `DynamoDBPipeline` |
+| `ELASTICSEARCH_AVAILABLE` | `ElasticsearchPipeline` |
+| `OPENPYXL_AVAILABLE` | `ExcelPipeline` |
+| `AIOFTP_AVAILABLE` | `FTPPipeline` |
+| `GOOGLE_SHEETS_AVAILABLE` | `GoogleSheetsPipeline` |
+| `MOTOR_AVAILABLE` | `MongoDBPipeline` |
+| `ORMSGPACK_AVAILABLE` | `MsgPackPipeline` |
+| `AIOMYSQL_AVAILABLE` | `MySQLPipeline` |
+| `POLARS_AVAILABLE` | `PolarsPipeline` |
+| `ASYNCPG_AVAILABLE` | `PostgreSQLPipeline` |
+| `OPENDAL_AVAILABLE` | `S3JsonLinesPipeline`, `JsonLinesPipeline(use_opendal=True)` |
+| `ASYNCSSH_AVAILABLE` | `SFTPPipeline` |
+| `SNOWFLAKE_AVAILABLE` | `SnowflakePipeline` |
+| `TASKIQ_AVAILABLE` | `TaskiqPipeline` |
+| `VORTEX_AVAILABLE` | `VortexPipeline` |
+| `WREQ_AVAILABLE` | `WebhookPipeline` |
+| `YAML_AVAILABLE` | `YAMLPipeline` |
+| `ZENOH_AVAILABLE` | `ZenohPipeline` |
+
+```python
+from silkworm.pipelines import POLARS_AVAILABLE, JsonLinesPipeline, PolarsPipeline
+
+pipeline = PolarsPipeline("data/items.parquet") if POLARS_AVAILABLE else JsonLinesPipeline("data/items.jl")
+```
+
+## Per-item Logging
+Wrap any pipeline in `LoggedPipeline(pipeline, log_level=...)` to change or silence (`log_level=None`) its per-item log messages. See [Logging and Stats](logging-and-stats.md#pipeline-log-levels).
+
 ## Built-in Pipelines
 
 ### CallbackPipeline
 - **Purpose**: Run a custom callback for each item (sync or async).
 - **Behavior**: If the callback returns `None`, the original item passes through unchanged.
+- **Options**: `callback` (an `ItemCallback`), `log_level` for per-item log messages.
 - **Extras**: none.
 - **Code**: [src/silkworm/_pipelines/callback_pipeline.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/_pipelines/callback_pipeline.py)
 
@@ -54,7 +92,7 @@ CallbackPipeline(callback=validate_item)
 
 ### JsonLinesPipeline
 - **Purpose**: Write items as JSON Lines to a local file.
-- **Options**: `path`, `use_opendal` (async writes with OpenDAL when available).
+- **Options**: `path`, `use_opendal` (async writes with OpenDAL when available), `log_level` for per-item log messages.
 - **Extras**: `s3` (OpenDAL).
 - **Code**: [src/silkworm/_pipelines/jsonlines_pipeline.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/_pipelines/jsonlines_pipeline.py)
 
@@ -94,7 +132,8 @@ XMLPipeline("data/items.xml", root_element="items", item_element="item")
 
 ### RssPipeline
 - **Purpose**: Write items to an RSS 2.0 feed (buffered).
-- **Options**: `path`, `channel_title`, `channel_link`, `channel_description`, `max_items`, field mappings for item data.
+- **Options**: `path`, `channel_title`, `channel_link`, `channel_description`, `max_items` (most recent items kept, default 50; `None` for no limit).
+- **Field mappings**: `item_title_field` (default `"title"`), `item_link_field` (`"link"`), `item_description_field` (`"description"`), and optional `item_pub_date_field`, `item_guid_field`, `item_author_field`.
 - **Extras**: none.
 - **Code**: [src/silkworm/_pipelines/rss_pipeline.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/_pipelines/rss_pipeline.py)
 
@@ -130,7 +169,7 @@ TaskiqPipeline(broker, task_name=".:process_item")
 
 ### ZenohPipeline
 - **Purpose**: Publish JSON-serialized items to Zenoh immediately.
-- **Options**: `key_expr` (static string or sync/async `(item, spider)` resolver), `config` or `session`, plus Zenoh publisher QoS options.
+- **Options**: `key_expr` (static string or a sync/async `ZenohKeyResolver` taking `(item, spider)`), `config` or `session` (mutually exclusive), `encoding` (default `"application/json"`), plus Zenoh publisher QoS options `congestion_control`, `priority`, `express`, `reliability`, and `allowed_destination`.
 - **Lifecycle**: Opens and closes its own session by default. An injected `session` remains caller-owned. All publishers created by the pipeline are undeclared on close.
 - **Routing**: Dynamic publishers are declared lazily and cached by key expression until close.
 - **Extras**: `zenoh`.

@@ -73,12 +73,27 @@ class Article(Item):
         self.title = self.title.strip()
 ```
 
+## Inspecting Plans
+`Item.extraction_plan()` returns the compiled, cached `ExtractionPlan` for a class:
+its `item_type`, `root_selector`, and a tuple of `FieldPlan` objects (`name`, `field`,
+`cardinality`, `value_type`, `annotation`) in declaration order. Invalid declarations
+raise `DeclarativeConfigurationError` when the plan is first compiled.
+
+```python
+plan = Product.extraction_plan()
+for field_plan in plan.fields:
+    print(field_plan.name, field_plan.cardinality, field_plan.field.selector)
+```
+
+`Field` is the shared base of `Text` and `Attr` (arguments: `selector`, `transform`, `default`) and is the extension point for custom field kinds.
+
 ## Errors
 All declarative errors derive from `DeclarativeError` (a `SilkwormError`):
 
 - **`DeclarativeConfigurationError`**: the `Item` class declaration is invalid.
-- **`MissingFieldError`**: a required field matched nothing.
-- **`FieldTransformError`**: a `transform` raised.
+- **`FieldExtractionError`**: base class for per-field extraction failures:
+  - **`MissingFieldError`**: a required field matched nothing.
+  - **`FieldTransformError`**: a `transform` raised.
 - **`DeclarativeSerializationError`**: a value cannot be converted by `to_dict()`.
 
 Extraction errors include the item, field, selector, response URL, and root index.

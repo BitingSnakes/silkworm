@@ -31,6 +31,8 @@
 .. autoclass:: silkworm.EngineLogger
 
 .. autofunction:: silkworm.default_dedup_key
+
+.. autotype:: silkworm.DedupKey
 ```
 
 ## Runners
@@ -64,9 +66,21 @@
 ```{eval-rst}
 .. autoclass:: silkworm.http.HttpClient
 
+.. autodata:: silkworm.http.MOCK_RESPONSE_META_KEY
+   :no-value:
+
+   Request ``meta`` key holding a ``{"status", "headers", "body", "url"}`` mapping
+   that :class:`~silkworm.http.HttpClient` returns instead of making a network call.
+
 .. autoclass:: silkworm.CDPClient
 
 .. autoclass:: silkworm.ServoFetchClient
+
+.. autodata:: silkworm.servo.SERVO_JAVASCRIPT_META_KEY
+.. autodata:: silkworm.servo.SERVO_SETTLE_MS_META_KEY
+.. autodata:: silkworm.servo.SERVO_USER_AGENT_META_KEY
+.. autodata:: silkworm.servo.SERVO_SCREENSHOT_META_KEY
+.. autodata:: silkworm.servo.SERVO_FULL_PAGE_META_KEY
 
 .. autoclass:: silkworm.OnionLinkClient
 ```
