@@ -10,7 +10,7 @@ Async-first web scraping framework built on [wreq](https://github.com/0x676e67/w
 📖 **Documentation:** https://bitingsnakes.github.io/silkworm/
 
 ## Features
-- Async engine with configurable concurrency, priority-aware queueing, bounded, deadlock-free backpressure (defaults to `concurrency * 10`; the last running worker may overflow the bound instead of blocking), and per-request timeouts.
+- Async engine with configurable concurrency, priority-aware queueing, bounded, deadlock-free backpressure (defaults to `concurrency * 10`; hard for seeding, soft when several callbacks produce requests at once), and per-request timeouts.
 - wreq-powered HTTP client: browser impersonation, redirect following with loop detection, query merging, and proxy support via `request.meta["proxy"]`.
 - Optional OnionLink client integration for scraping Tor v3 `.onion` sites without routing through wreq.
 - Optional Servo rendering via `ServoFetchClient` for JavaScript-rendered pages without changing the default HTTP client.
@@ -182,7 +182,7 @@ complete spider with pagination.
 
 `run_spider`/`crawl` knobs:
 - `concurrency`: number of concurrent HTTP requests; default 16; must be positive.
-- `max_pending_requests`: queue bound to avoid unbounded memory use (defaults to `concurrency * 10`); if provided, must be positive. `start_requests()` always respects it; callbacks respect it too unless every other worker is already waiting for space, in which case the last worker enqueues past it rather than deadlocking.
+- `max_pending_requests`: queue bound to avoid unbounded memory use (defaults to `concurrency * 10`); if provided, must be positive. `start_requests()` always respects it, and so does a single producing callback; when several callbacks produce requests at once, they enqueue past it rather than parking workers or deadlocking.
 - `request_timeout`: per-request timeout (seconds).
 - `keep_alive`: reuse HTTP connections when supported by the underlying client (sends `Connection: keep-alive`).
 - `http_client`: use a custom client instance such as `OnionLinkClient(...)` or `ServoFetchClient(...)` instead of the default wreq-backed client.

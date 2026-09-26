@@ -430,3 +430,81 @@ async def test_callbacks_keep_backpressure_while_another_worker_progresses():
     assert len(fetched) == 31
     # The idle worker keeps draining, so the fan-out waits instead of overflowing.
     assert observed[0] <= 2
+
+
+async def test_growing_frontier_keeps_all_workers_busy_when_queue_is_full():
+    # Every page schedules more links than one fetch consumes, so the queue
+    # stays over the bound. Workers must keep crawling instead of parking.
+    class Growing(Spider):
+        start_urls = ("http://example.com/r",)
+
+        async def parse(self, response: Response) -> None:
+            if response.url.count("/") < 7:
+                for i in range(3):
+                    await self.follow(f"{response.url}/{i}")
+
+    engine = Engine(Growing(), concurrency=8, max_pending_requests=4)
+    in_flight = 0
+    samples: list[int] = []
+
+    async def fake_fetch(req: Request) -> Response:
+        nonlocal in_flight
+        in_flight += 1
+        samples.append(in_flight)
+        await asyncio.sleep(0.005)
+        in_flight -= 1
+        return Response(url=req.url, status=200, headers={}, body=b"", request=req)
+
+    engine.http.fetch = fake_fetch  # type: ignore[method-assign]
+    async with asyncio.timeout(10):
+        await engine.run()
+
+    assert len(samples) == 1 + 3 + 9 + 27 + 81
+    # With parked workers this averaged ~2 of 8; now it stays close to 8.
+    assert sum(samples) / len(samples) > 5
+
+
+async def test_sole_heavy_producer_is_throttled_by_many_consumers():
+    class Sitemap(Spider):
+        start_urls = ("http://example.com/sitemap",)
+
+        async def parse(self, response: Response) -> None:
+            if response.url.endswith("/sitemap"):
+                for i in range(100):
+                    await self.follow(f"http://example.com/p/{i}")
+
+    fetched: list[str] = []
+    engine = Engine(Sitemap(), concurrency=8, max_pending_requests=5)
+    observed = _track_max_queue_size(engine)
+    _ok_fetch(engine, fetched)
+
+    async with asyncio.timeout(5):
+        await engine.run()
+
+    assert len(fetched) == 101
+    assert observed[0] <= 5
+
+
+async def test_cancelled_crawl_leaves_no_capacity_waiters():
+    class Endless(Spider):
+        start_urls = ("http://example.com",)
+
+        async def parse(self, response: Response) -> None:
+            for i in range(5):
+                await self.follow(f"{response.url}/{i}")
+
+    engine = Engine(Endless(), concurrency=3, max_pending_requests=2)
+
+    async def slow_fetch(req: Request) -> Response:
+        await asyncio.sleep(0.001)
+        return Response(url=req.url, status=200, headers={}, body=b"", request=req)
+
+    engine.http.fetch = slow_fetch  # type: ignore[method-assign]
+    task = asyncio.create_task(engine.run())
+    await asyncio.sleep(0.1)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert engine._stalled_workers == {}
+    assert not engine._capacity_waiters

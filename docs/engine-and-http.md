@@ -16,7 +16,7 @@ Key behaviors:
 
 Common Engine options (also exposed by `run_spider` and `crawl` in [src/silkworm/runner.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/runner.py)):
 - **`concurrency`**: max concurrent requests; must be positive.
-- **`max_pending_requests`**: queue capacity for backpressure (a hard bound for `start_requests()`, a soft one for callbacks); must be positive when provided.
+- **`max_pending_requests`**: queue capacity for backpressure (a hard bound for `start_requests()` and for a single producing callback, soft when several callbacks produce at once); must be positive when provided.
 - **`request_timeout`**: per-request timeout (seconds or `timedelta`).
 - **`html_max_size_bytes`**: HTML parsing size limit for selectors.
 - **`log_stats_interval`**: periodic stats logging interval (seconds).
@@ -61,14 +61,15 @@ run_spider(MySpider, dedup_key=dedup_with_params)
 `Engine.run()` calls `open_spider()`, which opens middlewares (each instance once, even when registered in both lists), then the spider's `open()`, then pipelines in order, and runs `start_requests()`, whose `follow` calls enqueue the initial requests. When the queue drains, `close_spider()` closes pipelines, the spider, and middlewares in reverse order, and the HTTP client is closed. Middlewares and pipelines may implement optional async `open(spider)` / `close(spider)` hooks.
 
 ### Queue Capacity and Deadlock Freedom
-Workers are the only consumers of the request queue, and callbacks run inside workers. A plain bounded queue would therefore deadlock as soon as every worker waits to schedule a request into a full queue. The engine enforces `max_pending_requests` itself instead:
+Workers are the only consumers of the request queue, and callbacks run inside workers. A plain bounded queue would deadlock as soon as every worker waits to schedule a request into a full queue, so the engine enforces `max_pending_requests` itself:
 
 - **`start_requests()`** runs outside the workers and always waits for space, so seeding never pushes the queue past `max_pending_requests`.
-- **Callbacks and errbacks** (and tasks they spawn) also wait for space while another worker can still make progress. A worker counts as stalled while it, or a task spawned by its callback, is waiting for space.
-- **The last running worker never waits.** If every other worker is stalled, it enqueues past the bound instead, keeps crawling, and its dequeues then wake the stalled workers in FIFO order.
-- Middleware retries use the same rules because they are also scheduled from workers.
+- **One callback at a time may wait.** A callback (or a task it spawned) that finds the queue full waits while it is the only waiting worker and at least one other worker exists. This throttles a single heavy producer, such as a sitemap callback scheduling thousands of pages, while the other workers drain the queue.
+- **Other callbacks enqueue past the bound** and release the waiting worker to do the same. When pages keep producing more links than the workers consume, the queue can only grow; parking workers would idle them and keep their responses in memory without bounding the queue, so they keep crawling at full concurrency instead.
+- **With `concurrency=1`, callbacks never wait**, because no other worker could make room.
+- Errbacks and middleware retries follow the same rules because they are also scheduled from workers.
 
-So the queue stays at or below `max_pending_requests` except when every worker is busy fanning out at the same time. It then grows only by the requests the last worker schedules until the others can continue. For example, `concurrency=1` never waits inside callbacks, so a single-worker crawl always finishes. Priority ordering and deduplication are unaffected: dedup runs before any waiting, and all requests share one priority queue.
+So the queue is hard-bounded for seeding and for a single producing callback, and may exceed `max_pending_requests` only when several callbacks produce requests at the same time. Workers can never deadlock on the queue. Priority ordering and deduplication are unaffected: dedup runs before any waiting, and all requests share one priority queue.
 
 ### Callback Execution
 Every callback, errback, and `start_requests()` runs inside a crawl scope bound to the current task through a context variable. `emit` sends items straight to the pipelines and `follow` straight to the deduplicating, bounded queue, so both apply backpressure while the callback is still running (without ever deadlocking the workers; see above). Callbacks must be `async` functions returning `None`; async generators, synchronous callables, and non-`None` return values raise `SpiderError` with migration hints. The scope closes when the callback returns, so detached tasks cannot report results after the response has been released. See [Core Concepts](core-concepts.md#reporting-results-emit-and-follow).

@@ -9,6 +9,7 @@ import sys
 import time
 from collections import Counter, deque
 from collections.abc import Awaitable, Callable, Iterable
+from contextlib import suppress
 from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import timedelta
@@ -186,10 +187,10 @@ class Engine:
         spider: Spider instance to execute.
         concurrency: Maximum simultaneous HTTP requests for the default client.
         max_pending_requests: Queue capacity used for backpressure. Defaults to
-            ten times the effective HTTP client concurrency. Scheduling waits
-            while the queue is full, except that the last worker able to make
-            progress enqueues past the bound instead of waiting, so callbacks
-            can never deadlock the crawl.
+            ten times the effective HTTP client concurrency. ``start_requests()``
+            waits while the queue is full; callbacks wait only when they are the
+            sole producer, otherwise they enqueue past the bound so workers keep
+            crawling and can never deadlock.
         emulation: Browser profile used by the default ``wreq`` client; pass
             ``None`` to disable impersonation.
         request_timeout: Default per-request timeout.
@@ -258,7 +259,7 @@ class Engine:
         # ``max_pending_requests`` so it can let a worker overflow the bound
         # rather than deadlock (see that method).
         self._queue: asyncio.PriorityQueue[PrioritizedRequest] = asyncio.PriorityQueue()
-        self._capacity_waiters: deque[asyncio.Future[None]] = deque()
+        self._capacity_waiters: deque[tuple[asyncio.Future[bool], int | None]] = deque()
         self._stalled_workers: Counter[int] = Counter()
         self._worker_count = 0
         self._seen: set[str] = set()
@@ -500,66 +501,86 @@ class Engine:
                 )
                 return
             self._seen.add(key)
+        await self._wait_for_queue_capacity(req)
+        self._queue.put_nowait(self._priority_entry(req))
         self.logger.debug(
             "Enqueued request",
             url=req.url,
             dont_filter=req.dont_filter,
             priority=req.priority,
         )
-        await self._wait_for_queue_capacity(req)
-        self._queue.put_nowait(self._priority_entry(req))
 
     async def _wait_for_queue_capacity(self, req: Request) -> None:
-        """Wait until the queue holds fewer than ``max_pending_requests`` entries.
+        """Apply ``max_pending_requests`` backpressure to one enqueue.
 
-        Workers are the only consumers, so a worker waiting for space depends on
-        another worker dequeuing. A worker counts as stalled while it, or a task
-        spawned by its callback, waits here. When every other worker is already
-        stalled, the caller enqueues past the bound instead of waiting, so at
-        least one worker always keeps making progress. Requests scheduled
-        outside workers (``start_requests()``) always wait.
+        Requests scheduled outside workers (``start_requests()``) wait until the
+        queue has room. Workers are also the queue's only consumers, so a
+        worker's callback (or a task it spawned) may wait only while no other
+        worker is waiting and at least one other worker exists. That throttles a
+        single heavy producer while the remaining workers keep consuming.
+
+        Any other worker that finds the queue full enqueues past the bound and
+        releases waiting workers to do the same. When the frontier grows faster
+        than it is consumed, blocking workers would only idle them (and keep
+        their responses alive) without bounding the queue, so they keep
+        crawling instead. This also guarantees the workers never deadlock.
         """
         worker = _CURRENT_WORKER.get()
         while self._queue.qsize() >= self.max_pending_requests:
-            if (
-                worker is not None
-                and worker not in self._stalled_workers
-                and len(self._stalled_workers) + 1 >= self._worker_count
-            ):
+            if worker is not None and not self._worker_may_wait(worker):
                 self.logger.debug(
-                    "Queue full; enqueuing past max_pending_requests so the "
-                    "last running worker cannot deadlock",
+                    "Queue full; enqueuing past max_pending_requests to keep "
+                    "workers crawling",
                     url=req.url,
                     queue_size=self._queue.qsize(),
                     max_pending_requests=self.max_pending_requests,
                 )
+                self._release_waiting_workers()
                 return
 
-            waiter = asyncio.get_running_loop().create_future()
-            self._capacity_waiters.append(waiter)
+            waiter: asyncio.Future[bool] = asyncio.get_running_loop().create_future()
+            self._capacity_waiters.append((waiter, worker))
             if worker is not None:
                 self._stalled_workers[worker] += 1
             try:
-                await waiter
+                overflow = await waiter
             except asyncio.CancelledError:
-                if waiter.done() and not waiter.cancelled():
-                    # Woken but cancelled before using the slot; pass it on.
+                if waiter.done() and not waiter.cancelled() and not waiter.result():
+                    # Woken for a free slot but cancelled first; pass it on.
                     self._wake_capacity_waiter()
                 raise
             finally:
-                if not waiter.done():
-                    self._capacity_waiters.remove(waiter)
+                with suppress(ValueError):
+                    self._capacity_waiters.remove((waiter, worker))
                 if worker is not None:
                     self._stalled_workers[worker] -= 1
                     if not self._stalled_workers[worker]:
                         del self._stalled_workers[worker]
+            if overflow:
+                return
+
+    def _worker_may_wait(self, worker: int) -> bool:
+        if self._worker_count < 2:
+            return False
+        return all(stalled == worker for stalled in self._stalled_workers)
 
     def _wake_capacity_waiter(self) -> None:
+        """Wake the oldest waiter because a queue slot was freed."""
         while self._capacity_waiters:
-            waiter = self._capacity_waiters.popleft()
+            waiter, _ = self._capacity_waiters.popleft()
             if not waiter.done():
-                waiter.set_result(None)
+                waiter.set_result(False)
                 return
+
+    def _release_waiting_workers(self) -> None:
+        """Let every waiting worker enqueue past the bound."""
+        remaining: deque[tuple[asyncio.Future[bool], int | None]] = deque()
+        for waiter, worker in self._capacity_waiters:
+            if worker is not None and not waiter.done():
+                waiter.set_result(True)
+            elif not waiter.done():
+                remaining.append((waiter, worker))
+        self._capacity_waiters = remaining
 
     def _priority_entry(self, req: Request) -> PrioritizedRequest:
         return (-req.priority, next(self._request_order), req)

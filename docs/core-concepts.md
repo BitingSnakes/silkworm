@@ -173,8 +173,8 @@ returning results, they push them to the engine while they run. See
 
 Each `await` finishes only when the work is done: the item has passed every
 pipeline, or the request has been deduplicated and placed in the queue. `follow`
-waits while the queue is full unless every other worker is also waiting, in which
-case it enqueues past the bound so the crawl cannot deadlock (see
+waits while the queue is full if it is the only callback waiting; otherwise it
+enqueues past the bound so workers keep crawling and cannot deadlock (see
 [Queue Capacity](engine-and-http.md#queue-capacity-and-deadlock-freedom)).
 This gives you natural backpressure and means pipeline errors surface at the
 `emit` call site, where you can catch them.
