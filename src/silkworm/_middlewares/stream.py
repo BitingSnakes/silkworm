@@ -36,7 +36,7 @@ class RequestResponseStreamMiddleware:
 
     Use the same middleware instance in both `request_middlewares` and
     `response_middlewares` so a single sender queue can stream the full
-    exchange lifecycle:
+    exchange lifecycle::
 
         stream = RequestResponseStreamMiddleware(
             "https://collector.example.com/events",

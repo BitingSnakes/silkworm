@@ -31,7 +31,8 @@ class FTPPipeline:
 
     Items are buffered locally and replace the remote file during close.
 
-    Example:
+    Example::
+
         from silkworm.pipelines import FTPPipeline
 
         pipeline = FTPPipeline(

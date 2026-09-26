@@ -37,7 +37,8 @@ class TaskiqPipeline:
         task_name: Fully qualified name of a task registered with ``broker``.
             Required when ``task`` is omitted.
 
-    Example:
+    Example::
+
         from taskiq import InMemoryBroker
         from silkworm.pipelines import TaskiqPipeline
 

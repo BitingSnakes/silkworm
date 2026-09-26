@@ -38,7 +38,8 @@ class SFTPPipeline:
             the current user's standard known-hosts file.
         verify_host_key: Whether to reject servers whose host key is untrusted.
 
-    Example:
+    Example::
+
         from silkworm.pipelines import SFTPPipeline
 
         pipeline = SFTPPipeline(

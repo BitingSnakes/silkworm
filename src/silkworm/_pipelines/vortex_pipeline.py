@@ -34,12 +34,14 @@ class VortexPipeline:
     Args:
         path: Destination Vortex file.
 
-    Example:
+    Example::
+
         from silkworm.pipelines import VortexPipeline
 
         pipeline = VortexPipeline("data/items.vortex")
 
-    Reading Vortex files:
+    Reading Vortex files::
+
         import vortex
 
         # Open and read a Vortex file

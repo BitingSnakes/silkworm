@@ -30,7 +30,8 @@ class DuckDBPipeline:
         database: Embedded DuckDB database file.
         table: Valid unquoted destination table name.
 
-    Example:
+    Example::
+
         from silkworm.pipelines import DuckDBPipeline
 
         pipeline = DuckDBPipeline(

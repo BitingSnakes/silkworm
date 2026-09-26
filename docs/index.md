@@ -1,35 +1,19 @@
-# Silkworm Documentation
+# Silkworm
 
 **Silkworm** is an async-first web scraping framework built on `wreq` (HTTP client with browser impersonation) and [scraper-rs](https://github.com/RustedBytes/scraper-rs) (fast HTML parsing). It provides a small, typed Spider/Request/Response model, middlewares, and pipelines so you can ship scrapers quickly without boilerplate.
 
-## Feature Map (Code Links)
-- **Engine and concurrency**: async workers, queue backpressure, stats tracking in [src/silkworm/engine.py](../src/silkworm/engine.py)
-- **HTTP client**: emulation, redirects, keep-alive, timeouts, HTML detection in [src/silkworm/http.py](../src/silkworm/http.py)
-- **Core types**: Spider, Request, Response, HTMLResponse in [src/silkworm/spiders.py](../src/silkworm/spiders.py), [src/silkworm/request.py](../src/silkworm/request.py), [src/silkworm/response.py](../src/silkworm/response.py)
-- **Middlewares**: request/response hooks in [src/silkworm/middlewares.py](../src/silkworm/middlewares.py)
-- **Pipelines**: export formats and integrations in [src/silkworm/pipelines.py](../src/silkworm/pipelines.py)
-- **Runner helpers**: asyncio, rsloop, uvloop, winloop, trio entrypoints in [src/silkworm/runner.py](../src/silkworm/runner.py)
-- **Logging**: structured logs via a standard-library adapter in [src/silkworm/logging.py](../src/silkworm/logging.py)
-- **Convenience API**: one-off HTML fetch helpers (`fetch_html`, `fetch_html_cdp`, `fetch_html_servo`) in [src/silkworm/api.py](../src/silkworm/api.py)
-- **CDP client (optional)**: browser-driven fetches in [src/silkworm/cdp.py](../src/silkworm/cdp.py)
-- **Servo client**: rendered fetches through external `servofetch` wheels in [src/silkworm/servo.py](../src/silkworm/servo.py)
-- **OnionLink client (optional)**: Tor v3 `.onion` fetches in [src/silkworm/onionlink.py](../src/silkworm/onionlink.py)
-- **Examples**: real spiders in [examples/](../examples)
-
-## Docs Index
-- [Getting Started](getting-started.md)
-- [Core Concepts](core-concepts.md)
-- [Engine and HTTP Client](engine-and-http.md)
-- [Middlewares](middlewares.md)
-- [Pipelines](pipelines.md)
-- [Runners](runners.md)
-- [Logging and Stats](logging-and-stats.md)
-- [Examples](examples.md)
-- [Docker](docker.md)
-- [API Reference](api-reference.md)
+## Features
+- **Async engine** with configurable concurrency, bounded queue backpressure, request priorities, deduplication, and crawl statistics.
+- **wreq-powered HTTP client** with browser impersonation, redirect handling, keep-alive, proxies, and HTML detection.
+- **Typed spiders and callbacks** with `HTMLResponse` CSS/XPath selectors, `follow` helpers, and flexible callback outputs.
+- **Declarative extraction** with `Item`, `Text`, and `Attr` field plans.
+- **Middlewares** for user agents, proxies, cookies, delays, robots.txt, retries, telemetry streaming, and Cloudflare crawl jobs.
+- **Pipelines** for files (JSON Lines, CSV, XML, Parquet, Excel, ...), databases, queues, and cloud storage.
+- **Alternative fetchers** for JavaScript-rendered pages (CDP, Servo) and Tor onion services.
+- **Structured logging** via the standard library, plus HTML-to-Markdown conversion.
 
 ## Quick Start
-The example below mirrors [examples/quotes_spider.py](../examples/quotes_spider.py) and shows the core flow.
+Install the package with `pip install silkworm-rs`, then run a spider. The example below mirrors [examples/quotes_spider.py](https://github.com/BitingSnakes/silkworm/blob/main/examples/quotes_spider.py) and shows the core flow.
 
 ```python
 from silkworm import HTMLResponse, Response, Spider, run_spider
@@ -75,3 +59,40 @@ run_spider(
 ```
 
 > **Tip:** If you are new to Silkworm, read [Core Concepts](core-concepts.md) first, then use [Pipelines](pipelines.md) to pick your export format.
+
+```{toctree}
+:hidden:
+:caption: User Guide
+
+getting-started
+core-concepts
+declarative
+engine-and-http
+middlewares
+pipelines
+runners
+logging-and-stats
+```
+
+```{toctree}
+:hidden:
+:caption: Recipes
+
+examples
+docker
+```
+
+```{toctree}
+:hidden:
+:caption: Reference
+
+api/index
+```
+
+```{toctree}
+:hidden:
+:caption: Project
+
+GitHub <https://github.com/BitingSnakes/silkworm>
+PyPI <https://pypi.org/project/silkworm-rs/>
+```

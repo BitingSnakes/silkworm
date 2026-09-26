@@ -26,7 +26,8 @@ class ElasticsearchPipeline:
         index: Destination index name.
         **es_kwargs: Additional ``AsyncElasticsearch`` client options.
 
-    Example:
+    Example::
+
         from silkworm.pipelines import ElasticsearchPipeline
 
         pipeline = ElasticsearchPipeline(

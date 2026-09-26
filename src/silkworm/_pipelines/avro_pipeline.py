@@ -32,7 +32,8 @@ class AvroPipeline:
         schema: Explicit Avro schema. When omitted, a simple record schema is
             inferred from the first item.
 
-    Example:
+    Example::
+
         from silkworm.pipelines import AvroPipeline
 
         schema = {

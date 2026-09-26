@@ -31,7 +31,8 @@ class DynamoDBPipeline:
         aws_secret_access_key: Explicit secret paired with the access key.
         endpoint_url: Custom endpoint for DynamoDB Local or compatible services.
 
-    Example:
+    Example::
+
         from silkworm.pipelines import DynamoDBPipeline
 
         pipeline = DynamoDBPipeline(

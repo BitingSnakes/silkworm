@@ -15,6 +15,9 @@ dist/
 *.egg
 .eggs/
 
+# Documentation build
+docs/_build/
+
 # Test and coverage artifacts
 .pytest_cache/
 .coverage

@@ -32,7 +32,8 @@ class S3JsonLinesPipeline:
 
     Items are buffered and the object is written when the pipeline closes.
 
-    Example:
+    Example::
+
         from silkworm.pipelines import S3JsonLinesPipeline
 
         pipeline = S3JsonLinesPipeline(

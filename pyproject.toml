@@ -153,6 +153,7 @@ onionlink = [
 [project.urls]
 Homepage = "https://github.com/BitingSnakes/silkworm"
 Repository = "https://github.com/BitingSnakes/silkworm"
+Documentation = "https://silkworm-rs.readthedocs.io/"
 Issues = "https://github.com/BitingSnakes/silkworm/issues"
 
 [tool.hatch.metadata]
@@ -173,6 +174,12 @@ dev = [
     "ruff==0.16.9",
     "twine==7.0.0",
     "testcontainers==4.15.0",
+]
+docs = [
+    "furo==2025.12.19",
+    "myst-parser==5.1.0",
+    "sphinx==9.1.0",
+    "sphinx-copybutton==0.5.2",
 ]
 
 [tool.pyright]

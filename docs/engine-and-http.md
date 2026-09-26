@@ -3,7 +3,7 @@
 Silkworm's **Engine** orchestrates crawl execution, while **HttpClient** performs HTTP requests using wreq by default.
 
 ## Engine
-Engine runs the request queue, applies middlewares, invokes callbacks, and sends items through pipelines. See [src/silkworm/engine.py](../src/silkworm/engine.py).
+Engine runs the request queue, applies middlewares, invokes callbacks, and sends items through pipelines. See [src/silkworm/engine.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/engine.py).
 
 Key behaviors:
 - **Concurrency**: worker pool sized by positive `concurrency`.
@@ -14,7 +14,7 @@ Key behaviors:
 - **Pipeline flow**: each item passes through all pipelines in order.
 - **Stats**: requests sent, responses received, items scraped, errors, queue size, memory, throughput.
 
-Common Engine options (also exposed by `run_spider` and `crawl` in [src/silkworm/runner.py](../src/silkworm/runner.py)):
+Common Engine options (also exposed by `run_spider` and `crawl` in [src/silkworm/runner.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/runner.py)):
 - **`concurrency`**: max concurrent requests; must be positive.
 - **`max_pending_requests`**: queue bound for backpressure; must be positive when provided.
 - **`request_timeout`**: per-request timeout (seconds or `timedelta`).
@@ -59,7 +59,7 @@ run_spider(MySpider, dedup_key=dedup_with_params)
 Engine accepts a wide range of callback outputs (single item, iterable, async iterable, awaitable). Any non-iterable value is treated as a single item to avoid confusing TypeErrors.
 
 ## HttpClient
-HttpClient wraps wreq and is responsible for request serialization, redirects, and HTML detection. See [src/silkworm/http.py](../src/silkworm/http.py).
+HttpClient wraps wreq and is responsible for request serialization, redirects, and HTML detection. See [src/silkworm/http.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/http.py).
 
 Core features:
 - **Browser emulation**: `emulation=Emulation.Firefox139` by default, for both `HttpClient` and the client `Engine` creates; pass `emulation=None` to disable it.
@@ -96,7 +96,7 @@ if isinstance(response, HTMLResponse):
 
 ### Text Decoding
 `Response.text` uses BOM, headers, and HTML meta tags before falling back to `charset-normalizer` when available.
-See [src/silkworm/response.py](../src/silkworm/response.py).
+See [src/silkworm/response.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/response.py).
 
 ## OnionLinkClient
 `OnionLinkClient` is an optional client adapter for scraping Tor v3 onion services through [onionlink](https://github.com/RustedBytes/onionlink) instead of wreq. Install the OnionLink extra before using it:
@@ -143,7 +143,7 @@ run_spider(
 Per-request render options are passed through `Request.meta`: `servo_javascript`, `servo_settle_ms`, `servo_user_agent`, `servo_screenshot`, and `servo_full_page`.
 
 ## CDP Rendering
-For one-off rendered fetches through a CDP-compatible browser such as Lightpanda, Chrome, or Chromium, use `fetch_html_cdp` from [src/silkworm/api.py](../src/silkworm/api.py). For lower-level browser control, `CDPClient` is available when the `cdp` extra is installed.
+For one-off rendered fetches through a CDP-compatible browser such as Lightpanda, Chrome, or Chromium, use `fetch_html_cdp` from [src/silkworm/api.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/api.py). For lower-level browser control, `CDPClient` is available when the `cdp` extra is installed.
 
 ```bash
 pip install "silkworm-rs[cdp]"

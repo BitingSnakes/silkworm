@@ -37,7 +37,8 @@ class WebhookPipeline:
         batch_size: Number of items per request. A value of ``1`` sends items
             immediately; a partial final batch is sent by :meth:`close`.
 
-    Example:
+    Example::
+
         from silkworm.pipelines import WebhookPipeline
 
         pipeline = WebhookPipeline(

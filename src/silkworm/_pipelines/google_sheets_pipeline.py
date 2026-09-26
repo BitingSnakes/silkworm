@@ -38,7 +38,8 @@ class GoogleSheetsPipeline:
         sheet_name: Worksheet receiving rows.
         batch_size: Items flattened and appended per API batch.
 
-    Example:
+    Example::
+
         from silkworm.pipelines import GoogleSheetsPipeline
 
         pipeline = GoogleSheetsPipeline(

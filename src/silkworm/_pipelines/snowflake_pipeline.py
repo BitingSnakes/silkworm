@@ -33,7 +33,8 @@ class SnowflakePipeline:
         table: Valid unquoted destination table.
         role: Optional active role.
 
-    Example:
+    Example::
+
         from silkworm.pipelines import SnowflakePipeline
 
         pipeline = SnowflakePipeline(

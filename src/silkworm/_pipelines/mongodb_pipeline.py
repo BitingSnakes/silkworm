@@ -26,7 +26,8 @@ class MongoDBPipeline:
         database: Database name.
         collection: Collection receiving documents.
 
-    Example:
+    Example::
+
         from silkworm.pipelines import MongoDBPipeline
 
         pipeline = MongoDBPipeline(

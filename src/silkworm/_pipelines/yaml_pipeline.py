@@ -26,7 +26,8 @@ class YAMLPipeline:
         path: Output YAML path. Items are buffered and written as one sequence
             when the pipeline closes.
 
-    Example:
+    Example::
+
         from silkworm.pipelines import YAMLPipeline
 
         pipeline = YAMLPipeline("data/items.yaml")

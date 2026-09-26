@@ -1,6 +1,6 @@
 # Runners
 
-Runners are convenience helpers that build an `Engine` and start the crawl. See [src/silkworm/runner.py](../src/silkworm/runner.py).
+Runners are convenience helpers that build an `Engine` and start the crawl. See [src/silkworm/runner.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/runner.py).
 
 ## Spiders and Engine Options
 Every runner takes a spider and the same keyword **engine options**; the runners differ only in the event loop they use.
@@ -106,4 +106,4 @@ engine = Engine(spider, concurrency=4)
 # await engine.run()
 ```
 
-Engine details: [src/silkworm/engine.py](../src/silkworm/engine.py)
+Engine details: [src/silkworm/engine.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/engine.py)

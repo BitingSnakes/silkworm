@@ -30,7 +30,8 @@ class PostgreSQLPipeline:
         database: Existing database name.
         table: Valid unquoted table created automatically when absent.
 
-    Example:
+    Example::
+
         from silkworm.pipelines import PostgreSQLPipeline
 
         pipeline = PostgreSQLPipeline(

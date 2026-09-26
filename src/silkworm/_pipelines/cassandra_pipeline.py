@@ -43,7 +43,8 @@ class CassandraPipeline:
         password: Optional authentication password.
         port: Cassandra native protocol port.
 
-    Example:
+    Example::
+
         from silkworm.pipelines import CassandraPipeline
 
         pipeline = CassandraPipeline(

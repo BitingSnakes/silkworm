@@ -32,14 +32,16 @@ class PolarsPipeline:
         mode: ``"write"`` to replace the file or ``"append"`` to merge the
             buffered items with an existing Parquet file.
 
-    Example:
+    Example::
+
         from silkworm.pipelines import PolarsPipeline
 
         pipeline = PolarsPipeline("data/items.parquet")
         # Or append to existing file:
         pipeline = PolarsPipeline("data/items.parquet", mode="append")
 
-    Reading Parquet files:
+    Reading Parquet files::
+
         import polars as pl
 
         # Read entire dataset

@@ -27,7 +27,8 @@ class CouchDBPipeline:
         username: Optional authentication username.
         password: Optional authentication password.
 
-    Example:
+    Example::
+
         from silkworm.pipelines import CouchDBPipeline
 
         pipeline = CouchDBPipeline(

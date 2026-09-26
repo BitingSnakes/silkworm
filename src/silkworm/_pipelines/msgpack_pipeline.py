@@ -31,14 +31,16 @@ class MsgPackPipeline:
         mode: ``"write"`` to replace the file or ``"append"`` to retain and
             extend an existing stream of MessagePack values.
 
-    Example:
+    Example::
+
         from silkworm.pipelines import MsgPackPipeline
 
         pipeline = MsgPackPipeline("data/items.msgpack")
         # Or append to existing file:
         pipeline = MsgPackPipeline("data/items.msgpack", mode="append")
 
-    Reading MsgPack files:
+    Reading MsgPack files::
+
         import msgpack
 
         # Read all items at once

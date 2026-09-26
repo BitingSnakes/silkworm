@@ -34,7 +34,8 @@ class CallbackPipeline:
             forwarded to the next pipeline.
         log_level: Severity used for per-item processing logs.
 
-    Example:
+    Example::
+
         from silkworm.pipelines import CallbackPipeline
 
         def process_item(item, spider):

@@ -26,6 +26,7 @@ class DelayMiddleware:
     Middleware to add configurable delays between requests.
 
     Supports three delay strategies:
+
     1. Fixed delay: Always wait the same amount of time
     2. Random delay: Wait a random time between min and max
     3. Custom delay: Use a callable that returns delay duration
@@ -35,19 +36,21 @@ class DelayMiddleware:
         min_delay: Minimum delay for random strategy (requires max_delay)
         max_delay: Maximum delay for random strategy (requires min_delay)
         delay_func: Custom callable that returns delay in seconds.
-                   Called with (request, spider) and should return float.
+            Called with ``(request, spider)`` and should return a float.
 
-    Examples:
-        Fixed delay of 1 second:
-            DelayMiddleware(delay=1.0)
+    Example::
 
-        Random delay between 0.5 and 2 seconds:
-            DelayMiddleware(min_delay=0.5, max_delay=2.0)
+        # Fixed delay of 1 second
+        DelayMiddleware(delay=1.0)
 
-        Custom delay function:
-            def my_delay(request, spider):
-                return 1.0 if "fast" in request.url else 2.0
-            DelayMiddleware(delay_func=my_delay)
+        # Random delay between 0.5 and 2 seconds
+        DelayMiddleware(min_delay=0.5, max_delay=2.0)
+
+        # Custom delay function
+        def my_delay(request, spider):
+            return 1.0 if "fast" in request.url else 2.0
+
+        DelayMiddleware(delay_func=my_delay)
     """
 
     def __init__(

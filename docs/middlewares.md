@@ -1,6 +1,6 @@
 # Middlewares
 
-Middlewares let you intercept requests and responses. The engine applies them in order. See [src/silkworm/middlewares.py](../src/silkworm/middlewares.py).
+Middlewares let you intercept requests and responses. The engine applies them in order. See [src/silkworm/middlewares.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/middlewares.py).
 
 ## Interfaces
 Middlewares implement protocol-style async methods:
@@ -38,7 +38,7 @@ run_spider(
 
 ### UserAgentMiddleware
 - Picks a random user agent from a list or uses the default `silkworm/0.1`.
-- Code: [src/silkworm/_middlewares/user_agent.py](../src/silkworm/_middlewares/user_agent.py)
+- Code: [src/silkworm/_middlewares/user_agent.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/_middlewares/user_agent.py)
 
 ```python
 UserAgentMiddleware(user_agents=["UA1", "UA2"], default="silkworm/0.1")
@@ -49,7 +49,7 @@ UserAgentMiddleware(user_agents=["UA1", "UA2"], default="silkworm/0.1")
 - Reads from a list or file.
 - Writes `request.meta["proxy"]` for the HTTP client.
 - Retries fetch exceptions with another proxy when one is available, preserving failed proxies in request metadata.
-- Code: [src/silkworm/_middlewares/proxy.py](../src/silkworm/_middlewares/proxy.py)
+- Code: [src/silkworm/_middlewares/proxy.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/_middlewares/proxy.py)
 
 ```python
 ProxyMiddleware(proxies=["http://proxy1:8080", "http://proxy2:8080"])
@@ -61,8 +61,8 @@ ProxyMiddleware(proxy_file="proxies.txt", random_selection=True)
 - Uses Python's standard `CookieJar`, so domain, path, secure, expiry, and session-cookie rules are handled by the jar.
 - Use the same middleware instance in `request_middlewares` and `response_middlewares`.
 - Saves and loads Netscape/Mozilla cookie files for reuse across spider runs.
-- Code: [src/silkworm/_middlewares/cookies.py](../src/silkworm/_middlewares/cookies.py)
-- Example: [examples/cookie_reuse_spiders.py](../examples/cookie_reuse_spiders.py)
+- Code: [src/silkworm/_middlewares/cookies.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/_middlewares/cookies.py)
+- Example: [examples/cookie_reuse_spiders.py](https://github.com/BitingSnakes/silkworm/blob/main/examples/cookie_reuse_spiders.py)
 
 ```python
 from pathlib import Path
@@ -126,7 +126,7 @@ Useful constructor and helper options:
 ### DelayMiddleware
 - Fixed, random range, or custom delay function.
 - Uses `asyncio.sleep` (non-blocking).
-- Code: [src/silkworm/_middlewares/delay.py](../src/silkworm/_middlewares/delay.py)
+- Code: [src/silkworm/_middlewares/delay.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/_middlewares/delay.py)
 
 ```python
 DelayMiddleware(delay=1.0)
@@ -144,7 +144,7 @@ DelayMiddleware(delay_func=custom_delay)
 - Applies only to requests for the same scheme/host/port as the robots.txt origin.
 - Serializes same-origin requests with an internal async lock so engine concurrency cannot bypass the robots delay.
 - Fetches robots.txt during middleware `open`; if used without the engine lifecycle, it loads lazily on the first request.
-- Code: [src/silkworm/_middlewares/robots.py](../src/silkworm/_middlewares/robots.py)
+- Code: [src/silkworm/_middlewares/robots.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/_middlewares/robots.py)
 
 ```python
 from silkworm import RobotsTxtDelayMiddleware, run_spider
@@ -174,7 +174,7 @@ Constructor options:
 - Retries on HTTP codes (defaults include 500, 502, 503, 504, 522, 524, 408, 429).
 - Exponential backoff via `backoff_base`.
 - Uses `request.meta["retry_times"]` and sets `dont_filter=True` on retries.
-- Code: [src/silkworm/_middlewares/retry.py](../src/silkworm/_middlewares/retry.py)
+- Code: [src/silkworm/_middlewares/retry.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/_middlewares/retry.py)
 
 ```python
 RetryMiddleware(max_times=3, backoff_base=0.5, sleep_http_codes=[429, 503])
@@ -183,7 +183,7 @@ RetryMiddleware(max_times=3, backoff_base=0.5, sleep_http_codes=[429, 503])
 ### SkipNonHTMLMiddleware
 - Skips callbacks for non-HTML responses unless `allow_non_html` is set in request meta.
 - Checks content-type and optional body sniff.
-- Code: [src/silkworm/_middlewares/skip_non_html.py](../src/silkworm/_middlewares/skip_non_html.py)
+- Code: [src/silkworm/_middlewares/skip_non_html.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/_middlewares/skip_non_html.py)
 
 ```python
 SkipNonHTMLMiddleware(allowed_types=["html"], sniff_bytes=2048)
@@ -194,8 +194,8 @@ SkipNonHTMLMiddleware(allowed_types=["html"], sniff_bytes=2048)
 - Use the same instance in `request_middlewares` and `response_middlewares`.
 - Adds internal exchange IDs to request metadata so downstream systems can join events.
 - Supports authorization headers, bounded sender queue, body truncation, batching, and `open`/`close` lifecycle flushing.
-- Code: [src/silkworm/_middlewares/stream.py](../src/silkworm/_middlewares/stream.py)
-- Example: [examples/request_response_stream_spider.py](../examples/request_response_stream_spider.py)
+- Code: [src/silkworm/_middlewares/stream.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/_middlewares/stream.py)
+- Example: [examples/request_response_stream_spider.py](https://github.com/BitingSnakes/silkworm/blob/main/examples/request_response_stream_spider.py)
 
 ```python
 from silkworm import RequestResponseStreamMiddleware
@@ -219,8 +219,8 @@ run_spider(
 - Enable per request with `request.meta["cloudflare_crawl"] = True` or pass a dict of per-request crawl options.
 - The callback receives a synthetic JSON `Response` containing the final Cloudflare API payload.
 - Requires Cloudflare account credentials; there is no package extra for this middleware.
-- Code: [src/silkworm/_middlewares/cloudflare.py](../src/silkworm/_middlewares/cloudflare.py)
-- Example: [examples/cloudflare_crawl_spider.py](../examples/cloudflare_crawl_spider.py)
+- Code: [src/silkworm/_middlewares/cloudflare.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/_middlewares/cloudflare.py)
+- Example: [examples/cloudflare_crawl_spider.py](https://github.com/BitingSnakes/silkworm/blob/main/examples/cloudflare_crawl_spider.py)
 
 ```python
 from silkworm import Request

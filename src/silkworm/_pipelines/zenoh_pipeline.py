@@ -72,7 +72,8 @@ class ZenohPipeline:
     undeclared during :meth:`close`. Zenoh's synchronous calls run in worker
     threads so they do not block Silkworm's event loop.
 
-    Example:
+    Example::
+
         from silkworm.pipelines import ZenohPipeline
 
         pipeline = ZenohPipeline("scraping/items")

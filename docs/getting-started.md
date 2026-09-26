@@ -2,7 +2,7 @@
 
 ## Requirements
 - **Python**: 3.13, 3.14 or 3.15. On Python 3.15 the `msgpack`, `vortex` and `onionlink` extras install without their backing library until it ships 3.15 wheels, so those pipelines/clients are unavailable there for now. `run_spider_trio` is available on Python 3.13 only until trio-asyncio supports Python 3.14+ (the `trio` extra skips trio-asyncio there). `cassandra` is limited to Python 3.13.
-- **Project metadata**: [pyproject.toml](../pyproject.toml)
+- **Project metadata**: [pyproject.toml](https://github.com/BitingSnakes/silkworm/blob/main/pyproject.toml)
 
 ## Installation
 
@@ -34,34 +34,34 @@ pip install "silkworm-rs[rsloop,polars]"
 
 | Extra | Purpose | Related Code |
 | --- | --- | --- |
-| `rsloop` | Faster event loop via `rsloop.new_event_loop()` | [src/silkworm/runner.py](../src/silkworm/runner.py) |
-| `uvloop` | Faster event loop on Unix | [src/silkworm/runner.py](../src/silkworm/runner.py) |
-| `winloop` | Faster event loop on Windows | [src/silkworm/runner.py](../src/silkworm/runner.py) |
-| `trio` | Trio backend | [src/silkworm/runner.py](../src/silkworm/runner.py) |
-| `msgpack` | MsgPack export | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
-| `polars` | Parquet export | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
-| `excel` | Excel export | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
-| `yaml` | YAML export | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
-| `avro` | Avro export | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
-| `elasticsearch` | Elasticsearch export | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
-| `mongodb` | MongoDB export | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
-| `s3` | S3 export (OpenDAL) | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
-| `vortex` | Vortex export | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
-| `mysql` | MySQL export | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
-| `postgresql` | PostgreSQL export | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
-| `gsheets` | Google Sheets export | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
-| `snowflake` | Snowflake export | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
-| `ftp` | FTP export | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
-| `sftp` | SFTP export | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
-| `cassandra` | Cassandra export (not on Windows) | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
-| `couchdb` | CouchDB export | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
-| `dynamodb` | DynamoDB export | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
-| `duckdb` | DuckDB export | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
-| `taskiq` | Taskiq queue pipeline | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
-| `zenoh` | Zenoh pub/sub pipeline | [src/silkworm/pipelines.py](../src/silkworm/pipelines.py) |
-| `memray` | Memory profiling | [justfile](../justfile) |
-| `cdp` | CDP browser client and rendered HTML fetch | [src/silkworm/cdp.py](../src/silkworm/cdp.py) |
-| `onionlink` | Tor v3 onion-service client | [src/silkworm/onionlink.py](../src/silkworm/onionlink.py) |
+| `rsloop` | Faster event loop via `rsloop.new_event_loop()` | [src/silkworm/runner.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/runner.py) |
+| `uvloop` | Faster event loop on Unix | [src/silkworm/runner.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/runner.py) |
+| `winloop` | Faster event loop on Windows | [src/silkworm/runner.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/runner.py) |
+| `trio` | Trio backend | [src/silkworm/runner.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/runner.py) |
+| `msgpack` | MsgPack export | [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py) |
+| `polars` | Parquet export | [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py) |
+| `excel` | Excel export | [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py) |
+| `yaml` | YAML export | [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py) |
+| `avro` | Avro export | [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py) |
+| `elasticsearch` | Elasticsearch export | [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py) |
+| `mongodb` | MongoDB export | [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py) |
+| `s3` | S3 export (OpenDAL) | [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py) |
+| `vortex` | Vortex export | [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py) |
+| `mysql` | MySQL export | [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py) |
+| `postgresql` | PostgreSQL export | [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py) |
+| `gsheets` | Google Sheets export | [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py) |
+| `snowflake` | Snowflake export | [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py) |
+| `ftp` | FTP export | [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py) |
+| `sftp` | SFTP export | [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py) |
+| `cassandra` | Cassandra export (not on Windows) | [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py) |
+| `couchdb` | CouchDB export | [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py) |
+| `dynamodb` | DynamoDB export | [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py) |
+| `duckdb` | DuckDB export | [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py) |
+| `taskiq` | Taskiq queue pipeline | [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py) |
+| `zenoh` | Zenoh pub/sub pipeline | [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py) |
+| `memray` | Memory profiling | [justfile](https://github.com/BitingSnakes/silkworm/blob/main/justfile) |
+| `cdp` | CDP browser client and rendered HTML fetch | [src/silkworm/cdp.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/cdp.py) |
+| `onionlink` | Tor v3 onion-service client | [src/silkworm/onionlink.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/onionlink.py) |
 
 `OnionLinkClient` is also available as an optional integration for `.onion` sites:
 
@@ -72,7 +72,7 @@ pip install "silkworm-rs[onionlink]"
 `ServoFetchClient` is available from `silkworm`, but `servofetch` is distributed separately from the package extras. Install a compatible wheel from the [servofetch releases](https://github.com/RustedBytes/servofetch-py/releases) before using `fetch_html_servo` or `ServoFetchClient`.
 
 ## Your First Spider
-This is a minimal spider that extracts quotes and writes JSON Lines output. For a full version, see [examples/quotes_spider.py](../examples/quotes_spider.py).
+This is a minimal spider that extracts quotes and writes JSON Lines output. For a full version, see [examples/quotes_spider.py](https://github.com/BitingSnakes/silkworm/blob/main/examples/quotes_spider.py).
 
 ```python
 from silkworm import HTMLResponse, Response, Spider, run_spider
@@ -118,7 +118,7 @@ run_spider(
 ```
 
 ## Running Examples
-Examples are in [examples/](../examples). A few popular ones:
+Examples are in [examples/](https://github.com/BitingSnakes/silkworm/tree/main/examples). A few popular ones:
 
 ```bash
 python examples/quotes_spider.py
@@ -129,7 +129,7 @@ python examples/url_titles_spider.py --urls-file data/url_titles.jl --output dat
 See [Examples](examples.md) for a full list and what each one demonstrates.
 
 ## One-off HTML Fetch
-For quick, standalone fetches, use `fetch_html` in [src/silkworm/api.py](../src/silkworm/api.py). For rendered pages, install `servofetch` and use `fetch_html_servo`, or pass `ServoFetchClient` as `http_client`:
+For quick, standalone fetches, use `fetch_html` in [src/silkworm/api.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/api.py). For rendered pages, install `servofetch` and use `fetch_html_servo`, or pass `ServoFetchClient` as `http_client`:
 
 ```python
 from silkworm import ServoFetchClient, run_spider
@@ -174,7 +174,7 @@ asyncio.run(main())
 ```
 
 ## Development Workflow
-Developer commands are defined in [justfile](../justfile) and [justfile-3.14t](../justfile-3.14t).
+Developer commands are defined in the [justfile](https://github.com/BitingSnakes/silkworm/blob/main/justfile).
 
 ```bash
 just help
@@ -183,3 +183,7 @@ just lint
 just typecheck
 just test
 ```
+just docs
+```
+
+`just docs` builds this documentation into `docs/_build/html` with the same settings Read the Docs uses.

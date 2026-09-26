@@ -3,7 +3,7 @@
 This section covers Silkworm's **Spider/Request/Response** model, callback semantics, and how data flows through the engine.
 
 ## Spider
-**Spider** is the base class you subclass for each crawl. See [src/silkworm/spiders.py](../src/silkworm/spiders.py).
+**Spider** is the base class you subclass for each crawl. See [src/silkworm/spiders.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/spiders.py).
 
 Key attributes and hooks:
 - **`name`**: Spider identifier used in logs and stats.
@@ -26,7 +26,7 @@ class MySpider(Spider):
 ```
 
 ## Request
-`Request` is a slotted dataclass used to describe HTTP work. See [src/silkworm/request.py](../src/silkworm/request.py).
+`Request` is a slotted dataclass used to describe HTTP work. See [src/silkworm/request.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/request.py).
 
 Important fields:
 - **`url`**, **`method`**, **`headers`**, **`params`**, **`data`**, **`json`**
@@ -77,19 +77,19 @@ async def handle_error(self, request: Request, exception: Exception):
 
 ### Built-in `meta` Keys
 These are used by built-in components (you can add your own as well):
-- **`proxy`**: Used by `ProxyMiddleware` and [HttpClient](../src/silkworm/http.py) for proxy routing.
+- **`proxy`**: Used by `ProxyMiddleware` and [HttpClient](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/http.py) for proxy routing.
 - **`retry_times`**: Used by `RetryMiddleware` to track attempts.
 - **`allow_non_html`**: Used by `SkipNonHTMLMiddleware` to bypass filtering.
 - **`cookiejar`**: Used by `CookiesMiddleware` to isolate named cookie sessions.
 - **`cookies`**: Used by `CookiesMiddleware` to add cookies for one request.
 - **`dont_merge_cookies`**: Used by `CookiesMiddleware` to bypass cookie storage and header merging for one exchange.
-- **`redirect_times`**: Set by [HttpClient](../src/silkworm/http.py) when following redirects.
+- **`redirect_times`**: Set by [HttpClient](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/http.py) when following redirects.
 - **`cloudflare_crawl`**: Used by `CloudflareCrawlMiddleware`; set to `True` or a dict of crawl options.
 - **`servo_javascript`**, **`servo_settle_ms`**, **`servo_user_agent`**, **`servo_screenshot`**, **`servo_full_page`**: Used by `ServoFetchClient`.
 - **`onionlink_response_limit`**: Used by `OnionLinkClient` to override the per-response byte cap.
 
 ## Response and HTMLResponse
-`Response` contains the response payload; `HTMLResponse` adds selector helpers. See [src/silkworm/response.py](../src/silkworm/response.py).
+`Response` contains the response payload; `HTMLResponse` adds selector helpers. See [src/silkworm/response.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/response.py).
 
 Core APIs:
 - **`text`**: Decoded body text with charset detection.
@@ -128,12 +128,12 @@ for card in await response.select(".card"):
     title = await card.select_first("h2")
 ```
 
-The selector engine uses `scraper-rs` and respects `doc_max_size_bytes` (see [HttpClient](../src/silkworm/http.py)). Errors are raised as `SelectorError` in [src/silkworm/exceptions.py](../src/silkworm/exceptions.py).
+The selector engine uses `scraper-rs` and respects `doc_max_size_bytes` (see [HttpClient](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/http.py)). Errors are raised as `SelectorError` in [src/silkworm/exceptions.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/exceptions.py).
 
 Markdown conversion is also available as standalone helpers from `silkworm`: `html_to_markdown`, `convert_html_to_markdown`, `MarkdownStream`, `stream_html_to_markdown`, and `stream_html_to_markdown_async`. `full` mode uses the rich converter, `minimal` uses the lean Fast DOM path, and streaming uses `fast-h2m`'s stream processor.
 
 ## Callback Results (What `parse` Can Return)
-Callback output is normalized by the engine. See [src/silkworm/engine.py](../src/silkworm/engine.py).
+Callback output is normalized by the engine. See [src/silkworm/engine.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/engine.py).
 
 Valid outputs:
 - A single **item** (JSON-like object)
@@ -184,7 +184,7 @@ run_spider(MySpider, dedup_key=dedup_with_params)
 ```
 
 ## Data Types
-Public type aliases and protocols live in [`silkworm.types`](../src/silkworm/types.py). Import them from there to annotate your own code, for example:
+Public type aliases and protocols live in [`silkworm.types`](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/types.py). Import them from there to annotate your own code, for example:
 
 ```python
 from silkworm.types import Callback, JSONValue, Logger, MetaData

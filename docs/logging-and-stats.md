@@ -5,7 +5,7 @@ adapter and emits crawl statistics from the engine.
 
 ## Logger Basics
 `get_logger` returns a shared, configured logger adapter. It supports bound context
-and structured keyword fields. See [src/silkworm/logging.py](../src/silkworm/logging.py).
+and structured keyword fields. See [src/silkworm/logging.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/logging.py).
 
 ```python
 from silkworm.logging import get_logger
@@ -18,7 +18,7 @@ logger.info("Started")
 - **`SILKWORM_LOG_LEVEL`**: Sets the minimum log level (e.g., `DEBUG`, `INFO`).
 
 ## Spider Logger Injection
-You can pass a logger or a context dict into the spider constructor. See [src/silkworm/spiders.py](../src/silkworm/spiders.py).
+You can pass a logger or a context dict into the spider constructor. See [src/silkworm/spiders.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/spiders.py).
 
 ```python
 run_spider(MySpider(logger={"component": "QuotesSpider", "env": "dev"}))
@@ -27,7 +27,7 @@ run_spider(MySpider(logger={"component": "QuotesSpider", "env": "dev"}))
 The `Spider.log` property always returns a valid logger (creating one if needed).
 
 ## Crawl Statistics
-The engine can emit periodic stats and always logs a final summary. See [src/silkworm/engine.py](../src/silkworm/engine.py).
+The engine can emit periodic stats and always logs a final summary. See [src/silkworm/engine.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/engine.py).
 
 Example:
 
@@ -41,5 +41,5 @@ Stats include:
 - `memory_mb`, `elapsed_seconds`
 
 ## Example Scripts
-- Logger configuration: [examples/logger_configuration_demo.py](../examples/logger_configuration_demo.py)
-- Hybrid console + JSON logs: [examples/hybrid_logger_demo.py](../examples/hybrid_logger_demo.py)
+- Logger configuration: [examples/logger_configuration_demo.py](https://github.com/BitingSnakes/silkworm/blob/main/examples/logger_configuration_demo.py)
+- Hybrid console + JSON logs: [examples/hybrid_logger_demo.py](https://github.com/BitingSnakes/silkworm/blob/main/examples/hybrid_logger_demo.py)

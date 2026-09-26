@@ -32,7 +32,8 @@ class ExcelPipeline:
         path: Output workbook path.
         sheet_name: Worksheet title.
 
-    Example:
+    Example::
+
         from silkworm.pipelines import ExcelPipeline
 
         pipeline = ExcelPipeline("data/items.xlsx", sheet_name="quotes")

@@ -27,11 +27,14 @@ pyright:
 verifytypes:
 	uv run --group dev pyright --verifytypes silkworm --ignoreexternal
 
+docs:
+	uv run --group docs sphinx-build -W --keep-going -b html docs docs/_build/html
+
 clean:
 	rm -rf .venv/
 	rm -rf .uv-cache/
 	rm -rf .uv_cache/
-	rm -rf dist build .ruff_cache .pytest_cache *.egg-info
+	rm -rf dist build docs/_build .ruff_cache .pytest_cache *.egg-info
 	rm -rf data/
 	rm -rf **/**/__pycache__
 	rm -rf **/__pycache__
