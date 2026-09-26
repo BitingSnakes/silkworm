@@ -6,6 +6,8 @@ import asyncio
 import json
 from importlib import import_module
 from typing import TYPE_CHECKING, Any, Self
+from urllib.parse import urlsplit, urlunsplit
+from urllib.request import urlopen
 
 from ._timeouts import to_seconds
 from ._validation import require_positive_int
@@ -30,7 +32,11 @@ class CDPClient:
     """Fetch rendered pages through a CDP-compatible browser.
 
     Args:
-        ws_endpoint: Browser WebSocket endpoint.
+        ws_endpoint: Browser WebSocket endpoint. A bare ``ws://host:port`` (or
+            ``http://host:port``) also works with Chrome/Chromium, which only
+            accept their per-session ``/devtools/browser/<id>`` URL: when the
+            direct connection fails, the URL advertised at ``/json/version`` is
+            used, keeping the host and port given here.
         concurrency: Maximum simultaneous page fetches.
         timeout: Default command and navigation timeout in seconds.
         html_max_size_bytes: Maximum rendered document size accepted by the
@@ -116,20 +122,26 @@ class CDPClient:
             return
 
         try:
-            if websockets is None:
-                raise HttpError(
-                    "websockets package required for CDP support. Install with: pip install silkworm-rs[cdp]"
-                )
-            # Increase max_size so CDP responses (e.g., full HTML) aren't capped at the
-            # websockets default of 1 MiB. Use the HTML max size budget as the cap.
-            self._ws = await websockets.connect(
-                self._ws_endpoint,
-                max_size=self._html_max_size_bytes,
-            )
+            self._ws = await self._open_websocket(self._ws_endpoint)
         except Exception as exc:
-            raise HttpError(
-                f"Failed to connect to CDP endpoint {self._ws_endpoint}"
-            ) from exc
+            # Chrome/Chromium reject the bare ``ws://host:port`` that Lightpanda
+            # accepts; ask the browser for its real endpoint and retry once.
+            discovered = await self._discover_ws_endpoint()
+            if discovered is None or discovered == self._ws_endpoint:
+                raise HttpError(
+                    f"Failed to connect to CDP endpoint {self._ws_endpoint}"
+                ) from exc
+            try:
+                self._ws = await self._open_websocket(discovered)
+            except Exception as retry_exc:
+                raise HttpError(
+                    f"Failed to connect to CDP endpoint {self._ws_endpoint} "
+                    f"(also tried {discovered} from /json/version)"
+                ) from retry_exc
+            self.logger.debug(
+                "Connected to CDP endpoint advertised at /json/version",
+                ws_endpoint=discovered,
+            )
 
         # Start background task to receive messages
         self._recv_task = asyncio.create_task(self._receive_loop())
@@ -147,6 +159,58 @@ class CDPClient:
                     f"{cleanup_exc.__class__.__name__}: {cleanup_exc}"
                 )
             raise
+
+    async def _open_websocket(self, endpoint: str) -> Any:
+        if websockets is None:
+            raise HttpError(
+                "websockets package required for CDP support. Install with: pip install silkworm-rs[cdp]"
+            )
+        # Increase max_size so CDP responses (e.g., full HTML) aren't capped at the
+        # websockets default of 1 MiB. Use the HTML max size budget as the cap.
+        return await websockets.connect(endpoint, max_size=self._html_max_size_bytes)
+
+    async def _discover_ws_endpoint(self) -> str | None:
+        """Return the browser WebSocket URL advertised at ``/json/version``.
+
+        Only bare ``host:port`` endpoints are resolved. The advertised host is
+        replaced by the configured one, since browsers report their own bind
+        address (e.g. ``127.0.0.1``) even when reached through another host.
+        """
+        parts = urlsplit(self._ws_endpoint)
+        if parts.scheme not in {"ws", "wss", "http", "https"} or parts.path not in {
+            "",
+            "/",
+        }:
+            return None
+        secure = parts.scheme in {"wss", "https"}
+        version_url = urlunsplit(
+            ("https" if secure else "http", parts.netloc, "/json/version", "", "")
+        )
+        timeout = to_seconds(self._timeout) or 10.0
+
+        def fetch_version() -> object:
+            with urlopen(version_url, timeout=timeout) as response:
+                return json.load(response)
+
+        try:
+            payload = await asyncio.to_thread(fetch_version)
+        except (OSError, ValueError):
+            return None
+        advertised = (
+            payload.get("webSocketDebuggerUrl") if isinstance(payload, dict) else None
+        )
+        if not isinstance(advertised, str) or not advertised:
+            return None
+        advertised_parts = urlsplit(advertised)
+        return urlunsplit(
+            (
+                "wss" if secure else "ws",
+                parts.netloc,
+                advertised_parts.path,
+                advertised_parts.query,
+                "",
+            )
+        )
 
     def _fail_pending(self, exc: Exception) -> None:
         """Fail all pending command futures with the given exception."""

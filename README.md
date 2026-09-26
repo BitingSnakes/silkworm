@@ -532,6 +532,8 @@ Or use Chrome/Chromium:
 chromium --remote-debugging-port=9222 --headless
 ```
 
+The same `ws://127.0.0.1:9222` endpoint works for both. Chrome only accepts its per-session `ws://.../devtools/browser/<id>` URL, so when a bare `host:port` endpoint is refused, `CDPClient` looks that URL up at `http://host:port/json/version` and connects to it (keeping your host and port). You can also pass the full URL yourself.
+
 ### Using CDP in your spider
 There are two ways to use CDP: the convenience API or custom spider integration.
 

@@ -196,7 +196,7 @@ pip install "silkworm-rs[cdp]"
 
 `fetch_html_cdp(url, ws_endpoint="ws://127.0.0.1:9222", timeout=None)` returns `(text, AsyncDocument)` for the rendered page.
 
-To render every page of a crawl, connect a `CDPClient` and pass it as `http_client`. Options: `ws_endpoint`, `concurrency`, `timeout`, and `html_max_size_bytes`. Call `await client.connect()` before the crawl; the engine closes the client when the crawl ends.
+To render every page of a crawl, connect a `CDPClient` and pass it as `http_client`. Options: `ws_endpoint`, `concurrency`, `timeout`, and `html_max_size_bytes`. A bare `ws://host:port` (or `http://host:port`) endpoint works with Lightpanda and Chrome/Chromium alike: if the browser refuses it, the client connects to the `webSocketDebuggerUrl` advertised at `/json/version`, keeping the configured host and port. Call `await client.connect()` before the crawl; the engine closes the client when the crawl ends.
 
 ```python
 from silkworm import CDPClient, crawl
