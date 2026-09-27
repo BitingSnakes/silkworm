@@ -166,12 +166,24 @@ async def test_http_client_enforces_response_size_limit(local_site: LocalSite) -
 # -- #2 transport error classification and retries ------------------------------------------
 
 
+def _closed_port() -> int:
+    """Return a local port that was just released, so connecting is refused."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.bind(("127.0.0.1", 0))
+        return probe.getsockname()[1]
+
+
 async def test_transport_errors_are_classified(local_site: LocalSite) -> None:
     async with HttpClient(emulation=None, timeout=0.2) as client:
         with pytest.raises(HttpTimeoutError):
             await client.fetch(Request(local_site.url("/slow")))
+    # Windows retries refused connections for about two seconds before failing,
+    # so give the refusal time to arrive instead of hitting the timeout first.
+    async with HttpClient(emulation=None, timeout=15) as client:
         with pytest.raises(HttpConnectionError):
-            await client.fetch(Request("http://127.0.0.1:1/unreachable"))
+            await client.fetch(
+                Request(f"http://127.0.0.1:{_closed_port()}/unreachable")
+            )
 
 
 async def test_engine_retries_dropped_connections(local_site: LocalSite) -> None:
