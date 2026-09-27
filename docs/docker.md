@@ -4,8 +4,8 @@ This guide explains how to run Silkworm spiders in Docker containers.
 
 ## Prerequisites
 
-- Docker Engine 20.10+ or Docker Desktop
-- Docker Compose V2 (included with Docker Desktop)
+- Docker Engine 23+ (BuildKit) or Docker Desktop
+- Docker Compose V2.20+ (included with Docker Desktop)
 
 ## Quick Start
 
@@ -46,7 +46,9 @@ docker compose build
 
 ### Available Services
 
-The `compose.yaml` file defines several pre-configured spider services:
+The `compose.yaml` file defines several pre-configured spider services. All but
+`quotes` sit behind a profile; naming a service on the command line enables its
+profile automatically.
 
 #### 1. Quotes Spider (default)
 Scrapes quotes from quotes.toscrape.com
@@ -55,21 +57,28 @@ Scrapes quotes from quotes.toscrape.com
 docker compose up quotes
 ```
 
-#### 2. HackerNews Spider
+#### 2. Production Quotes Spider
+Validated, resumable crawl that exits non-zero when its checks fail
+
+```bash
+docker compose up production
+```
+
+#### 3. HackerNews Spider
 Scrapes latest posts from Hacker News (5 pages by default)
 
 ```bash
-docker compose up --profile hackernews hackernews
+docker compose up hackernews
 ```
 
-#### 3. Lobsters Spider
+#### 4. Lobsters Spider
 Scrapes posts from lobste.rs (2 pages by default)
 
 ```bash
-docker compose up --profile lobsters lobsters
+docker compose up lobsters
 ```
 
-#### 4. Custom Spider
+#### 5. Custom Spider
 Run any spider from the examples directory
 
 ```bash
@@ -94,7 +103,10 @@ Set the log level using environment variables:
 
 ```bash
 # Run with DEBUG logging
-docker compose run -e SILKWORM_LOG_LEVEL=DEBUG quotes
+docker compose run --rm -e SILKWORM_LOG_LEVEL=DEBUG quotes
+
+# Or for every service started from this shell
+SILKWORM_LOG_LEVEL=DEBUG docker compose up quotes
 ```
 
 ## Running Without Docker Compose
@@ -124,10 +136,10 @@ All scraped data is saved to the `/app/data` directory inside the container. Thi
 
 ## Customizing the Dockerfile
 
-The Dockerfile is designed to be minimal and easy to customize:
+The Dockerfile is a two-stage build:
 
-- **Base image**: Python 3.13-slim for small size
-- **Source code**: Copied from host to container
+- **Builder**: `python:3.14.7-slim-trixie` with [uv](https://docs.astral.sh/uv/) installs the dependencies pinned in `uv.lock` (`uv sync --locked`) into `/opt/venv`
+- **Runtime**: the same slim base with only `/opt/venv` and `examples/` copied in, so no build tooling or source tree ships in the image
 - **Runtime user**: Runs as non-root user `app` (UID/GID configurable via build args)
 - **Data volume**: `/app/data` for spider output
 
@@ -135,18 +147,23 @@ The Dockerfile is designed to be minimal and easy to customize:
 
 If you need additional Python packages, modify the Dockerfile:
 
+Add them in the builder stage, after the `uv sync` step:
+
 ```dockerfile
-# After the pip install line, add:
-RUN pip install --no-cache-dir your-package-name
+RUN uv pip install --python /opt/venv/bin/python your-package-name
 ```
+
+Optional extras from `pyproject.toml` can be enabled on the `uv sync` lines instead, e.g. `uv sync --locked --no-dev --no-editable --extra uvloop`.
 
 ### Example: Using a Different Python Version
 
-Change the first line of the Dockerfile:
+Pass the `PYTHON_VERSION` build arg (any Python 3.13+ release with a `-slim-trixie` image):
 
-```dockerfile
-FROM python:3.14-slim  # or any other Python 3.13+ version
+```bash
+docker build --build-arg PYTHON_VERSION=3.13.14 -t silkworm-rs:py313 .
 ```
+
+`UV_VERSION` works the same way for the uv release used in the builder stage.
 
 ### Example: Customizing Runtime UID/GID
 
@@ -166,8 +183,8 @@ docker build \
 If you encounter network timeouts during build, try:
 
 ```bash
-# Use Docker BuildKit with better caching
-DOCKER_BUILDKIT=1 docker build -t silkworm-rs:latest .
+# Retry; the uv download cache is kept between builds (BuildKit cache mount)
+docker build -t silkworm-rs:latest .
 ```
 
 ### Permission issues with data directory
@@ -180,7 +197,7 @@ mkdir -p ./data
 chown "$(id -u):$(id -g)" ./data
 ```
 
-If you previously ran containers as root (for example with `sudo docker-compose`), fix existing ownership once:
+If you previously ran containers as root (for example with `sudo docker compose`), fix existing ownership once:
 
 ```bash
 sudo chown -R "$(id -u):$(id -g)" ./data
@@ -206,7 +223,7 @@ cat ./data/quotes.jl
 ### Scrape HackerNews and analyze with jq
 
 ```bash
-docker compose up --profile hackernews hackernews
+docker compose up hackernews
 cat ./data/hackernews.jl | jq '.title'
 ```
 
@@ -215,8 +232,8 @@ cat ./data/hackernews.jl | jq '.title'
 ```bash
 # Start all spiders in detached mode
 docker compose up -d quotes
-docker compose up -d --profile hackernews hackernews
-docker compose up -d --profile lobsters lobsters
+docker compose up -d hackernews
+docker compose up -d lobsters
 
 # Check status
 docker compose ps
@@ -254,7 +271,7 @@ jobs:
   scrape:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       
       - name: Build Docker image
         run: docker build -t silkworm-rs:latest .
@@ -263,7 +280,7 @@ jobs:
         run: docker run --rm -v $(pwd)/data:/app/data silkworm-rs:latest python examples/quotes_spider.py
       
       - name: Upload results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: scraped-data
           path: ./data/
@@ -286,35 +303,15 @@ spider-job:
 
 ## Advanced Usage
 
-### Multi-stage builds for smaller images
+### Using compose.override.yaml
 
-You can optimize the Dockerfile with multi-stage builds to reduce the final image size:
-
-```dockerfile
-# Builder stage
-FROM python:3.13-slim as builder
-WORKDIR /app
-COPY . .
-RUN pip install --user -e .
-
-# Runtime stage
-FROM python:3.13-slim
-WORKDIR /app
-COPY --from=builder /root/.local /root/.local
-COPY examples/ ./examples/
-ENV PATH=/root/.local/bin:$PATH
-CMD ["python", "examples/quotes_spider.py"]
-```
-
-### Using docker-compose.override.yaml
-
-Create a `docker-compose.override.yaml` file for local development:
+Create a `compose.override.yaml` file for local development:
 
 ```yaml
 services:
   quotes:
     volumes:
-      - ./src:/app/src  # Mount source code for development
+      - ./examples:/app/examples  # Edit spiders without rebuilding
     environment:
       - SILKWORM_LOG_LEVEL=DEBUG
 ```
