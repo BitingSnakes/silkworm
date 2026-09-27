@@ -206,6 +206,9 @@ class HttpClient:
         timeout: Default request timeout in seconds or as a ``timedelta``
             (:data:`DEFAULT_REQUEST_TIMEOUT`, 60 seconds, unless given);
             ``None`` disables it. ``Request.timeout`` overrides it per request.
+            The budget covers sending the request and downloading the whole
+            body, restarts for each redirect hop, and excludes time spent
+            waiting for a concurrency slot.
         html_max_size_bytes: Maximum document size parsed by HTML selectors.
         follow_redirects: Follow redirect responses internally.
         max_redirects: Maximum redirect hops.

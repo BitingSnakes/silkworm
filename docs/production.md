@@ -102,6 +102,11 @@ disables it, and `Request.timeout` overrides it per request), so a server that
 stops responding cannot hold a worker indefinitely. Timeouts raise
 `HttpTimeoutError` and are retried like other transient failures.
 
+The budget covers sending the request and downloading the entire body, so raise
+it for large or slow downloads (for example `Request(url, timeout=300)` for one
+file). Each redirect hop gets a fresh budget, and time spent waiting for a free
+concurrency slot does not count.
+
 ## Stop limits
 
 These end the crawl gracefully (pending requests are discarded, or kept when a

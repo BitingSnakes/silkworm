@@ -38,6 +38,8 @@ if TYPE_CHECKING:
     from .request import Callback
     from .spiders import Spider
 
+from .http import DEFAULT_REQUEST_TIMEOUT
+
 EXIT_OK = 0
 EXIT_FAILED = 1
 EXIT_USAGE = 2
@@ -438,7 +440,10 @@ def build_parser() -> argparse.ArgumentParser:
     parse.add_argument("-a", "--arg", action="append", default=[], metavar="NAME=VALUE")
     parse.add_argument("--meta", help="request meta as a JSON object")
     parse.add_argument(
-        "--timeout", type=float, default=30.0, help="seconds (default 30)"
+        "--timeout",
+        type=float,
+        default=DEFAULT_REQUEST_TIMEOUT,
+        help=f"seconds (default {DEFAULT_REQUEST_TIMEOUT:g})",
     )
     parse.set_defaults(handler=_cmd_parse)
 
@@ -449,7 +454,10 @@ def build_parser() -> argparse.ArgumentParser:
         "-o", "--output", help="save the body to a file instead of stdout"
     )
     fetch.add_argument(
-        "--timeout", type=float, default=30.0, help="seconds (default 30)"
+        "--timeout",
+        type=float,
+        default=DEFAULT_REQUEST_TIMEOUT,
+        help=f"seconds (default {DEFAULT_REQUEST_TIMEOUT:g})",
     )
     fetch.set_defaults(handler=_cmd_fetch)
 

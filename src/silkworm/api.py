@@ -10,7 +10,7 @@ from scraper_rs.asyncio import AsyncDocument, parse
 from wreq import Client
 
 from ._resources import close_resource, raise_cleanup_errors
-from .http import DEFAULT_EMULATION
+from .http import DEFAULT_EMULATION, DEFAULT_REQUEST_TIMEOUT
 
 if TYPE_CHECKING:
     from wreq import Emulation, Profile
@@ -20,14 +20,16 @@ async def fetch_html(
     url: str,
     *,
     emulation: Emulation | Profile | None = DEFAULT_EMULATION,
-    timeout: float | timedelta | None = None,
+    timeout: float | timedelta | None = DEFAULT_REQUEST_TIMEOUT,
 ) -> tuple[str, AsyncDocument]:
     """Fetch and asynchronously parse one HTML document with ``wreq``.
 
     Args:
         url: Absolute URL to fetch.
         emulation: Browser profile to impersonate, or ``None`` to disable it.
-        timeout: Request timeout in seconds or as a ``timedelta``.
+        timeout: Request timeout in seconds or as a ``timedelta``; 60 seconds
+            (:data:`~silkworm.http.DEFAULT_REQUEST_TIMEOUT`) unless given, and
+            ``None`` disables it.
 
     Returns:
         A ``(text, AsyncDocument)`` tuple with awaitable selector helpers.

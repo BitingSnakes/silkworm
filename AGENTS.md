@@ -1050,7 +1050,7 @@ The `silkworm` package exports the public API below (from `src/silkworm/__init__
 - `run_spider_trio(...)`: Trio entrypoint using `trio` + `trio-asyncio` (requires `silkworm-rs[trio]`).
 
 ### Convenience Helpers
-- `fetch_html(url, *, emulation=Emulation.Firefox139, timeout=None) -> tuple[str, Document]`: Fetches HTML and returns `(text, scraper_rs.Document)`.
+- `fetch_html(url, *, emulation=Emulation.Firefox139, timeout=60.0) -> tuple[str, AsyncDocument]`: Fetches HTML and returns `(text, AsyncDocument)`; `timeout=None` disables the timeout.
 - `get_logger(**context)`: Returns a logly logger with optional bound context.
 - `canonicalize_url(url)` / `request_fingerprint(request)`: URL normalization and the default dedup/cache key.
 - `HttpCache(directory, expiration=None)`: On-disk response cache passed as `http_cache=`.

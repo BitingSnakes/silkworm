@@ -745,6 +745,35 @@ async def test_httpclient_and_engine_default_to_60_second_timeout():
     await engine.http.close()
 
 
+async def test_fetch_html_defaults_to_60_second_timeout(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[dict[str, Any]] = []
+
+    class Page:
+        async def text(self) -> str:
+            return "<html></html>"
+
+    class Client:
+        def __init__(self, **options: Any) -> None:
+            return None
+
+        async def get(self, url: str, **kwargs: Any) -> Page:
+            calls.append(kwargs)
+            return Page()
+
+    async def fake_parse(html: str) -> str:
+        return "document"
+
+    monkeypatch.setattr(api_module, "Client", Client)
+    monkeypatch.setattr(api_module, "parse", fake_parse)
+
+    await api_module.fetch_html("https://example.com")
+    await api_module.fetch_html("https://example.com", timeout=None)
+
+    assert calls == [{"timeout": timedelta(seconds=60)}, {}]
+
+
 async def test_request_timeout_none_disables_the_default():
     client = HttpClient(timeout=None)
     recording = _RecordingClient()
