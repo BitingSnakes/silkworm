@@ -80,6 +80,11 @@
 
 .. autoclass:: silkworm.HttpCache
 
+.. autodata:: silkworm.http.DEFAULT_REQUEST_TIMEOUT
+
+   Default per-request timeout in seconds (``60.0``) for :class:`~silkworm.http.HttpClient`
+   and the engine's ``request_timeout``.
+
 .. autodata:: silkworm.http.MOCK_RESPONSE_META_KEY
    :no-value:
 

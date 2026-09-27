@@ -129,6 +129,9 @@ Callbacks, errbacks and `start_requests()` are now `async` functions returning
 - Requests record their link depth in `meta["depth"]`, and the new counters'
   names (such as `retries`) are reserved in `Spider.stats_payload`.
 - The sync runners stop gracefully on SIGINT/SIGTERM (`handle_signals=False` opts out).
+- Requests time out after 60 seconds by default (`request_timeout`, also the
+  `HttpClient(timeout=...)` default); pass `None` to restore the previous
+  unlimited behaviour.
 
 ## Production crawling
 
@@ -241,7 +244,7 @@ complete spider with pagination.
 `run_spider`/`crawl` knobs:
 - `concurrency`: number of concurrent HTTP requests; default 16; must be positive.
 - `max_pending_requests`: queue bound to avoid unbounded memory use (defaults to `concurrency * 10`); if provided, must be positive. `start_requests()` always respects it, and so does a single producing callback; when several callbacks produce requests at once, they enqueue past it rather than parking workers or deadlocking.
-- `request_timeout`: per-request timeout (seconds).
+- `request_timeout`: per-request timeout (seconds); defaults to 60, `None` disables it.
 - `keep_alive`: reuse HTTP connections when supported by the underlying client (sends `Connection: keep-alive`).
 - `http_client`: use a custom client instance such as `OnionLinkClient(...)` or `ServoFetchClient(...)` instead of the default wreq-backed client.
 - `dedup_key`: optional `Callable[[Request], str]` used for request deduplication; defaults to `lambda req: req.url`.

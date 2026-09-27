@@ -3,7 +3,7 @@ import json
 import sys
 import types
 from datetime import timedelta
-from typing import Any, ClassVar
+from typing import Any, ClassVar, cast
 from unittest.mock import AsyncMock, Mock
 from urllib.parse import parse_qsl, urlsplit
 
@@ -724,6 +724,38 @@ async def test_httpclient_uses_timedelta_timeout():
     assert resp.status == 200
     assert len(recording.calls) == 1
     assert isinstance(recording.calls[0][2]["timeout"], timedelta)
+
+
+async def test_httpclient_and_engine_default_to_60_second_timeout():
+    from silkworm.http import DEFAULT_REQUEST_TIMEOUT
+
+    assert DEFAULT_REQUEST_TIMEOUT == 60.0
+    client = HttpClient()
+    recording = _RecordingClient()
+    client._client = recording
+
+    await client.fetch(Request(url="http://example.com/default"))
+    await client.fetch(Request(url="http://example.com/override", timeout=5))
+
+    sent = [call[2]["timeout"] for call in recording.calls]
+    assert sent == [timedelta(seconds=60), timedelta(seconds=5)]
+
+    engine = Engine(Spider())
+    assert cast("HttpClient", engine.http)._timeout == DEFAULT_REQUEST_TIMEOUT
+    await engine.http.close()
+
+
+async def test_request_timeout_none_disables_the_default():
+    client = HttpClient(timeout=None)
+    recording = _RecordingClient()
+    client._client = recording
+
+    await client.fetch(Request(url="http://example.com/unlimited"))
+
+    assert "timeout" not in recording.calls[0][2]
+    engine = Engine(Spider(), request_timeout=None)
+    assert cast("HttpClient", engine.http)._timeout is None
+    await engine.http.close()
 
 
 async def test_httpclient_returns_synthetic_response_from_meta():

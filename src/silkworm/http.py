@@ -35,6 +35,10 @@ MOCK_RESPONSE_META_KEY = "_silkworm_mock_response"
 # Browser profile impersonated by default; pass ``emulation=None`` to disable.
 DEFAULT_EMULATION = Emulation.Firefox139
 
+# Default per-request timeout in seconds. A finite default keeps a server that
+# stops responding without closing the connection from holding a worker forever.
+DEFAULT_REQUEST_TIMEOUT = 60.0
+
 # Largest response body downloaded by default; see ``max_response_size_bytes``.
 DEFAULT_MAX_RESPONSE_SIZE_BYTES = 50_000_000
 
@@ -199,7 +203,9 @@ class HttpClient:
         concurrency: Maximum requests in flight.
         emulation: Browser profile to impersonate, or ``None`` to disable it.
         default_headers: Headers merged below per-request headers.
-        timeout: Default request timeout.
+        timeout: Default request timeout in seconds or as a ``timedelta``
+            (:data:`DEFAULT_REQUEST_TIMEOUT`, 60 seconds, unless given);
+            ``None`` disables it. ``Request.timeout`` overrides it per request.
         html_max_size_bytes: Maximum document size parsed by HTML selectors.
         follow_redirects: Follow redirect responses internally.
         max_redirects: Maximum redirect hops.
@@ -222,7 +228,7 @@ class HttpClient:
         concurrency: int = 16,
         emulation: Emulation | Profile | None = DEFAULT_EMULATION,
         default_headers: Headers | None = None,
-        timeout: float | timedelta | None = None,
+        timeout: float | timedelta | None = DEFAULT_REQUEST_TIMEOUT,
         html_max_size_bytes: int = 5_000_000,
         follow_redirects: bool = True,
         max_redirects: int = 10,

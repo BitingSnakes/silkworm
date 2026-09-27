@@ -39,7 +39,12 @@ from .exceptions import (
     SilkwormError,
     SpiderError,
 )
-from .http import DEFAULT_EMULATION, DEFAULT_MAX_RESPONSE_SIZE_BYTES, HttpClient
+from .http import (
+    DEFAULT_EMULATION,
+    DEFAULT_MAX_RESPONSE_SIZE_BYTES,
+    DEFAULT_REQUEST_TIMEOUT,
+    HttpClient,
+)
 from .logging import Logger, LogLevel, complete_logs, get_logger, log_at_level
 from .request import Callback, Request
 from .response import HTMLResponse, Response
@@ -255,7 +260,10 @@ class Engine:
             crawling and can never deadlock.
         emulation: Browser profile used by the default ``wreq`` client; pass
             ``None`` to disable impersonation.
-        request_timeout: Default per-request timeout.
+        request_timeout: Default per-request timeout for the default client:
+            60 seconds (:data:`~silkworm.http.DEFAULT_REQUEST_TIMEOUT`) unless
+            given; ``None`` disables it. ``Request.timeout`` overrides it per
+            request. Ignored when ``http_client`` is supplied.
         html_max_size_bytes: Maximum document size parsed by HTML responses.
         max_response_size_bytes: Largest response body the default client
             downloads (``None`` for no limit); larger bodies fail with
@@ -310,7 +318,7 @@ class Engine:
         concurrency: int = 16,
         max_pending_requests: int | None = None,
         emulation: Emulation | Profile | None = DEFAULT_EMULATION,
-        request_timeout: float | timedelta | None = None,
+        request_timeout: float | timedelta | None = DEFAULT_REQUEST_TIMEOUT,
         html_max_size_bytes: int = 5_000_000,
         max_response_size_bytes: int | None = DEFAULT_MAX_RESPONSE_SIZE_BYTES,
         request_middlewares: Iterable[RequestMiddleware] | None = None,

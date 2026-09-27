@@ -97,8 +97,10 @@ loops, TLS errors, and oversized responses are not retried. Pass
 Register it in `response_middlewares`; the engine also calls its
 `process_exception` hook for failed requests.
 
-Set `request_timeout` in production: the default is no timeout, so a server that
-stops responding would hold a worker until the connection is closed.
+Requests time out after 60 seconds by default (`request_timeout`; `None`
+disables it, and `Request.timeout` overrides it per request), so a server that
+stops responding cannot hold a worker indefinitely. Timeouts raise
+`HttpTimeoutError` and are retried like other transient failures.
 
 ## Stop limits
 

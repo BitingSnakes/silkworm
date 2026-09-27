@@ -20,7 +20,7 @@ Key behaviors:
 Common Engine options (also exposed by `run_spider` and `crawl` in [src/silkworm/runner.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/runner.py)):
 - **`concurrency`**: max concurrent requests; must be positive.
 - **`max_pending_requests`**: queue capacity for backpressure (a hard bound for `start_requests()` and for a single producing callback, soft when several callbacks produce at once); must be positive when provided.
-- **`request_timeout`**: per-request timeout (seconds or `timedelta`). The default is no timeout; set one in production.
+- **`request_timeout`**: per-request timeout (seconds or `timedelta`); defaults to 60 seconds, `None` disables it, and `Request.timeout` overrides it per request.
 - **`html_max_size_bytes`**: HTML parsing size limit for selectors.
 - **`max_response_size_bytes`**: largest downloaded body (default 50 MB; `None` for no limit).
 - **`log_stats_interval`**: periodic stats logging interval (seconds).
