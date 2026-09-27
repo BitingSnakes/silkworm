@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import json
 import socket
+import sys
 import threading
 import time
 from collections import Counter
@@ -65,6 +66,20 @@ def _pages(port: int) -> dict[str, tuple[int, str, bytes]]:
     }
 
 
+class _QuietServer(ThreadingHTTPServer):
+    """Test server that ignores clients hanging up (timeouts, dropped sockets).
+
+    Tests deliberately abandon requests; the default handler would print a
+    traceback for each broken pipe or reset connection. Other errors still
+    surface.
+    """
+
+    def handle_error(self, request: object, client_address: object) -> None:
+        if isinstance(sys.exc_info()[1], ConnectionError):
+            return
+        super().handle_error(request, client_address)  # type: ignore[arg-type]
+
+
 class LocalSite:
     """A threaded HTTP server with a hit counter and a few misbehaving routes."""
 
@@ -112,7 +127,7 @@ class LocalSite:
             def log_message(self, format: str, *args: Any) -> None:
                 return None
 
-        self.server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+        self.server = _QuietServer(("127.0.0.1", 0), Handler)
         self.port = self.server.server_address[1]
         self.base = f"http://127.0.0.1:{self.port}"
         self.pages = _pages(self.port)
