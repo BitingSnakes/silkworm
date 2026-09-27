@@ -5,6 +5,7 @@ All examples live under [examples/](https://github.com/BitingSnakes/silkworm/tre
 | Example | Focus | Command |
 | --- | --- | --- |
 | [examples/quotes_spider.py](https://github.com/BitingSnakes/silkworm/blob/main/examples/quotes_spider.py) | Basic spider, validation, JSONL output | `python examples/quotes_spider.py` |
+| [examples/production_quotes_spider.py](https://github.com/BitingSnakes/silkworm/blob/main/examples/production_quotes_spider.py) | Production run: robots.txt, AutoThrottle, retries, validation, failure policy, resumable job | `python examples/production_quotes_spider.py` or `silkworm crawl examples/production_quotes_spider.py -o data/quotes.jl` |
 | [examples/quotes_spider_xpath.py](https://github.com/BitingSnakes/silkworm/blob/main/examples/quotes_spider_xpath.py) | XPath selectors | `python examples/quotes_spider_xpath.py` |
 | [examples/declarative_quotes_spider.py](https://github.com/BitingSnakes/silkworm/blob/main/examples/declarative_quotes_spider.py) | Declarative `Item` extraction with pagination | `python examples/declarative_quotes_spider.py` |
 | [examples/quotes_spider_trio.py](https://github.com/BitingSnakes/silkworm/blob/main/examples/quotes_spider_trio.py) | Trio runner | `python examples/quotes_spider_trio.py` |

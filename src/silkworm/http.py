@@ -4,23 +4,29 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import AsyncIterable, Callable, Iterable, Mapping, Sequence
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any, Protocol, Self, cast, runtime_checkable
-from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit
+from urllib.parse import urljoin
 
 from wreq import Client, Emulation, Method, Proxy
 
 from ._timeouts import to_seconds
+from ._urls import merge_query_params
 from ._validation import require_positive_int
-from .exceptions import HttpError
+from .exceptions import (
+    HttpConnectionError,
+    HttpError,
+    HttpTimeoutError,
+    ResponseTooLargeError,
+)
 from .logging import Logger, get_logger
 from .response import HTMLResponse, Response
 
 if TYPE_CHECKING:
     from wreq import Profile
 
-    from ._types import Headers, QueryValue
+    from ._types import Headers
     from .request import Request
 
 
@@ -28,6 +34,154 @@ MOCK_RESPONSE_META_KEY = "_silkworm_mock_response"
 
 # Browser profile impersonated by default; pass ``emulation=None`` to disable.
 DEFAULT_EMULATION = Emulation.Firefox139
+
+# Largest response body downloaded by default; see ``max_response_size_bytes``.
+DEFAULT_MAX_RESPONSE_SIZE_BYTES = 50_000_000
+
+# Request ``meta`` key overriding the client's body size limit for one request
+# (a positive number of bytes, or ``None`` for no limit).
+MAX_RESPONSE_SIZE_META_KEY = "max_response_size"
+
+try:
+    from wreq import exceptions as _wreq_exceptions
+except ImportError:  # pragma: no cover - wreq without an exceptions module
+    _wreq_exceptions = None
+
+
+def _wreq_error_types(*names: str) -> tuple[type[BaseException], ...]:
+    """Return the named ``wreq.exceptions`` classes that exist in this version."""
+    found: list[type[BaseException]] = []
+    for name in names:
+        candidate = getattr(_wreq_exceptions, name, None)
+        if isinstance(candidate, type) and issubclass(candidate, BaseException):
+            found.append(candidate)
+    return tuple(found)
+
+
+# ``wreq`` raises native exception classes (their ``__module__`` is not
+# ``wreq``), so match the classes themselves rather than names. ``RequestError``
+# means sending the request failed (connect errors, connections closed before a
+# response); building, TLS, redirect, and decoding failures have their own
+# classes and stay plain ``HttpError``.
+_WREQ_TIMEOUT_ERRORS = _wreq_error_types("TimeoutError")
+_WREQ_CONNECTION_ERRORS = _wreq_error_types(
+    "ConnectionError",
+    "ProxyConnectionError",
+    "ConnectionResetError",
+    "BodyError",
+    "RequestError",
+)
+
+
+def _classify_transport_error(exc: Exception) -> type[HttpError]:
+    """Return the ``HttpError`` subclass describing a transport exception."""
+    if isinstance(exc, (TimeoutError, *_WREQ_TIMEOUT_ERRORS)):
+        return HttpTimeoutError
+    if isinstance(exc, (OSError, *_WREQ_CONNECTION_ERRORS)):
+        return HttpConnectionError
+    return HttpError
+
+
+def normalize_status(raw_status: object) -> int:
+    """Coerce a status code (int, enum, or ``wreq`` ``StatusCode``) to an ``int``.
+
+    Raises:
+        TypeError: If ``raw_status`` has no integer representation.
+    """
+    if isinstance(raw_status, int):
+        return raw_status
+
+    for attr in ("value", "code"):
+        candidate = getattr(raw_status, attr, None)
+        if isinstance(candidate, int):
+            return candidate
+
+    for converter_name in ("as_int", "as_integer", "as_u16"):
+        converter = getattr(raw_status, converter_name, None)
+        if callable(converter):
+            try:
+                candidate = converter()
+            except (TypeError, ValueError, OverflowError):
+                continue
+            if isinstance(candidate, int):
+                return candidate
+
+    try:
+        return int(cast("Any", raw_status))
+    except (TypeError, ValueError):
+        pass
+    # e.g. "404 Not Found"
+    text = str(raw_status).strip()
+    head = text.split(maxsplit=1)[0] if text else ""
+    if head.isdigit():
+        return int(head)
+    raise TypeError(f"Invalid status code type: {type(raw_status).__name__}")
+
+
+def looks_like_html(headers: Mapping[str, str], body: bytes) -> bool:
+    """Return whether a response should be parsed as HTML.
+
+    ``headers`` must use lowercase names, as produced by :class:`HttpClient`.
+    """
+    content_type = headers.get("content-type", "").lower()
+    snippet = body[:2048]
+    snippet_lower = snippet.lower()
+    return (
+        "html" in content_type
+        or b"<html" in snippet_lower
+        or b"<!doctype" in snippet_lower
+        or (content_type.startswith("text/") and b"\x00" not in snippet)
+    )
+
+
+def build_response(
+    *,
+    url: str,
+    status: int,
+    headers: dict[str, str],
+    body: bytes,
+    request: Request,
+    html_max_size_bytes: int,
+) -> Response:
+    """Return an :class:`HTMLResponse` for HTML payloads, else a :class:`Response`."""
+    if looks_like_html(headers, body):
+        return HTMLResponse(
+            url=url,
+            status=status,
+            headers=headers,
+            body=body,
+            request=request,
+            doc_max_size_bytes=html_max_size_bytes,
+        )
+    return Response(url=url, status=status, headers=headers, body=body, request=request)
+
+
+class FetchClient(Protocol):
+    """Interface the engine needs from an HTTP client.
+
+    :class:`HttpClient`, :class:`~silkworm.CDPClient`,
+    :class:`~silkworm.ServoFetchClient`, :class:`~silkworm.OnionLinkClient`, and
+    :class:`~silkworm.httpcache.CachingHttpClient` implement it; pass any
+    conforming object as ``http_client``.
+    """
+
+    @property
+    def concurrency(self) -> int:
+        """Return the maximum number of requests in flight."""
+        ...
+
+    @property
+    def html_max_size_bytes(self) -> int:
+        """Return the HTML document parsing limit in bytes."""
+        ...
+
+    async def fetch(self, req: Request) -> Response:
+        """Send ``req`` and return its response."""
+        ...
+
+    async def close(self) -> None:
+        """Release transport resources."""
+        ...
 
 
 @runtime_checkable
@@ -51,6 +205,10 @@ class HttpClient:
         max_redirects: Maximum redirect hops.
         keep_alive: Request connection reuse when the installed ``wreq``
             version supports it.
+        max_response_size_bytes: Largest body downloaded, or ``None`` for no
+            limit. A larger ``Content-Length`` fails before the body is read,
+            and streamed bodies stop as soon as they exceed the limit. Override
+            it per request with ``request.meta["max_response_size"]``.
         **client_kwargs: Additional options forwarded to ``wreq.Client``.
 
     Requests are converted to :class:`~silkworm.HTMLResponse` when headers or a
@@ -69,9 +227,12 @@ class HttpClient:
         follow_redirects: bool = True,
         max_redirects: int = 10,
         keep_alive: bool = False,
+        max_response_size_bytes: int | None = DEFAULT_MAX_RESPONSE_SIZE_BYTES,
         **client_kwargs: object,
     ) -> None:
         require_positive_int(concurrency, "concurrency")
+        if max_response_size_bytes is not None:
+            require_positive_int(max_response_size_bytes, "max_response_size_bytes")
         if max_redirects < 0:
             msg = "max_redirects must be non-negative"
             raise ValueError(msg)
@@ -90,6 +251,7 @@ class HttpClient:
         self._follow_redirects = follow_redirects
         self._max_redirects = max_redirects
         self._keep_alive = keep_alive
+        self._max_response_size_bytes = max_response_size_bytes
         self._supports_keep_alive_kwarg = self._supports_kwarg(
             getattr(self._client, "request", None),
             "keep_alive",
@@ -106,6 +268,11 @@ class HttpClient:
     def html_max_size_bytes(self) -> int:
         """Return the HTML document parsing limit in bytes."""
         return self._html_max_size_bytes
+
+    @property
+    def max_response_size_bytes(self) -> int | None:
+        """Return the default response body size limit in bytes."""
+        return self._max_response_size_bytes
 
     async def __aenter__(self) -> Self:
         """Return this initialized client for use in an async context."""
@@ -132,8 +299,11 @@ class HttpClient:
         Synthetic response metadata is honored for middleware integrations.
 
         Raises:
-            HttpError: If the request times out, redirects loop or exceed the
-                configured limit, or the transport fails.
+            HttpTimeoutError: If the request times out.
+            HttpConnectionError: If the connection fails or is reset.
+            ResponseTooLargeError: If the body exceeds the size limit.
+            HttpError: If redirects loop or exceed the configured limit, or the
+                request fails for another reason.
         """
         if self._closed:
             raise HttpError("HTTP client is closed")
@@ -148,6 +318,7 @@ class HttpClient:
             return mocked_response
 
         proxy = self._normalize_proxy(req.meta.get("proxy"))
+        size_limit = self._size_limit(req)
         current_req = req
         redirects_followed = 0
         visited_urls: set[str] = set()
@@ -227,7 +398,7 @@ class HttpClient:
                             resp = None
                             continue
 
-                        body = await self._read_body(resp)
+                        body = await self._read_body(resp, headers, size_limit, req.url)
                         elapsed = (
                             asyncio.get_running_loop().time() - total_start
                         ) * 1000
@@ -238,13 +409,18 @@ class HttpClient:
                     if timeout_seconds is not None
                     else ""
                 )
-                raise HttpError(f"Request to {req.url} timed out{suffix}") from exc
+                raise HttpTimeoutError(
+                    f"Request to {req.url} timed out{suffix}"
+                ) from exc
             except HttpError:
                 raise
             except Exception as exc:
                 detail = str(exc)
                 suffix = f": {detail}" if detail else ""
-                raise HttpError(f"Request to {req.url} failed{suffix}") from exc
+                error_type = _classify_transport_error(exc)
+                if error_type is HttpTimeoutError:
+                    raise error_type(f"Request to {req.url} timed out{suffix}") from exc
+                raise error_type(f"Request to {req.url} failed{suffix}") from exc
             finally:
                 await self._close_response(resp)
 
@@ -256,33 +432,28 @@ class HttpClient:
             proxy=bool(proxy),
             redirects=redirects_followed,
         )
-        content_type = headers.get("content-type", "").lower()
-        snippet = body[:2048]
-        snippet_lower = snippet.lower()
-        looks_textual = b"\x00" not in snippet
-        is_html = (
-            "html" in content_type
-            or b"<html" in snippet_lower
-            or b"<!doctype" in snippet_lower
-            or (content_type.startswith("text/") and looks_textual)
-        )
-        if is_html:
-            return HTMLResponse(
-                url=url,
-                status=status,
-                headers=headers,
-                body=body,
-                request=current_req,
-                doc_max_size_bytes=self._html_max_size_bytes,
-            )
-
-        return Response(
+        return build_response(
             url=url,
             status=status,
             headers=headers,
             body=body,
             request=current_req,
+            html_max_size_bytes=self._html_max_size_bytes,
         )
+
+    def _size_limit(self, req: Request) -> int | None:
+        if MAX_RESPONSE_SIZE_META_KEY not in req.meta:
+            return self._max_response_size_bytes
+        override = req.meta[MAX_RESPONSE_SIZE_META_KEY]
+        if override is None:
+            return None
+        if isinstance(override, bool) or not isinstance(override, int) or override <= 0:
+            msg = (
+                f"request.meta[{MAX_RESPONSE_SIZE_META_KEY!r}] must be a positive "
+                f"integer or None, got {override!r}"
+            )
+            raise ValueError(msg)
+        return override
 
     def _build_mock_response(self, req: Request) -> Response | None:
         raw_response = req.meta.get(MOCK_RESPONSE_META_KEY)
@@ -328,10 +499,58 @@ class HttpClient:
             return timeout
         return timedelta(seconds=float(timeout))
 
-    async def _read_body(self, resp: object) -> bytes:
+    async def _read_body(
+        self,
+        resp: object,
+        headers: Mapping[str, str],
+        limit: int | None,
+        url: str,
+    ) -> bytes:
+        """Read the raw response body, enforcing ``limit`` bytes.
+
+        ``wreq`` responses are streamed so an oversized body is abandoned as
+        soon as it crosses the limit; other client objects fall back to
+        ``bytes()``/``read()`` and are checked after reading.
         """
-        wreq responses may expose the payload differently; try common attributes.
-        """
+        if limit is not None:
+            declared = headers.get("content-length", "").strip()
+            if declared.isdigit() and int(declared) > limit:
+                raise ResponseTooLargeError(
+                    f"Response from {url} declares {declared} bytes, "
+                    f"exceeding the {limit}-byte limit"
+                )
+
+        # Look methods up on the type: ``unittest.mock`` objects fabricate any
+        # attribute on the instance, but a real ``stream`` lives on the class.
+        if callable(getattr(type(resp), "stream", None)):
+            stream = cast("Any", resp).stream()
+            if isinstance(stream, AsyncIterable):
+                chunks: list[bytes] = []
+                size = 0
+                async for chunk in cast("AsyncIterable[object]", stream):
+                    data = self._ensure_bytes(chunk)
+                    size += len(data)
+                    if limit is not None and size > limit:
+                        raise ResponseTooLargeError(
+                            f"Response from {url} exceeded the {limit}-byte limit"
+                        )
+                    chunks.append(data)
+                return b"".join(chunks)
+
+        body = await self._read_whole_body(resp)
+        if limit is not None and len(body) > limit:
+            raise ResponseTooLargeError(
+                f"Response from {url} is {len(body)} bytes, "
+                f"exceeding the {limit}-byte limit"
+            )
+        return body
+
+    async def _read_whole_body(self, resp: object) -> bytes:
+        """Read a body from client objects that do not support streaming."""
+        raw_bytes = getattr(type(resp), "bytes", None)
+        if callable(raw_bytes):
+            return self._ensure_bytes(await self._maybe_await(raw_bytes(resp)))
+
         reader = getattr(resp, "read", None)
         if callable(reader):
             return self._ensure_bytes(await self._maybe_await(reader()))
@@ -528,46 +747,11 @@ class HttpClient:
         return headers
 
     def _normalize_status(self, raw_status: Any) -> int:
-        """
-        Coerce various status code representations (ints, enums, wreq status codes)
-        into a plain integer for consistent comparison and hashing.
-        """
-        if isinstance(raw_status, int):
-            return raw_status
-
-        for attr in ("value", "code"):
-            candidate = getattr(raw_status, attr, None)
-            if isinstance(candidate, int):
-                return candidate
-
-        for converter_name in ("as_int", "as_integer", "as_u16"):
-            converter = getattr(raw_status, converter_name, None)
-            if callable(converter):
-                try:
-                    candidate = converter()
-                except (TypeError, ValueError, OverflowError):
-                    continue
-                if isinstance(candidate, int):
-                    return candidate
-
-        try:
-            return int(raw_status)
-        except Exception as exc:
-            raise TypeError(
-                f"Invalid status code type: {type(raw_status).__name__}",
-            ) from exc
+        """Coerce a transport status object into a plain integer."""
+        return normalize_status(raw_status)
 
     def _build_url(self, req: Request) -> str:
-        if not req.params:
-            return req.url
-
-        parts = urlsplit(req.url)
-        existing: dict[str, QueryValue] = dict(
-            parse_qsl(parts.query, keep_blank_values=True),
-        )
-        existing.update(req.params)
-        query = urlencode(cast(Mapping[str, object], existing), doseq=True)
-        return parts._replace(query=query).geturl()
+        return merge_query_params(req.url, req.params)
 
     def _normalize_method(self, method: str | Method) -> Method | str:
         if isinstance(method, Method):

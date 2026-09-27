@@ -1681,9 +1681,10 @@ async def test_engine_retries_failed_request_with_another_proxy():
     seen_proxies: list[str] = []
     scraped_items: list[dict[str, int]] = []
 
-    async def fake_process_item(item: Any) -> None:
+    async def fake_process_item(item: Any) -> bool:
         assert isinstance(item, dict)
         scraped_items.append(item)
+        return True
 
     async def fake_fetch(req: Request) -> Response:
         proxy = req.meta.get("proxy")

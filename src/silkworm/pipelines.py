@@ -85,6 +85,12 @@ from ._pipelines.taskiq_pipeline import (
     TASKIQ_AVAILABLE,
     TaskiqPipeline,
 )
+from ._pipelines.validation_pipeline import (
+    ItemSchema,
+    ItemValidator,
+    ModelSchema,
+    ValidationPipeline,
+)
 from ._pipelines.vortex_pipeline import (
     VORTEX_AVAILABLE,
     VortexPipeline,
@@ -140,8 +146,11 @@ __all__ = [
     "GoogleSheetsPipeline",
     "ItemCallback",
     "ItemPipeline",
+    "ItemSchema",
+    "ItemValidator",
     "JsonLinesPipeline",
     "LoggedPipeline",
+    "ModelSchema",
     "MongoDBPipeline",
     "MsgPackPipeline",
     "MySQLPipeline",
@@ -153,6 +162,7 @@ __all__ = [
     "SQLitePipeline",
     "SnowflakePipeline",
     "TaskiqPipeline",
+    "ValidationPipeline",
     "VortexPipeline",
     "WebhookPipeline",
     "XMLPipeline",

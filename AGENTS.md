@@ -11,6 +11,7 @@
 - **Middleware system** for request/response processing
 - **Pipeline system** for data export to various formats and destinations
 - **Structured logging + crawl stats** via logly (`SILKWORM_LOG_LEVEL`, periodic + final summaries)
+- **Production controls**: `CrawlResult` + failure policy, stop limits, `allowed_domains`, per-domain concurrency, graceful signal shutdown, response size limits, `job_dir` pause/resume, `HttpCache`, Prometheus metrics, layered settings, a `silkworm` CLI, and `silkworm.testing` helpers (see `docs/production.md`)
 
 ### Target Python Versions
 - **Python 3.13+** (primary target; `pyproject.toml` requires `>=3.13,<3.16`, CI tests 3.13, 3.14 and 3.15)
@@ -235,19 +236,28 @@ PYTHON_GIL=0 uv run python examples/lobsters_spider.py --pages 30
 silkworm/
 ├── src/silkworm/          # Main package
 │   ├── __init__.py        # Public API exports
+│   ├── _domains.py        # Per-domain concurrency slots
+│   ├── _jobs.py           # SQLite job state (pause/resume journal + seen-set)
+│   ├── _metrics.py        # Prometheus text exposition + /metrics server
 │   ├── _scope.py          # Per-callback emit/follow routing (ContextVar)
+│   ├── _stats.py          # CrawlStats counters and the CrawlResult
 │   ├── _types.py          # Type aliases (using PEP 695)
+│   ├── _urls.py           # canonicalize_url, request_fingerprint, domain matching
 │   ├── api.py             # Convenience API (fetch_html)
+│   ├── cli.py             # `silkworm` command line (crawl, parse, fetch)
 │   ├── engine.py          # Core crawling engine
-│   ├── exceptions.py      # Custom exceptions
-│   ├── http.py            # HTTP client wrapper
+│   ├── exceptions.py      # Custom exceptions (incl. IgnoreRequest/DropItem/CloseSpider)
+│   ├── http.py            # HTTP client wrapper + FetchClient protocol
+│   ├── httpcache.py       # On-disk HTTP response cache
 │   ├── logging.py         # Structured logging
 │   ├── middlewares.py     # Built-in middlewares
 │   ├── pipelines.py       # Built-in item pipelines
 │   ├── request.py         # Request dataclass
 │   ├── response.py        # Response classes
-│   ├── runner.py          # Spider runners (asyncio, uvloop, winloop, trio)
-│   └── spiders.py         # Base Spider class
+│   ├── runner.py          # Spider runners (asyncio, uvloop, winloop, trio) + signals
+│   ├── settings.py        # Layered settings (env, custom_settings, explicit)
+│   ├── spiders.py         # Base Spider class
+│   └── testing.py         # Offline callback testing helpers
 ├── examples/              # Example spiders
 ├── tests/                 # Test suite
 ├── pyproject.toml         # Project metadata and dependencies
@@ -312,8 +322,10 @@ Core async engine managing:
 - Concurrent request processing
 - Queue management with backpressure: `_wait_for_queue_capacity` enforces `max_pending_requests` (the queue itself is unbounded); `start_requests()` always waits; at most one worker callback waits at a time (never with `concurrency=1`), others overflow and release it, so workers never deadlock or idle on a growing frontier
 - Middleware and pipeline execution
-- Request deduplication
-- Statistics tracking
+- Request deduplication (fingerprint digests; SQLite-backed with `job_dir`)
+- Scheduling filters (`allowed_domains`, `max_depth`) and stop limits (`max_requests`, `max_items`, `max_errors`, `max_duration`) via `stop(reason)`
+- `IgnoreRequest` (middlewares), `DropItem` (pipelines), and `CloseSpider` control flow
+- Statistics tracking (`CrawlStats`) and the `CrawlResult` / failure policy returned by `run()`
 
 ### Spider Examples
 
@@ -940,7 +952,7 @@ def process(items: list[str] | None) -> dict[str, int | str]:
 ```
 
 ### 5. Request Deduplication
-By default, requests with the same URL are deduplicated (dedupe keys only on `Request.url`, not params/method/body). To allow duplicates:
+By default, requests with the same fingerprint are deduplicated: HTTP method, canonical URL (lowercase host, no default port or fragment, sorted query) with `params` merged in, and the body; headers and `meta` are ignored (see `request_fingerprint`). To allow duplicates:
 
 ```python
 await self.follow(same_url, dont_filter=True)
@@ -1031,8 +1043,8 @@ The `silkworm` package exports the public API below (from `src/silkworm/__init__
 - `Engine`: Crawl orchestrator; instantiate with a spider and options, then `await engine.run()`.
 
 ### Runner Helpers
-- `crawl(...)`: Async entrypoint; builds `Engine` and awaits `run()`.
-- `run_spider(...)`: Synchronous wrapper around `crawl(...)` using `asyncio.run`.
+- `crawl(...)`: Async entrypoint; resolves settings, builds `Engine`, and returns `run()`'s `CrawlResult` (`handle_signals=True` opts into graceful signal handling).
+- `run_spider(...)`: Synchronous wrapper around `crawl(...)` using `asyncio.run`; handles SIGINT/SIGTERM gracefully and returns the `CrawlResult`.
 - `run_spider_uvloop(...)`: `run_spider(...)` with uvloop policy (requires `silkworm-rs[uvloop]`).
 - `run_spider_winloop(...)`: `run_spider(...)` with winloop policy (requires `silkworm-rs[winloop]`).
 - `run_spider_trio(...)`: Trio entrypoint using `trio` + `trio-asyncio` (requires `silkworm-rs[trio]`).
@@ -1040,9 +1052,14 @@ The `silkworm` package exports the public API below (from `src/silkworm/__init__
 ### Convenience Helpers
 - `fetch_html(url, *, emulation=Emulation.Firefox139, timeout=None) -> tuple[str, Document]`: Fetches HTML and returns `(text, scraper_rs.Document)`.
 - `get_logger(**context)`: Returns a logly logger with optional bound context.
+- `canonicalize_url(url)` / `request_fingerprint(request)`: URL normalization and the default dedup/cache key.
+- `HttpCache(directory, expiration=None)`: On-disk response cache passed as `http_cache=`.
+- `CrawlResult`: Returned by runners and `Engine.run()` (close reason, stats, failures).
 
 ### Exceptions
 - `SilkwormError`: Base framework exception.
-- `HttpError`: HTTP request failures.
+- `HttpError`: HTTP request failures; subclasses `HttpTimeoutError`, `HttpConnectionError` (retried by `RetryMiddleware`), and `ResponseTooLargeError`.
+- `CrawlFailedError`: Failure policy violated; `.result` holds the `CrawlResult`.
+- `IgnoreRequest`, `DropItem`, `CloseSpider`: Control-flow signals (drop a request, discard an item, stop the crawl).
 - `SpiderError`: Spider callback failures, legacy (yielding/returning) callbacks, and `emit`/`follow` misuse.
 - `SelectorError`: Selector evaluation failures.

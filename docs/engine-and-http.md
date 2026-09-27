@@ -9,20 +9,30 @@ Key behaviors:
 - **Concurrency**: worker pool sized by positive `concurrency`.
 - **Backpressure**: `max_pending_requests` (default `concurrency * 10`) bounds the queue; see [Queue Capacity and Deadlock Freedom](#queue-capacity-and-deadlock-freedom) for the exact guarantee.
 - **Priority**: higher `Request.priority` values are dequeued first; equal priorities keep FIFO order.
-- **Deduplication**: request keys are cached unless `dont_filter=True`; the default key is `Request.url` (`default_dedup_key`).
+- **Deduplication**: request keys are cached unless `dont_filter=True`; the default key is the request fingerprint (method, canonical URL with params, body; see `default_dedup_key`).
+- **Scheduling filters**: `Spider.allowed_domains`, `max_depth`, and robots.txt (via `RobotsTxtMiddleware`) drop requests before they are fetched.
+- **Stop limits and failure policy**: `max_requests`, `max_items`, `max_errors`, `max_duration`, `max_error_rate`, `min_items`, and `max_item_drop_rate`; see [Production Crawling](production.md).
 - **Middleware flow**: request middlewares -> HTTP fetch -> response middlewares -> callbacks.
 - **Pipeline flow**: each item passes through all pipelines in order.
-- **Stats**: requests sent, responses received, items scraped, errors, queue size, memory, throughput.
+- **Stats**: counters and per-status/domain/error-type breakdowns, returned as a `CrawlResult` from `run()` and optionally served as Prometheus metrics.
+- **Graceful stop**: `engine.stop(reason)` finishes in-flight requests and closes pipelines; `close_reason` and `in_flight` expose the state.
 
 Common Engine options (also exposed by `run_spider` and `crawl` in [src/silkworm/runner.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/runner.py)):
 - **`concurrency`**: max concurrent requests; must be positive.
 - **`max_pending_requests`**: queue capacity for backpressure (a hard bound for `start_requests()` and for a single producing callback, soft when several callbacks produce at once); must be positive when provided.
-- **`request_timeout`**: per-request timeout (seconds or `timedelta`).
+- **`request_timeout`**: per-request timeout (seconds or `timedelta`). The default is no timeout; set one in production.
 - **`html_max_size_bytes`**: HTML parsing size limit for selectors.
+- **`max_response_size_bytes`**: largest downloaded body (default 50 MB; `None` for no limit).
 - **`log_stats_interval`**: periodic stats logging interval (seconds).
 - **`keep_alive`**: reuse HTTP connections when supported.
 - **`http_client`**: optional client instance to use instead of the default wreq-backed `HttpClient`.
-- **`dedup_key`**: optional `DedupKey` (`Callable[[Request], str]`) for request deduplication; defaults to `default_dedup_key`, which returns `Request.url`.
+- **`dedup_key`**: optional `DedupKey` (`Callable[[Request], str]`) for request deduplication; defaults to `default_dedup_key`, which returns `request_fingerprint(request)`.
+- **`concurrency_per_domain`**: maximum simultaneous fetches per host.
+- **`max_depth`**, **`max_requests`**, **`max_items`**, **`max_errors`**, **`max_duration`**: stop limits.
+- **`max_error_rate`**, **`min_items`**, **`max_item_drop_rate`**: failure policy; violations raise `CrawlFailedError`.
+- **`job_dir`**: persist state to pause and resume crawls.
+- **`http_cache`**: an `HttpCache` serving responses from disk.
+- **`metrics_port`**, **`metrics_host`**: serve Prometheus metrics while crawling.
 - **`emulation`**: browser profile impersonated by the default client (`Emulation.Firefox139`); `None` disables it.
 - **`engine_logger`**: an `EngineLogger` controlling per-event log levels (see [Logging and Stats](logging-and-stats.md#engine-log-controls)).
 - **`request_middlewares`**, **`response_middlewares`**, **`item_pipelines`**: plug-ins executed by the engine.

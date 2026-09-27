@@ -8,6 +8,7 @@ This section covers Silkworm's **Spider/Request/Response** model, callback seman
 Key attributes and hooks:
 - **`name`**: Spider identifier used in logs and stats.
 - **`start_urls`**: Seed URLs for `start_requests()`.
+- **`allowed_domains`**: Domains (and subdomains) the crawl may visit; other hosts are dropped. See [Staying on-site](production.md#staying-on-site).
 - **`custom_settings`**: Per-spider settings storage (copied on init).
 - **`start_requests()`**: Coroutine that schedules initial requests with `await self.follow(...)`.
 - **`parse(response)`**: Main callback (auto-wrapped to `HTMLResponse`).
@@ -248,34 +249,44 @@ All framework exceptions derive from `SilkwormError` and are importable from `si
 
 | Exception | Raised when |
 | --- | --- |
-| `HttpError` | A fetch fails: network errors, timeouts, redirect loops, a closed client, or CDP/Servo/OnionLink failures. |
+| `HttpError` | A fetch fails: redirect loops, a closed client, or CDP/Servo/OnionLink failures. Subclasses: `HttpTimeoutError` (timeouts), `HttpConnectionError` (refused, reset, or dropped connections), `ResponseTooLargeError` (body over `max_response_size_bytes`). |
 | `SpiderError` | A spider callback (or `start_requests`/errback) raises, is not an `async` function returning `None`, or calls `emit`/`follow` outside its scope. The original exception is chained as `__cause__`. |
 | `SelectorError` | CSS/XPath selector evaluation or HTML parsing fails. |
 | `MarkdownConversionError` | HTML-to-Markdown conversion fails. |
 | `DeclarativeError` (and subclasses) | Declarative item extraction fails; see [Declarative Extraction](declarative.md#errors). |
+| `CrawlFailedError` | The crawl violated its failure policy; `exc.result` holds the `CrawlResult`. See [Production Crawling](production.md#failure-policy). |
+
+Three exceptions are control-flow signals rather than errors: `IgnoreRequest`
+(drop a request from a middleware), `DropItem` (discard an item from a pipeline),
+and `CloseSpider` (stop the crawl gracefully). See
+[Control-flow exceptions](production.md#control-flow-exceptions).
 
 Recover from failed requests with `Request.errback` or an exception middleware (see [Middlewares](middlewares.md)).
 
 ## Deduplication
-The engine keeps a set of seen request keys. The default key is `Request.url`; pass `dedup_key` to `Engine`, `crawl`, or `run_spider` if params, method, or body should be part of the key.
+The engine keeps a set of seen request keys. The default key is
+`request_fingerprint(request)`: the HTTP method, the canonical URL (lowercase
+scheme and host, no default port or fragment, sorted query parameters) with
+`Request.params` merged in, and the request body. Headers and `meta` are ignored.
+See [Deduplication](production.md#deduplication) for details, and pass
+`dedup_key` to `Engine`, `crawl`, or `run_spider` for a custom rule.
 
 ```python
 await self.follow(same_url, dont_filter=True)
 ```
 
-Or customize the key globally for a run:
+Or customize the key globally for a run, for example to treat URLs as equal
+regardless of their query string:
 
 ```python
-from urllib.parse import urlencode
-
-from silkworm import Request, run_spider
+from silkworm import Request, canonicalize_url, run_spider
 
 
-def dedup_with_params(req: Request) -> str:
-    return f"{req.url}?{urlencode(req.params, doseq=True)}"
+def dedup_without_query(req: Request) -> str:
+    return canonicalize_url(req.url).split("?", 1)[0]
 
 
-run_spider(MySpider, dedup_key=dedup_with_params)
+run_spider(MySpider, dedup_key=dedup_without_query)
 ```
 
 ## Data Types
@@ -290,8 +301,8 @@ It covers:
 - **JSON item shapes**: `JSONScalar`, `JSONValue`, and the read-only `JSONLike` accepted by `Spider.emit`.
 - **Request data**: `Headers`, `QueryParams`, `QueryValue`, `MetaData`, `BodyData`.
 - **Callbacks**: `Callback` and `Errback` (async callables returning `None`).
-- **Engine and runners**: `EngineOptions`, `DedupKey`, `LoopFactory`.
+- **Engine and runners**: `EngineOptions`, `DedupKey`, `LoopFactory`, `CrawlResult`, and the `FetchClient` protocol for custom HTTP clients.
 - **Logging**: the `Logger` protocol and `LogLevel`.
-- **Middleware and pipeline protocols**: `RequestMiddleware`, `ResponseMiddleware`, `ExceptionMiddleware`, `ItemPipeline`, plus `ItemCallback` (for `CallbackPipeline`) and `ZenohKeyResolver` (for `ZenohPipeline`).
+- **Middleware and pipeline protocols**: `RequestMiddleware`, `ResponseMiddleware`, `ExceptionMiddleware`, `ItemPipeline`, plus `ItemCallback` (for `CallbackPipeline`), `ItemSchema`/`ItemValidator`/`ModelSchema` (for `ValidationPipeline`), and `ZenohKeyResolver` (for `ZenohPipeline`).
 
 See the [`silkworm.types` reference](api/types.md) for each definition.

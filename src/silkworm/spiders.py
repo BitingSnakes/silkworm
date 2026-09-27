@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, overload, override
 
 from ._scope import current_scope
+from ._stats import BASE_COUNTERS, BASE_LABELED_COUNTERS
 from ._types import JSONValue
 from .logging import get_logger
 from .request import Request
@@ -22,15 +23,15 @@ _RESERVED_STATS_KEYS = frozenset(
     {
         "spider",
         "event_loop",
+        "close_reason",
         "elapsed_seconds",
-        "requests_sent",
-        "responses_received",
-        "items_scraped",
-        "errors",
         "queue_size",
+        "in_flight",
         "requests_per_second",
         "seen_requests",
         "memory_mb",
+        *BASE_COUNTERS,
+        *BASE_LABELED_COUNTERS,
     }
 )
 
@@ -92,7 +93,10 @@ class Spider:
     Args:
         name: Per-instance name overriding the class attribute.
         start_urls: Per-instance starting URLs.
+        allowed_domains: Per-instance domains the crawl may visit.
         custom_settings: JSON-compatible settings copied for this instance.
+            Keys naming engine options (for example ``concurrency`` or
+            ``max_depth``) configure runs started through the runners and CLI.
         logger: Existing structured logger or context mapping used to create
             one lazily.
 
@@ -114,6 +118,9 @@ class Spider:
 
     name: str = "spider"
     start_urls: tuple[str, ...] = ()
+    #: Domains (and their subdomains) the crawl may visit; requests to other
+    #: hosts are dropped unless they set ``dont_filter``. Empty allows any host.
+    allowed_domains: tuple[str, ...] = ()
     custom_settings: MetaData = {}  # noqa: RUF012  # instances override this
 
     def __init__(
@@ -121,12 +128,18 @@ class Spider:
         *,
         name: str | None = None,
         start_urls: Iterable[str] | None = None,
+        allowed_domains: Iterable[str] | None = None,
         custom_settings: MetaData | None = None,
         logger: Logger | dict[str, object] | None = None,
     ) -> None:
         self.name = name if name is not None else self.name
         self.start_urls = (
             tuple(start_urls) if start_urls is not None else tuple(self.start_urls)
+        )
+        self.allowed_domains = (
+            tuple(allowed_domains)
+            if allowed_domains is not None
+            else tuple(self.allowed_domains)
         )
         base_settings = (
             custom_settings if custom_settings is not None else self.custom_settings

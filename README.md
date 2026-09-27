@@ -17,9 +17,11 @@ Async-first web scraping framework built on [wreq](https://github.com/0x676e67/w
 - Typed async spiders with a push-style callback API: `await self.emit(item)` streams items to pipelines and `await self.follow(...)` / `await response.follow(href)` schedule requests, both with backpressure; `HTMLResponse` ships selector helpers.
 - Optional declarative extraction with compiled `Item`, `Text`, and `Attr` field plans while keeping the callback API available.
 - HTML-to-Markdown conversion via `fast-h2m`, including rich `full`, lean `minimal`, and streaming modes.
-- Middlewares: User-Agent rotation/default, proxy rotation, cookie jars with save/load, retry with exponential backoff + optional sleep codes, flexible delays (fixed/random/custom), robots.txt delay enforcement, `SkipNonHTMLMiddleware` to drop non-HTML callbacks, and `CloudflareCrawlMiddleware` for Browser Rendering crawl jobs.
-- Pipelines: JSON Lines, SQLite, XML (nested data preserved), and CSV (flattens dicts and lists) out of the box.
-- Structured logging via the standard library (`SILKWORM_LOG_LEVEL=DEBUG`), plus periodic/final crawl statistics (requests/sec, queue size, memory, seen URLs).
+- Middlewares: User-Agent rotation/default, proxy rotation, cookie jars with save/load, retries of error statuses and transient network failures with exponential backoff, per-host AutoThrottle, robots.txt enforcement (`Disallow` and `Crawl-delay`), flexible delays, `SkipNonHTMLMiddleware` to drop non-HTML callbacks, and `CloudflareCrawlMiddleware` for Browser Rendering crawl jobs.
+- Pipelines: JSON Lines, SQLite, XML (nested data preserved), and CSV (flattens dicts and lists) out of the box, plus schema validation with `ValidationPipeline`.
+- Production controls: a `CrawlResult` with a failure policy (error rate, minimum items, drop rate) so broken spiders fail loudly; stop limits (`max_items`, `max_requests`, `max_depth`, `max_duration`, `max_errors`); `allowed_domains`; per-domain concurrency; graceful SIGINT/SIGTERM shutdown; response size limits; pause/resume with `job_dir`; an on-disk HTTP cache; Prometheus metrics; and layered settings (environment, `custom_settings`, CLI).
+- A `silkworm` command line (`crawl`, `parse`, `fetch`) and `silkworm.testing` helpers for testing callbacks offline.
+- Structured logging via the standard library (`SILKWORM_LOG_LEVEL=DEBUG`), plus periodic/final crawl statistics with per-status, per-domain, and per-error breakdowns.
 
 ## Installation
 
@@ -111,6 +113,62 @@ Callbacks, errbacks and `start_requests()` are now `async` functions returning
 `await response.follow(href)`. Legacy generator callbacks fail with a
 `SpiderError` that explains the fix. See the
 [migration table](https://bitingsnakes.github.io/silkworm/core-concepts.html#migrating-from-0-10-yield-based-callbacks).
+
+### Upgrading to 0.12
+- Runners and `Engine.run()` return a `CrawlResult` instead of `None`.
+- The default deduplication key is the request fingerprint (method, canonical URL
+  with `params`, body) instead of the raw URL, so `?a=1&b=2` and `?b=2&a=1` are
+  one page while POSTs with different bodies are not.
+- `items_scraped` counts items that passed every pipeline; pipelines can raise
+  `DropItem` to discard items (counted as `items_dropped`).
+- Responses carry the exact downloaded bytes (earlier versions re-encoded bodies
+  as UTF-8 text, corrupting binary files and non-UTF-8 pages), and bodies over
+  `max_response_size_bytes` (default 50 MB) fail with `ResponseTooLargeError`.
+- Timeouts and connection failures raise `HttpTimeoutError`/`HttpConnectionError`
+  (both `HttpError` subclasses), which `RetryMiddleware` now retries.
+- Requests record their link depth in `meta["depth"]`, and the new counters'
+  names (such as `retries`) are reserved in `Spider.stats_payload`.
+- The sync runners stop gracefully on SIGINT/SIGTERM (`handle_signals=False` opts out).
+
+## Production crawling
+
+Declare what a successful crawl means, stop safely, stay polite, and resume after
+interruptions:
+
+```python
+from silkworm import run_spider
+from silkworm.middlewares import AutoThrottleMiddleware, RetryMiddleware, RobotsTxtMiddleware
+from silkworm.pipelines import JsonLinesPipeline, ValidationPipeline
+
+throttle = AutoThrottleMiddleware(start_delay=0.5, max_delay=30)
+result = run_spider(
+    QuotesSpider,
+    request_middlewares=[RobotsTxtMiddleware(), throttle],
+    response_middlewares=[throttle, RetryMiddleware(max_times=3)],
+    item_pipelines=[ValidationPipeline(Quote), JsonLinesPipeline("data/quotes.jl")],
+    request_timeout=30,
+    concurrency_per_domain=4,
+    max_depth=5,
+    max_error_rate=0.05,  # raise CrawlFailedError above 5% failed requests
+    min_items=50,  # ...or when fewer than 50 valid items were scraped
+    job_dir="state/quotes",  # Ctrl+C, then run again to resume
+    metrics_port=9410,  # Prometheus metrics at http://127.0.0.1:9410/metrics
+)
+print(result.close_reason, result.items_scraped, result.error_rate)
+```
+
+Or from the command line, with settings from `-s`, `SILKWORM_*` environment
+variables, or `Spider.custom_settings`:
+
+```bash
+silkworm crawl examples/quotes_spider.py -o data/quotes.jl -s max_items=100 --job-dir state/quotes
+silkworm parse https://quotes.toscrape.com/ --spider examples/quotes_spider.py
+```
+
+`silkworm crawl` exits with status 1 when the failure policy is violated, so cron
+jobs and CI notice broken spiders. See the
+[Production Crawling guide](https://bitingsnakes.github.io/silkworm/production.html)
+and the [CLI reference](https://bitingsnakes.github.io/silkworm/cli.html).
 
 ## Declarative extraction
 
@@ -631,11 +689,12 @@ run_spider(
 
 ## Logging and crawl statistics
 - Structured logs via the standard library; set `SILKWORM_LOG_LEVEL=DEBUG` for verbose request/response/middleware output.
-- Periodic statistics with `log_stats_interval`; final stats always include elapsed time, queue size, requests/sec, seen URLs, items scraped, errors, and memory MB.
+- Periodic statistics with `log_stats_interval`; final stats always include the close reason, elapsed time, queue size, requests/sec, seen URLs, items scraped and dropped, errors, retries, filtered requests, memory MB, and per-status/domain/error breakdowns. The same data is returned as a `CrawlResult` and can be served as Prometheus metrics (`metrics_port`).
 
 ## Limitations
 - By default, HTTP fetches are wreq-based without JavaScript execution; pages requiring client-side rendering can use the optional CDP integration (see "JavaScript rendering with Lightpanda" section) or external browser automation tools. Tor v3 `.onion` sites can use the optional OnionLink integration.
-- Request deduplication keys on `Request.url` by default; query params, HTTP method, and body are ignored unless you pass a custom `dedup_key` to `Engine`, `crawl`, or `run_spider`. Same-URL requests with different params/data are dropped unless you set `dont_filter=True`, make the URL unique yourself, or customize the key.
+- Request deduplication uses the request fingerprint (method, canonical URL with `params`, and body); headers and `meta` are ignored, so requests that differ only in headers are dropped unless you set `dont_filter=True` or pass a custom `dedup_key`.
+- Redirects are followed inside the HTTP client, so `allowed_domains` filters requests before they are sent but a redirect can still land on another host.
 - HTML parsing auto-detects encoding (BOM, HTTP headers/meta, charset detection fallback) but still enforces a `html_max_size_bytes`/`doc_max_size_bytes` cap (default 5 MB) in `scraper-rs` selectors, so very large pages may need a higher limit or preprocessing.
 - Several pipelines buffer all items in memory until close (PolarsPipeline, ExcelPipeline, YAMLPipeline, AvroPipeline, VortexPipeline, S3JsonLinesPipeline, FTPPipeline, SFTPPipeline), which can bloat RAM on long crawls; prefer streaming pipelines like JsonLines/CSV/SQLite for high-volume runs.
 - Many destination pipelines rely on optional extras; CassandraPipeline is disabled on Windows because `cassandra-driver` depends on libev there.

@@ -142,8 +142,36 @@ def custom_delay(request, spider) -> float:
 DelayMiddleware(delay_func=custom_delay)
 ```
 
+### RobotsTxtMiddleware
+- Obeys robots.txt for every origin the crawl visits: each `/robots.txt` is fetched once, on the origin's first request.
+- Disallowed requests raise `IgnoreRequest` (counted as `ignored_requests` with reason `robots_txt`); they are not errors.
+- Applies `Crawl-delay` (decimal values included) or `Request-rate` per origin unless `obey_crawl_delay=False`.
+- A 4xx robots.txt means "no restrictions". When robots.txt cannot be fetched, `on_unavailable="allow"` (default) crawls anyway with a warning and `"disallow"` skips the origin.
+- `meta["dont_obey_robotstxt"] = True` exempts a request.
+- Code: [src/silkworm/_middlewares/robots.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/_middlewares/robots.py)
+
+```python
+from silkworm.middlewares import RobotsTxtMiddleware
+
+run_spider(MySpider, request_middlewares=[RobotsTxtMiddleware(user_agent="silkbot")])
+```
+
+### AutoThrottleMiddleware
+- Spaces requests per host and adapts the delay to the host's latency (`latency / target_concurrency`, averaged with the previous delay).
+- Throttling statuses (429/503 by default) double the delay and honour `Retry-After`; error responses never make crawling faster.
+- Options: `start_delay`, `min_delay`, `max_delay`, `target_concurrency`, `backoff_statuses`.
+- Register the same instance as a request and a response middleware.
+- Code: [src/silkworm/_middlewares/autothrottle.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/_middlewares/autothrottle.py)
+
+```python
+from silkworm.middlewares import AutoThrottleMiddleware
+
+throttle = AutoThrottleMiddleware(start_delay=1.0, max_delay=30.0)
+run_spider(MySpider, request_middlewares=[throttle], response_middlewares=[throttle])
+```
+
 ### RobotsTxtDelayMiddleware
-- Downloads `robots.txt` from the provided website origin and applies delay settings from that file.
+- Downloads `robots.txt` from the provided website origin and applies delay settings from that file (delays only; use `RobotsTxtMiddleware` to also obey `Disallow` rules).
 - Uses `Crawl-delay` first. If it is absent, uses `Request-rate` as `seconds / requests`.
 - Applies only to requests for the same scheme/host/port as the robots.txt origin.
 - Serializes same-origin requests with an internal async lock so engine concurrency cannot bypass the robots delay.
@@ -179,9 +207,10 @@ Constructor options:
 
 ### RetryMiddleware
 - Retries on HTTP codes in `retry_http_codes` (defaults: 500, 502, 503, 504, 522, 524, 408, 429).
+- Also retries transient transport failures through its `process_exception` hook: `HttpTimeoutError`, `HttpConnectionError` (refused, reset, or dropped connections), and built-in `TimeoutError`/`ConnectionError` by default. Pass `retry_exceptions=()` to retry statuses only. Callback errors and other failures are never retried.
 - `max_times` caps retries after the initial request (default 3).
 - Codes in `sleep_http_codes` wait `backoff_base * 2 ** (attempt - 1)` seconds (non-blocking) before re-enqueueing. By default every retry code sleeps; codes listed only in `sleep_http_codes` are added to the retry set automatically.
-- Uses `request.meta["retry_times"]` and sets `dont_filter=True` on retries.
+- Uses `request.meta["retry_times"]` (shared by status and exception retries), sets `dont_filter=True` on retries, and counts each retry in the `retries` statistic.
 - Code: [src/silkworm/_middlewares/retry.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/_middlewares/retry.py)
 
 ```python

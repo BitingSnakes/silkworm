@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-import inspect
+import hashlib
 import reprlib
 import sys
 import time
@@ -13,6 +13,7 @@ from contextlib import suppress
 from contextvars import ContextVar
 from dataclasses import dataclass
 from datetime import timedelta
+from functools import partial
 from itertools import count
 from typing import TYPE_CHECKING, TypedDict, cast
 
@@ -21,18 +22,35 @@ try:  # resource is POSIX-only
 except ImportError:  # pragma: no cover - platform dependent
     resource = None
 
-from ._scope import CrawlScope, enter_scope
+from ._domains import DomainSlots, url_host
+from ._jobs import JobState
+from ._metrics import MetricsServer, render_metrics
+from ._scope import CallbackContractError, CrawlScope, enter_scope, invoke_callback
+from ._stats import CrawlResult, CrawlStats, freeze_result
+from ._timeouts import to_seconds
 from ._types import JSONLike, JSONValue
+from ._urls import host_in_domains, normalize_domains, request_fingerprint
 from ._validation import require_positive_int
-from .exceptions import SilkwormError, SpiderError
-from .http import DEFAULT_EMULATION, HttpClient
+from .exceptions import (
+    CloseSpider,
+    CrawlFailedError,
+    DropItem,
+    IgnoreRequest,
+    SilkwormError,
+    SpiderError,
+)
+from .http import DEFAULT_EMULATION, DEFAULT_MAX_RESPONSE_SIZE_BYTES, HttpClient
 from .logging import Logger, LogLevel, complete_logs, get_logger, log_at_level
 from .request import Callback, Request
 from .response import HTMLResponse, Response
 
 if TYPE_CHECKING:
+    import os
+
     from wreq import Emulation, Profile
 
+    from .http import FetchClient
+    from .httpcache import HttpCache
     from .middlewares import (
         ExceptionMiddleware,
         RequestMiddleware,
@@ -146,14 +164,28 @@ _CURRENT_WORKER: ContextVar[int | None] = ContextVar(
     default=None,
 )
 
+# ``items_dropped_by_reason`` label for items discarded because ``max_items``
+# was reached; excluded from the item drop rate used by the failure policy.
+MAX_ITEMS_DROP_REASON = "max_items"
+
+
+class _CrawlClosed(BaseException):
+    """Aborts ``start_requests()`` once the crawl is stopping.
+
+    Derives from ``BaseException`` so ``except Exception`` blocks in spider code
+    cannot swallow it.
+    """
+
 
 def default_dedup_key(req: Request) -> str:
-    """Return the request URL used by the engine's default deduplicator.
+    """Return the engine's default deduplication key for ``req``.
 
-    Method, body, headers, and query parameters stored separately in
-    :attr:`~silkworm.Request.params` do not affect this key.
+    This is :func:`~silkworm.request_fingerprint`: the HTTP method, the
+    canonical URL (normalized case, default port, sorted query, no fragment)
+    with :attr:`~silkworm.Request.params` merged in, and the request body.
+    Headers and metadata do not affect it.
     """
-    return req.url
+    return request_fingerprint(req)
 
 
 class EngineOptions(TypedDict, total=False):
@@ -170,14 +202,44 @@ class EngineOptions(TypedDict, total=False):
     emulation: Emulation | Profile | None
     request_timeout: float | timedelta | None
     html_max_size_bytes: int
+    max_response_size_bytes: int | None
     request_middlewares: Iterable[RequestMiddleware] | None
     response_middlewares: Iterable[ResponseMiddleware] | None
     item_pipelines: Iterable[ItemPipeline] | None
     log_stats_interval: float | None
     keep_alive: bool
-    http_client: HttpClient | None
+    http_client: FetchClient | None
     engine_logger: EngineLogger | None
     dedup_key: DedupKey | None
+    concurrency_per_domain: int | None
+    max_depth: int | None
+    max_requests: int | None
+    max_items: int | None
+    max_errors: int | None
+    max_duration: float | timedelta | None
+    max_error_rate: float | None
+    min_items: int | None
+    max_item_drop_rate: float | None
+    job_dir: str | os.PathLike[str] | None
+    http_cache: HttpCache | None
+    metrics_port: int | None
+    metrics_host: str
+
+
+def _require_optional_positive(value: int | None, name: str) -> None:
+    if value is not None:
+        require_positive_int(value, name)
+
+
+def _require_optional_rate(value: float | None, name: str) -> None:
+    if value is not None and not 0.0 <= value <= 1.0:
+        msg = f"{name} must be between 0.0 and 1.0"
+        raise ValueError(msg)
+
+
+def _meta_depth(request: Request) -> int:
+    depth = request.meta.get("depth", 0)
+    return depth if isinstance(depth, int) and not isinstance(depth, bool) else 0
 
 
 class Engine:
@@ -195,6 +257,9 @@ class Engine:
             ``None`` to disable impersonation.
         request_timeout: Default per-request timeout.
         html_max_size_bytes: Maximum document size parsed by HTML responses.
+        max_response_size_bytes: Largest response body the default client
+            downloads (``None`` for no limit); larger bodies fail with
+            :class:`~silkworm.exceptions.ResponseTooLargeError`.
         request_middlewares: Request processors applied in list order.
         response_middlewares: Response processors applied in list order.
         item_pipelines: Item processors applied in list order, passing each
@@ -205,12 +270,37 @@ class Engine:
             supported by ``wreq``.
         http_client: Preconfigured client replacing the default client.
         engine_logger: Event logger customization.
-        dedup_key: Function mapping a request to its deduplication key. Defaults
-            to URL-only deduplication.
+        dedup_key: Function mapping a request to its deduplication key.
+            Defaults to :func:`default_dedup_key`.
+        concurrency_per_domain: Maximum simultaneous fetches per host, or
+            ``None`` for no per-host limit.
+        max_depth: Drop requests more than this many links away from a start
+            request (start requests have depth ``0``).
+        max_requests: Stop after sending this many requests.
+        max_items: Stop after this many items passed every pipeline; later
+            items are dropped.
+        max_errors: Stop after this many unrecovered failures.
+        max_duration: Stop after this much wall-clock time.
+        max_error_rate: Fail the crawl when ``errors / requests_sent`` exceeds
+            this fraction.
+        min_items: Fail the crawl when fewer items were scraped.
+        max_item_drop_rate: Fail the crawl when the share of items dropped by
+            pipelines exceeds this fraction.
+        job_dir: Directory persisting the seen-set and unfinished requests so
+            an interrupted crawl resumes where it stopped.
+        http_cache: Serve and store responses through this on-disk cache.
+        metrics_port: Serve Prometheus metrics at ``/metrics`` on this port
+            while crawling (``0`` picks a free port).
+        metrics_host: Interface for the metrics server.
 
-    Requests with :attr:`~silkworm.Request.dont_filter` bypass deduplication.
-    Higher request priorities are dequeued before lower ones, while insertion
-    order breaks ties.
+    Requests with :attr:`~silkworm.Request.dont_filter` bypass deduplication
+    and off-site filtering. Higher request priorities are dequeued before lower
+    ones, while insertion order breaks ties. The stop limits end the crawl
+    gracefully: pending requests are discarded (or kept in ``job_dir``),
+    in-flight requests finish, and :meth:`run` reports the limit as the close
+    reason. Failure-policy violations make :meth:`run` raise
+    :class:`~silkworm.exceptions.CrawlFailedError`; they are not evaluated for
+    crawls stopped with :meth:`stop`.
     """
 
     def __init__(
@@ -222,18 +312,54 @@ class Engine:
         emulation: Emulation | Profile | None = DEFAULT_EMULATION,
         request_timeout: float | timedelta | None = None,
         html_max_size_bytes: int = 5_000_000,
+        max_response_size_bytes: int | None = DEFAULT_MAX_RESPONSE_SIZE_BYTES,
         request_middlewares: Iterable[RequestMiddleware] | None = None,
         response_middlewares: Iterable[ResponseMiddleware] | None = None,
         item_pipelines: Iterable[ItemPipeline] | None = None,
         log_stats_interval: float | None = None,
         keep_alive: bool = False,
-        http_client: HttpClient | None = None,
+        http_client: FetchClient | None = None,
         engine_logger: EngineLogger | None = None,
         dedup_key: DedupKey | None = None,
+        concurrency_per_domain: int | None = None,
+        max_depth: int | None = None,
+        max_requests: int | None = None,
+        max_items: int | None = None,
+        max_errors: int | None = None,
+        max_duration: float | timedelta | None = None,
+        max_error_rate: float | None = None,
+        min_items: int | None = None,
+        max_item_drop_rate: float | None = None,
+        job_dir: str | os.PathLike[str] | None = None,
+        http_cache: HttpCache | None = None,
+        metrics_port: int | None = None,
+        metrics_host: str = "127.0.0.1",
     ) -> None:
         require_positive_int(concurrency, "concurrency")
+        for name, value in (
+            ("max_requests", max_requests),
+            ("max_items", max_items),
+            ("max_errors", max_errors),
+        ):
+            _require_optional_positive(value, name)
+        if max_depth is not None and max_depth < 0:
+            msg = "max_depth must be non-negative"
+            raise ValueError(msg)
+        if min_items is not None and min_items < 0:
+            msg = "min_items must be non-negative"
+            raise ValueError(msg)
+        _require_optional_rate(max_error_rate, "max_error_rate")
+        _require_optional_rate(max_item_drop_rate, "max_item_drop_rate")
+        max_duration_seconds = to_seconds(max_duration)
+        if max_duration_seconds is not None and max_duration_seconds <= 0:
+            msg = "max_duration must be positive"
+            raise ValueError(msg)
+        if metrics_port is not None and not 0 <= metrics_port <= 65535:
+            msg = "metrics_port must be between 0 and 65535"
+            raise ValueError(msg)
+
         self.spider = spider
-        self.http: HttpClient = (
+        client: FetchClient = (
             http_client
             if http_client is not None
             else HttpClient(
@@ -242,9 +368,13 @@ class Engine:
                 timeout=request_timeout,
                 html_max_size_bytes=html_max_size_bytes,
                 keep_alive=keep_alive,
+                max_response_size_bytes=max_response_size_bytes,
             )
         )
-        require_positive_int(self.http.concurrency, "http_client.concurrency")
+        require_positive_int(client.concurrency, "http_client.concurrency")
+        self.http: FetchClient = (
+            http_cache.wrap(client) if http_cache is not None else client
+        )
         # Bound the queue to avoid unbounded growth when many requests are scheduled.
         default_queue_size = self.http.concurrency * 10
         if max_pending_requests is not None:
@@ -262,7 +392,8 @@ class Engine:
         self._capacity_waiters: deque[tuple[asyncio.Future[bool], int | None]] = deque()
         self._stalled_workers: Counter[int] = Counter()
         self._worker_count = 0
-        self._seen: set[str] = set()
+        # 16-byte digests of dedup keys; far smaller than the keys themselves.
+        self._seen: set[bytes] = set()
         self.dedup_key: DedupKey = dedup_key or default_dedup_key
         self._stop_event = asyncio.Event()
         self.logger: Logger = get_logger(component="engine", spider=self.spider.name)
@@ -277,22 +408,91 @@ class Engine:
         self.item_pipelines: list[ItemPipeline] = list(item_pipelines or [])
         self._lifecycle_closers: list[LifecycleCloser] = []
 
+        # Scheduling policy
+        self._allowed_domains = normalize_domains(
+            getattr(spider, "allowed_domains", ())
+        )
+        self._offsite_hosts_logged: set[str] = set()
+        self._domain_slots = (
+            DomainSlots(concurrency_per_domain)
+            if concurrency_per_domain is not None
+            else None
+        )
+        self.max_depth: int | None = max_depth
+        self.max_requests: int | None = max_requests
+        self.max_items: int | None = max_items
+        self.max_errors: int | None = max_errors
+        self.max_duration: float | None = max_duration_seconds
+        self.max_error_rate: float | None = max_error_rate
+        self.min_items: int | None = min_items
+        self.max_item_drop_rate: float | None = max_item_drop_rate
+        self._close_reason: str | None = None
+        self._fetches_started = 0
+        self._items_reserved = 0
+        self._in_flight = 0
+
+        # Persistence and observability
+        self._job_dir = job_dir
+        self._job: JobState | None = None
+        self._metrics_port = metrics_port
+        self._metrics_host = metrics_host
+        self.metrics_server: MetricsServer | None = None
+
         # Statistics tracking
-        self.log_stats_interval = log_stats_interval
+        self.log_stats_interval: float | None = log_stats_interval
         self._start_time: float = 0.0
         self._event_loop_type: str | None = None
-        self._stats: dict[str, int] = {
-            "requests_sent": 0,
-            "responses_received": 0,
-            "items_scraped": 0,
-            "errors": 0,
-        }
+        self.stats: CrawlStats = CrawlStats()
+        self._stats: dict[str, int] = self.stats.counters
+
+    @property
+    def close_reason(self) -> str | None:
+        """Return why the crawl is stopping, or ``None`` while it runs normally."""
+        return self._close_reason
+
+    @property
+    def in_flight(self) -> int:
+        """Return the number of requests currently being processed."""
+        return self._in_flight
+
+    def stop(self, reason: str = "shutdown") -> None:
+        """Stop the crawl gracefully.
+
+        New requests are no longer scheduled and queued ones are discarded
+        (they stay saved when a job directory is configured, so the crawl can
+        resume). Requests already being processed finish, pipelines close
+        normally, and :meth:`run` returns with ``reason`` as the close reason.
+        Calling it again has no effect.
+        """
+        if self._close_reason is not None:
+            return
+        self._close_reason = reason
+        self.logger.info(
+            "Stopping crawl",
+            spider=self.spider.name,
+            reason=reason,
+            pending_requests=self._queue.qsize(),
+            in_flight=self._in_flight,
+        )
+        # Let producers blocked on queue capacity observe the close.
+        for waiter, _ in self._capacity_waiters:
+            if not waiter.done():
+                waiter.set_result(True)
+        self._capacity_waiters.clear()
+        while True:
+            try:
+                self._queue.get_nowait()
+            except asyncio.QueueEmpty:
+                break
+            self.stats.inc("dropped_requests")
+            self._queue.task_done()
 
     async def open_spider(self) -> None:
         """Open middleware, spider, and pipelines, then enqueue initial requests.
 
         Middleware opens before the spider; pipelines open afterward in their
-        configured order.
+        configured order. When resuming a job, saved requests are queued before
+        ``start_requests()`` runs (already-seen start requests are skipped).
         """
         if self._lifecycle_closers:
             raise RuntimeError("Spider lifecycle is already open")
@@ -312,16 +512,40 @@ class Engine:
                 )
                 await pipe.open(self.spider)
 
-            await self._run_callback(
-                self.spider.start_requests,
-                name="start_requests",
-                url=None,
-                response=None,
-            )
+            self._restore_pending_requests()
+            try:
+                await self._run_callback(
+                    self.spider.start_requests,
+                    name="start_requests",
+                    url=None,
+                    response=None,
+                    parent=None,
+                )
+            except _CrawlClosed:
+                self.logger.debug(
+                    "Stopped start_requests because the crawl is closing",
+                    reason=self._close_reason,
+                )
         except BaseException as exc:
             cleanup_errors = await self._close_lifecycle_components()
             self._record_cleanup_failures(exc, cleanup_errors)
             raise
+
+    def _restore_pending_requests(self) -> None:
+        if self._job is None or not self._job.resumed:
+            return
+        restored = self._job.load_pending()
+        for seq, request in restored:
+            self._queue.put_nowait((-request.priority, seq, request))
+        if restored:
+            self._request_order = count(max(seq for seq, _ in restored) + 1)
+        self.logger.info(
+            "Resuming job",
+            spider=self.spider.name,
+            job_dir=str(self._job.directory),
+            restored_requests=len(restored),
+            seen_requests=self._job.seen_count(),
+        )
 
     async def close_spider(self) -> None:
         """Close pipelines, the spider, and middleware lifecycle hooks.
@@ -400,7 +624,7 @@ class Engine:
             raise errors[0]
         raise BaseExceptionGroup("Multiple resource cleanup failures", errors)
 
-    async def _shutdown(self) -> list[BaseException]:
+    async def _shutdown(self, *, finished: bool) -> list[BaseException]:
         errors = await self._close_lifecycle_components()
         try:
             await self.http.close()
@@ -411,6 +635,27 @@ class Engine:
                 error=str(exc),
                 error_type=exc.__class__.__name__,
             )
+        if self._job is not None:
+            job, self._job = self._job, None
+            try:
+                job.close(finished=finished)
+                self.logger.info(
+                    "Saved job state",
+                    job_dir=str(job.directory),
+                    status="finished" if finished else "paused",
+                )
+            except BaseException as exc:
+                errors.append(exc)
+                self.logger.exception(
+                    "Job state cleanup failed",
+                    error=str(exc),
+                    error_type=exc.__class__.__name__,
+                )
+        if self.metrics_server is not None:
+            try:
+                await self.metrics_server.close()
+            except BaseException as exc:  # noqa: BLE001 - attempt every cleanup
+                errors.append(exc)
         try:
             complete_logs()
         except BaseException as exc:  # noqa: BLE001 - logging flush is final cleanup
@@ -460,6 +705,7 @@ class Engine:
                 self.spider,
                 source=f"exception middleware {mw.__class__.__name__}",
             )
+            self.stats.inc("retries")
             await self._enqueue(retry_request)
             return True
 
@@ -487,28 +733,90 @@ class Engine:
             name=name,
             url=req.url,
             response=None,
+            parent=req,
         )
         return True
 
-    async def _enqueue(self, req: Request) -> None:
-        if not req.dont_filter:
-            key = self.dedup_key(req)
-            if key in self._seen:
-                self.logger.debug(
-                    "Skipping already seen request",
-                    url=req.url,
-                    dedup_key=key,
-                )
-                return
-            self._seen.add(key)
-        await self._wait_for_queue_capacity(req)
-        self._queue.put_nowait(self._priority_entry(req))
+    async def _enqueue(self, req: Request, parent: Request | None = None) -> None:
+        """Filter, deduplicate, and queue ``req`` (scheduled from ``parent``)."""
+        req = self._with_depth(req, parent)
+        if not self._passes_scheduling_filters(req):
+            return
+        # Serialize before marking the request seen so an unrestorable request
+        # fails loudly without polluting the seen-set.
+        payload = self._job.serialize(req) if self._job is not None else None
+        if not req.dont_filter and not self._mark_seen(req):
+            self.stats.inc("dupe_filtered")
+            self.logger.debug("Skipping already seen request", url=req.url)
+            return
+        if self._close_reason is None:
+            await self._wait_for_queue_capacity(req)
+        seq = next(self._request_order)
+        if self._job is not None and payload is not None:
+            self._job.add_pending(seq, req, payload)
+        if self._close_reason is not None:
+            self.stats.inc("dropped_requests")
+            if _CURRENT_WORKER.get() is None:
+                raise _CrawlClosed
+            return
+        self._queue.put_nowait((-req.priority, seq, req))
         self.logger.debug(
             "Enqueued request",
             url=req.url,
             dont_filter=req.dont_filter,
             priority=req.priority,
+            depth=_meta_depth(req),
         )
+
+    def _with_depth(self, req: Request, parent: Request | None) -> Request:
+        if parent is not None:
+            depth = _meta_depth(parent) + 1
+        elif "depth" in req.meta:
+            return req
+        else:
+            depth = 0
+        return req.replace(meta={**req.meta, "depth": depth})
+
+    def _passes_scheduling_filters(self, req: Request) -> bool:
+        if self._allowed_domains and not req.dont_filter:
+            host = url_host(req.url)
+            if not host_in_domains(host, self._allowed_domains):
+                self.stats.inc("offsite_filtered")
+                if (
+                    host not in self._offsite_hosts_logged
+                    and len(self._offsite_hosts_logged) < 1000
+                ):
+                    self._offsite_hosts_logged.add(host)
+                    self.logger.debug(
+                        "Filtered offsite request",
+                        url=req.url,
+                        host=host,
+                        allowed_domains=list(self._allowed_domains),
+                    )
+                return False
+        if self.max_depth is not None and _meta_depth(req) > self.max_depth:
+            self.stats.inc("depth_filtered")
+            self.logger.debug(
+                "Filtered request beyond max_depth",
+                url=req.url,
+                depth=_meta_depth(req),
+                max_depth=self.max_depth,
+            )
+            return False
+        return True
+
+    def _mark_seen(self, req: Request) -> bool:
+        """Record ``req``'s dedup key; return ``False`` when already seen."""
+        digest = hashlib.blake2b(self.dedup_key(req).encode(), digest_size=16).digest()
+        if self._job is not None:
+            return self._job.seen_add(digest)
+        if digest in self._seen:
+            return False
+        self._seen.add(digest)
+        return True
+
+    def _seen_count(self) -> int:
+        return self._job.seen_count() if self._job is not None else len(self._seen)
 
     async def _wait_for_queue_capacity(self, req: Request) -> None:
         """Apply ``max_pending_requests`` backpressure to one enqueue.
@@ -582,9 +890,6 @@ class Engine:
                 remaining.append((waiter, worker))
         self._capacity_waiters = remaining
 
-    def _priority_entry(self, req: Request) -> PrioritizedRequest:
-        return (-req.priority, next(self._request_order), req)
-
     async def _worker(self, index: int = 0) -> None:
         # Each worker runs in its own task, so this only tags this worker and the
         # tasks its callbacks spawn.
@@ -592,7 +897,7 @@ class Engine:
         while not self._stop_event.is_set():
             try:
                 async with asyncio.timeout(1.0):
-                    _, _, req = await self._queue.get()
+                    _, seq, req = await self._queue.get()
             except TimeoutError:
                 if self._stop_event.is_set():
                     break
@@ -601,69 +906,111 @@ class Engine:
                 break
             self._wake_capacity_waiter()
 
+            completed = True
             try:
-                req = await self._apply_request_mw(req)
-                self.engine_logger.fetching_request(self.logger, req, self.spider)
-                self._stats["requests_sent"] += 1
-                resp = await self.http.fetch(req)
-                self._stats["responses_received"] += 1
-                self.engine_logger.fetched_response(
-                    self.logger,
-                    req,
-                    resp,
-                    self.spider,
-                )
-                await self._handle_response(resp)
-            except Exception as exc:
-                if await self._handle_request_exception(req, exc):
+                if self._close_reason is not None or not self._reserve_fetch():
+                    # Stopping: leave the request journaled so a job can resume.
+                    completed = False
+                    self.stats.inc("dropped_requests")
                     continue
-
-                self._stats["errors"] += 1
+                self._in_flight += 1
                 try:
-                    if await self._handle_request_errback(req, exc):
-                        continue
-                except Exception as errback_exc:
-                    cause = errback_exc.__cause__ or errback_exc.__context__
-                    error_context = {
-                        "url": req.url,
-                        "error": str(errback_exc),
-                        "error_type": errback_exc.__class__.__name__,
-                        "original_error": str(exc),
-                        "original_error_type": exc.__class__.__name__,
-                        "spider": self.spider.name,
-                    }
-                    if cause is not None:
-                        error_context["cause"] = self._safe_repr(cause)
-                        error_context["cause_type"] = cause.__class__.__name__
-                    self.logger.error(
-                        "Request errback failed",
-                        **error_context,
-                        exc_info=not isinstance(errback_exc, SilkwormError),
-                    )
-                    continue
-
-                cause = exc.__cause__ or exc.__context__
-                error_context = {
-                    "url": req.url,
-                    "error": str(exc),
-                    "error_type": exc.__class__.__name__,
-                    "spider": self.spider.name,
-                }
-                if cause is not None:
-                    error_context["cause"] = self._safe_repr(cause)
-                    error_context["cause_type"] = cause.__class__.__name__
-                # silkworm's own errors are self-explanatory (and callback
-                # failures are already logged with a traceback); only unexpected
-                # errors, e.g. bugs in middlewares or pipelines, get one here.
-                self.logger.error(
-                    "Failed to process request",
-                    **error_context,
-                    exc_info=not isinstance(exc, SilkwormError),
+                    await self._process_request(req)
+                finally:
+                    self._in_flight -= 1
+            except IgnoreRequest as exc:
+                self.stats.inc("ignored_requests")
+                self.stats.inc_labeled("ignored_by_reason", exc.reason)
+                self.logger.debug(
+                    "Ignored request",
+                    url=req.url,
+                    reason=exc.reason,
+                    detail=str(exc),
                 )
-                # Keep the worker alive so other requests can continue to be processed.
-                continue
+            except CloseSpider as exc:
+                self.stop(exc.reason)
+            except Exception as exc:  # noqa: BLE001 - logged by the failure handler
+                await self._handle_request_failure(req, exc)
             finally:
+                if self._job is not None and completed:
+                    self._job.remove_pending(seq)
                 self._queue.task_done()
+
+    def _reserve_fetch(self) -> bool:
+        """Claim one of ``max_requests`` fetches; stop the crawl when exhausted."""
+        if self.max_requests is None:
+            return True
+        if self._fetches_started >= self.max_requests:
+            self.stop("max_requests")
+            return False
+        self._fetches_started += 1
+        return True
+
+    async def _process_request(self, req: Request) -> None:
+        req = await self._apply_request_mw(req)
+        self.engine_logger.fetching_request(self.logger, req, self.spider)
+        self.stats.inc("requests_sent")
+        self.stats.inc_labeled("requests_by_domain", url_host(req.url) or "-")
+        if self._domain_slots is not None:
+            async with self._domain_slots.acquire(req.url):
+                resp = await self.http.fetch(req)
+        else:
+            resp = await self.http.fetch(req)
+        self.stats.inc("responses_received")
+        self.stats.inc_labeled("responses_by_status", str(resp.status))
+        self.engine_logger.fetched_response(self.logger, req, resp, self.spider)
+        await self._handle_response(resp)
+
+    async def _handle_request_failure(self, req: Request, exc: Exception) -> None:
+        if await self._handle_request_exception(req, exc):
+            return
+
+        self.stats.inc("errors")
+        cause = exc.__cause__ if isinstance(exc, SpiderError) else None
+        self.stats.inc_labeled("errors_by_type", type(cause or exc).__name__)
+        if self.max_errors is not None and self.stats.get("errors") >= self.max_errors:
+            self.stop("max_errors")
+        try:
+            if await self._handle_request_errback(req, exc):
+                return
+        except Exception as errback_exc:
+            errback_cause = errback_exc.__cause__ or errback_exc.__context__
+            error_context = {
+                "url": req.url,
+                "error": str(errback_exc),
+                "error_type": errback_exc.__class__.__name__,
+                "original_error": str(exc),
+                "original_error_type": exc.__class__.__name__,
+                "spider": self.spider.name,
+            }
+            if errback_cause is not None:
+                error_context["cause"] = self._safe_repr(errback_cause)
+                error_context["cause_type"] = errback_cause.__class__.__name__
+            self.logger.error(
+                "Request errback failed",
+                **error_context,
+                exc_info=not isinstance(errback_exc, SilkwormError),
+            )
+            return
+
+        failure_cause = exc.__cause__ or exc.__context__
+        error_context = {
+            "url": req.url,
+            "error": str(exc),
+            "error_type": exc.__class__.__name__,
+            "spider": self.spider.name,
+        }
+        if failure_cause is not None:
+            error_context["cause"] = self._safe_repr(failure_cause)
+            error_context["cause_type"] = failure_cause.__class__.__name__
+        # silkworm's own errors are self-explanatory (and callback failures are
+        # already logged with a traceback); only unexpected errors, e.g. bugs in
+        # middlewares or pipelines, get one here.
+        self.logger.error(
+            "Failed to process request",
+            **error_context,
+            exc_info=not isinstance(exc, SilkwormError),
+        )
 
     async def _apply_response_mw(
         self,
@@ -693,6 +1040,7 @@ class Engine:
                     self.spider,
                     source="response middleware",
                 )
+                self.stats.inc("retries")
                 await self._enqueue(processed)
                 return
 
@@ -711,6 +1059,7 @@ class Engine:
                 name=name,
                 url=processed.url,
                 response=callback_resp,
+                parent=processed.request,
             )
         finally:
             primary = sys.exception()
@@ -736,48 +1085,30 @@ class Engine:
         name: str,
         url: str | None,
         response: Response | None,
+        parent: Request | None,
     ) -> None:
         """Run a callback coroutine inside a scope wired to the engine sinks.
 
         Items reported with ``emit`` reach the pipelines and requests reported
-        with ``follow`` reach the queue while the callback runs.
+        with ``follow`` reach the queue (one level deeper than ``parent``) while
+        the callback runs. :class:`~silkworm.exceptions.CloseSpider` stops the
+        crawl instead of failing the callback.
         """
         scope = CrawlScope(
             owner=name,
             emit_item=self._emit_item,
-            schedule_request=self._enqueue,
+            schedule_request=partial(self._enqueue, parent=parent),
             response=response,
         )
         async with enter_scope(scope):
             try:
-                produced = invoke()
+                await invoke_callback(invoke, name)
+            except CallbackContractError:
+                raise
+            except CloseSpider as exc:
+                self.stop(exc.reason)
             except Exception as exc:
                 raise self._callback_failure(name, url, exc) from exc
-
-            if inspect.isasyncgen(produced):
-                raise SpiderError(
-                    f"Spider callback '{name}' is an async generator; callbacks "
-                    "must not yield. Replace `yield item` with "
-                    "`await self.emit(item)` and `yield request` with "
-                    "`await self.follow(request)`",
-                )
-            if not inspect.isawaitable(produced):
-                raise SpiderError(
-                    f"Spider callback '{name}' must be an async function, "
-                    f"got a {type(produced).__name__} result",
-                )
-
-            try:
-                returned: object = await produced
-            except Exception as exc:
-                raise self._callback_failure(name, url, exc) from exc
-
-        if returned is not None:
-            raise SpiderError(
-                f"Spider callback '{name}' returned a {type(returned).__name__}; "
-                "callbacks must return None and report results with "
-                "`await self.emit(item)` / `await self.follow(request)`",
-            )
 
     def _callback_failure(
         self,
@@ -796,24 +1127,55 @@ class Engine:
         return SpiderError(f"Spider callback '{name}' failed for {self.spider.name}")
 
     async def _emit_item(self, item: JSONLike) -> None:
-        self.logger.debug(
-            "Processing scraped item",
-            spider=self.spider.name,
-            pipelines=len(self.item_pipelines),
-        )
-        # Pipelines take JSONValue; callbacks may emit read-only JSONLike
-        # shapes, which are the same objects at runtime.
-        await self._process_item(cast(JSONValue, item))
+        if self.max_items is not None and self._items_reserved >= self.max_items:
+            self._count_dropped_item(MAX_ITEMS_DROP_REASON)
+            return
+        self._items_reserved += 1
+        accepted = False
+        try:
+            self.logger.debug(
+                "Processing scraped item",
+                spider=self.spider.name,
+                pipelines=len(self.item_pipelines),
+            )
+            # Pipelines take JSONValue; callbacks may emit read-only JSONLike
+            # shapes, which are the same objects at runtime.
+            accepted = bool(await self._process_item(cast(JSONValue, item)))
+        finally:
+            if not accepted:
+                self._items_reserved -= 1
+        if (
+            accepted
+            and self.max_items is not None
+            and self.stats.get("items_scraped") >= self.max_items
+        ):
+            self.stop(MAX_ITEMS_DROP_REASON)
 
-    async def _process_item(self, item: JSONValue) -> None:
-        self._stats["items_scraped"] += 1
+    async def _process_item(self, item: JSONValue) -> bool:
+        """Run ``item`` through the pipelines; return whether it was kept."""
         for pipe in self.item_pipelines:
             self.engine_logger.running_item_pipeline(
                 self.logger,
                 pipe,
                 self.spider,
             )
-            item = await pipe.process_item(item, self.spider)
+            try:
+                item = await pipe.process_item(item, self.spider)
+            except DropItem as exc:
+                self._count_dropped_item(exc.reason)
+                self.logger.debug(
+                    "Dropped item",
+                    pipeline=pipe.__class__.__name__,
+                    reason=exc.reason,
+                    detail=str(exc),
+                )
+                return False
+        self.stats.inc("items_scraped")
+        return True
+
+    def _count_dropped_item(self, reason: str) -> None:
+        self.stats.inc("items_dropped")
+        self.stats.inc_labeled("items_dropped_by_reason", reason)
 
     def _get_memory_usage_mb(self) -> float:
         """
@@ -841,19 +1203,21 @@ class Engine:
             return "trio"
         return "asyncio"
 
-    def _stats_payload(self, elapsed: float) -> dict[str, float | int]:
-        requests_rate = self._stats["requests_sent"] / elapsed if elapsed > 0 else 0
-        return {
+    def _stats_payload(self, elapsed: float) -> dict[str, object]:
+        requests_rate = self.stats.get("requests_sent") / elapsed if elapsed > 0 else 0
+        payload: dict[str, object] = {
             "elapsed_seconds": round(elapsed, 1),
-            "requests_sent": self._stats["requests_sent"],
-            "responses_received": self._stats["responses_received"],
-            "items_scraped": self._stats["items_scraped"],
-            "errors": self._stats["errors"],
+            **self.stats.counters,
             "queue_size": self._queue.qsize(),
+            "in_flight": self._in_flight,
             "requests_per_second": round(requests_rate, 2),
-            "seen_requests": len(self._seen),
+            "seen_requests": self._seen_count(),
             "memory_mb": round(self._get_memory_usage_mb(), 2),
         }
+        for name, counter in self.stats.labeled.items():
+            if counter:
+                payload[name] = dict(counter)
+        return payload
 
     def _statistics_log_context(
         self,
@@ -869,6 +1233,23 @@ class Engine:
         if include_event_loop:
             context["event_loop"] = self._event_loop_type
         return context
+
+    def metrics_text(self) -> str:
+        """Return current statistics in the Prometheus text exposition format."""
+        elapsed = time.time() - self._start_time if self._start_time else 0.0
+        return render_metrics(
+            spider=self.spider.name,
+            stats=self.stats,
+            gauges={
+                "queue_size": self._queue.qsize(),
+                "in_flight": self._in_flight,
+                "seen_requests": self._seen_count(),
+                "elapsed_seconds": round(elapsed, 3),
+                "memory_mb": round(self._get_memory_usage_mb(), 2),
+                "running": 0 if self._stop_event.is_set() else 1,
+            },
+            custom=self.spider.stats_payload,
+        )
 
     async def _log_statistics(self) -> None:
         """Periodically log statistics about the crawl progress."""
@@ -890,20 +1271,86 @@ class Engine:
                     **self._statistics_log_context(time.time() - self._start_time),
                 )
 
-    async def run(self) -> None:
-        """Run the crawl to queue exhaustion and release all resources.
+    async def _enforce_max_duration(self, seconds: float) -> None:
+        try:
+            async with asyncio.timeout(seconds):
+                await self._stop_event.wait()
+        except TimeoutError:
+            self.stop("max_duration")
+
+    def _evaluate_failure_policy(self, close_reason: str) -> tuple[str, ...]:
+        if close_reason == "shutdown":
+            return ()
+        failures: list[str] = []
+        sent = self.stats.get("requests_sent")
+        errors = self.stats.get("errors")
+        if (
+            self.max_error_rate is not None
+            and sent
+            and errors / sent > self.max_error_rate
+        ):
+            failures.append(
+                f"error rate {errors / sent:.1%} exceeds max_error_rate "
+                f"{self.max_error_rate:.1%} ({errors} errors / {sent} requests)"
+            )
+        scraped = self.stats.get("items_scraped")
+        if self.min_items is not None and scraped < self.min_items:
+            failures.append(
+                f"scraped {scraped} items, fewer than min_items={self.min_items}"
+            )
+        if self.max_item_drop_rate is not None:
+            dropped = self.stats.get("items_dropped") - self.stats.labeled[
+                "items_dropped_by_reason"
+            ].get(MAX_ITEMS_DROP_REASON, 0)
+            total = scraped + dropped
+            if total and dropped / total > self.max_item_drop_rate:
+                failures.append(
+                    f"item drop rate {dropped / total:.1%} exceeds "
+                    f"max_item_drop_rate {self.max_item_drop_rate:.1%} "
+                    f"({dropped} dropped / {total} items)"
+                )
+        return tuple(failures)
+
+    def _final_statistics(self, close_reason: str | None) -> None:
+        self.logger.info(
+            "Final crawl statistics",
+            close_reason=close_reason,
+            **self._statistics_log_context(
+                time.time() - self._start_time,
+                include_event_loop=True,
+            ),
+        )
+
+    async def run(self) -> CrawlResult:
+        """Run the crawl until the queue drains or a stop condition, then clean up.
 
         Worker tasks, periodic statistics, and lifecycle hooks are managed as a
-        task group. The HTTP client and spider components are closed in a
-        ``finally`` block, and a final statistics record is always emitted.
-        Exceptions from requests, callbacks, middleware, pipelines, or cleanup
-        propagate to the caller after structured error logging.
+        task group. The HTTP client, spider components, job state, and metrics
+        server are always closed, and a final statistics record is emitted.
+
+        Returns:
+            The crawl's :class:`~silkworm.CrawlResult`.
+
+        Raises:
+            CrawlFailedError: If the crawl violated its failure policy
+                (``max_error_rate``, ``min_items``, ``max_item_drop_rate``).
+            Exception: Errors from lifecycle hooks, pipelines' ``open``/``close``,
+                or cleanup propagate after structured error logging.
         """
         self.logger.info("Starting engine", spider=self.spider.name)
         self._start_time = time.time()
         self._event_loop_type = self._detect_event_loop()
 
         try:
+            if self._job_dir is not None and self._job is None:
+                self._job = JobState(self._job_dir, self.spider)
+            if self._metrics_port is not None:
+                self.metrics_server = MetricsServer(
+                    self.metrics_text,
+                    host=self._metrics_host,
+                    port=self._metrics_port,
+                )
+                await self.metrics_server.start()
             async with asyncio.TaskGroup() as tg:
                 self._worker_count = self.http.concurrency
                 for index in range(self._worker_count):
@@ -911,6 +1358,8 @@ class Engine:
 
                 if self.log_stats_interval is not None and self.log_stats_interval > 0:
                     tg.create_task(self._log_statistics())
+                if self.max_duration is not None:
+                    tg.create_task(self._enforce_max_duration(self.max_duration))
 
                 # Open spider and seed initial requests while workers are already waiting.
                 await self.open_spider()
@@ -918,26 +1367,33 @@ class Engine:
                 self._stop_event.set()
         except BaseException as exc:
             self._stop_event.set()
-            self.logger.info(
-                "Final crawl statistics",
-                **self._statistics_log_context(
-                    time.time() - self._start_time,
-                    include_event_loop=True,
-                ),
-            )
-            cleanup_errors = await self._shutdown()
+            self._final_statistics(self._close_reason or "error")
+            cleanup_errors = await self._shutdown(finished=False)
             self._record_cleanup_failures(exc, cleanup_errors)
             raise
-        else:
-            self._stop_event.set()
-            self.logger.info(
-                "Final crawl statistics",
-                **self._statistics_log_context(
-                    time.time() - self._start_time,
-                    include_event_loop=True,
-                ),
+
+        close_reason = self._close_reason or "finished"
+        self._stop_event.set()
+        self._final_statistics(close_reason)
+        self._raise_cleanup_errors(
+            await self._shutdown(finished=close_reason == "finished")
+        )
+        result = freeze_result(
+            spider=self.spider.name,
+            close_reason=close_reason,
+            elapsed_seconds=time.time() - self._start_time,
+            stats=self.stats,
+            custom_stats=self.spider.stats_payload,
+            failures=self._evaluate_failure_policy(close_reason),
+        )
+        if result.failures:
+            self.logger.error(
+                "Crawl failed its failure policy",
+                spider=self.spider.name,
+                failures=list(result.failures),
             )
-            self._raise_cleanup_errors(await self._shutdown())
+            raise CrawlFailedError(result)
+        return result
 
     def _expects_html(self, callback: Callback | None) -> bool:
         if callback is None:

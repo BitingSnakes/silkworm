@@ -118,10 +118,8 @@ async def test_engine_uses_custom_dedup_key(monkeypatch: pytest.MonkeyPatch):
         "http://example.com/search",
         "http://example.com/search",
     ]
-    assert engine._seen == {
-        "http://example.com/search:1",
-        "http://example.com/search:2",
-    }
+    # Both custom keys are distinct, so both requests were recorded and fetched.
+    assert len(engine._seen) == 2
 
 
 async def test_engine_dequeues_higher_priority_requests_first(

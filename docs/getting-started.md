@@ -175,6 +175,18 @@ async def main():
 asyncio.run(main())
 ```
 
+## Running From the Command Line
+The `silkworm` command runs a spider file without a runner script and writes
+items in the format given by the output extension:
+
+```bash
+silkworm crawl quotes_spider.py -o data/quotes.jl -s max_items=100
+silkworm parse https://quotes.toscrape.com/ --spider quotes_spider.py
+```
+
+See [Command Line](cli.md), and [Production Crawling](production.md) before
+scheduling spiders unattended.
+
 ## Development Workflow
 Developer commands are defined in the [justfile](https://github.com/BitingSnakes/silkworm/blob/main/justfile).
 

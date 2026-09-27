@@ -42,6 +42,7 @@ python examples/quotes_spider.py
 | `start_urls_from_file_spider.py` | Read URLs from a text file and `follow()` them in `start_requests()`, use `meta`. |
 | `url_titles_spider.py` | Fetch titles for many URLs from a JSONL file, choose an event loop. |
 | `sitemap_spider.py` | Parse `sitemap.xml`, two callbacks, collect SEO/Open Graph tags. |
+| `production_quotes_spider.py` | Run unattended: robots.txt, AutoThrottle, retries, validation, failure checks, resumable job, `CrawlResult`. Also runnable with `silkworm crawl`. |
 
 ### 3. Going further
 

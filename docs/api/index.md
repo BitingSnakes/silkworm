@@ -12,6 +12,10 @@ Reference documentation generated from the docstrings of Silkworm's public modul
 | [`silkworm.types`](types.md) | Public type aliases and protocols |
 | [`silkworm.exceptions`](exceptions.md) | Exception hierarchy |
 | [`silkworm.logging`](logging.md) | Logger helpers |
+| [`silkworm.settings`](settings.md) | Layered engine settings (environment, `custom_settings`, explicit) |
+| [`silkworm.testing`](testing.md) | Offline spider testing helpers |
+| [`silkworm.httpcache`](httpcache.md) | On-disk HTTP response cache |
+| [`silkworm.cli`](cli.md) | The `silkworm` command line |
 
 ```{toctree}
 :hidden:
@@ -24,4 +28,8 @@ markdown
 types
 exceptions
 logging
+settings
+testing
+httpcache
+cli
 ```

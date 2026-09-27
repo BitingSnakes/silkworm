@@ -9,6 +9,7 @@ Import from here rather than from private modules::
 
 from __future__ import annotations
 
+from ._stats import CrawlResult
 from ._types import (
     BodyData,
     Headers,
@@ -20,22 +21,34 @@ from ._types import (
     QueryValue,
 )
 from .engine import DedupKey, EngineOptions
+from .http import FetchClient
 from .logging import Logger, LogLevel
 from .middlewares import ExceptionMiddleware, RequestMiddleware, ResponseMiddleware
-from .pipelines import ItemCallback, ItemPipeline, ZenohKeyResolver
+from .pipelines import (
+    ItemCallback,
+    ItemPipeline,
+    ItemSchema,
+    ItemValidator,
+    ModelSchema,
+    ZenohKeyResolver,
+)
 from .request import Callback, Errback
 from .runner import LoopFactory
 
 __all__ = [
     "BodyData",
     "Callback",
+    "CrawlResult",
     "DedupKey",
     "EngineOptions",
     "Errback",
     "ExceptionMiddleware",
+    "FetchClient",
     "Headers",
     "ItemCallback",
     "ItemPipeline",
+    "ItemSchema",
+    "ItemValidator",
     "JSONLike",
     "JSONScalar",
     "JSONValue",
@@ -43,6 +56,7 @@ __all__ = [
     "Logger",
     "LoopFactory",
     "MetaData",
+    "ModelSchema",
     "QueryParams",
     "QueryValue",
     "RequestMiddleware",

@@ -72,7 +72,38 @@ pipeline = PolarsPipeline("data/items.parquet") if POLARS_AVAILABLE else JsonLin
 ## Per-item Logging
 Wrap any pipeline in `LoggedPipeline(pipeline, log_level=...)` to change or silence (`log_level=None`) its per-item log messages. See [Logging and Stats](logging-and-stats.md#pipeline-log-levels).
 
+## Dropping Items
+Raise `DropItem(message, reason=...)` from `process_item` to discard an item:
+later pipelines are skipped, the item is counted under `items_dropped` (labeled
+by `reason`), and `emit()` returns normally. Only items that pass every pipeline
+count as `items_scraped`.
+
 ## Built-in Pipelines
+
+### ValidationPipeline
+Validates items against a Pydantic model (anything with `model_validate`) or a
+validator function, forwarding normalized items and dropping invalid ones with
+reason `invalid` (or raising with `on_invalid="raise"`). The first `log_limit`
+failures are logged with their validation errors. Combine it with the engine's
+`max_item_drop_rate` or `min_items` to fail crawls when extraction breaks. See
+[Validating items](production.md#validating-items).
+
+```python
+from pydantic import BaseModel
+from silkworm.pipelines import JsonLinesPipeline, ValidationPipeline
+
+
+class Quote(BaseModel):
+    text: str
+    author: str
+
+
+run_spider(
+    QuotesSpider,
+    item_pipelines=[ValidationPipeline(Quote), JsonLinesPipeline("quotes.jl")],
+    max_item_drop_rate=0.05,
+)
+```
 
 ### CallbackPipeline
 - **Purpose**: Run a custom callback for each item (sync or async).

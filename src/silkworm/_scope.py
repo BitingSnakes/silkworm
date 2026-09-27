@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 from contextlib import asynccontextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
@@ -75,6 +76,39 @@ class CrawlScope:
                 f"{action}() was called after callback '{self.owner}' finished; "
                 "await spawned tasks (e.g. with asyncio.TaskGroup) before returning"
             )
+
+
+class CallbackContractError(SpiderError):
+    """A callback is not an ``async`` function returning ``None``."""
+
+
+async def invoke_callback(invoke: Callable[[], object], name: str) -> None:
+    """Call ``invoke`` and await it, enforcing the callback contract.
+
+    Exceptions raised by the callback itself propagate unchanged; a callback
+    that yields, is synchronous, or returns a value raises
+    :class:`CallbackContractError` with a migration hint.
+    """
+    produced = invoke()
+    if inspect.isasyncgen(produced):
+        raise CallbackContractError(
+            f"Spider callback '{name}' is an async generator; callbacks "
+            "must not yield. Replace `yield item` with "
+            "`await self.emit(item)` and `yield request` with "
+            "`await self.follow(request)`",
+        )
+    if not inspect.isawaitable(produced):
+        raise CallbackContractError(
+            f"Spider callback '{name}' must be an async function, "
+            f"got a {type(produced).__name__} result",
+        )
+    returned: object = await produced
+    if returned is not None:
+        raise CallbackContractError(
+            f"Spider callback '{name}' returned a {type(returned).__name__}; "
+            "callbacks must return None and report results with "
+            "`await self.emit(item)` / `await self.follow(request)`",
+        )
 
 
 _CURRENT_SCOPE: ContextVar[CrawlScope | None] = ContextVar(

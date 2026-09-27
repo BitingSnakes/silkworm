@@ -1,6 +1,7 @@
 import pytest
 
 from silkworm.engine import Engine
+from silkworm.request import Request
 from silkworm.response import Response
 from silkworm.spiders import Spider
 
@@ -60,7 +61,8 @@ async def test_engine_stats_payload_includes_seen_and_memory(
     """Engine stats payload includes seen count and memory usage."""
     spider = MockSpider()
     engine = Engine(spider)
-    engine._seen.update({"https://a.example", "https://b.example"})
+    for url in ("https://a.example", "https://b.example"):
+        assert engine._mark_seen(Request(url=url))
     monkeypatch.setattr(engine, "_get_memory_usage_mb", lambda: 123.456)
 
     payload = engine._stats_payload(elapsed=2.0)

@@ -32,6 +32,10 @@
 
 .. autofunction:: silkworm.default_dedup_key
 
+.. autofunction:: silkworm.request_fingerprint
+
+.. autofunction:: silkworm.canonicalize_url
+
 .. autotype:: silkworm.DedupKey
 ```
 
@@ -51,6 +55,12 @@
 .. autofunction:: silkworm.run_spider_trio
 ```
 
+## Crawl Results
+
+```{eval-rst}
+.. autoclass:: silkworm.CrawlResult
+```
+
 ## Convenience Helpers
 
 ```{eval-rst}
@@ -65,6 +75,10 @@
 
 ```{eval-rst}
 .. autoclass:: silkworm.http.HttpClient
+
+.. autoclass:: silkworm.http.FetchClient
+
+.. autoclass:: silkworm.HttpCache
 
 .. autodata:: silkworm.http.MOCK_RESPONSE_META_KEY
    :no-value:

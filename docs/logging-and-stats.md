@@ -100,9 +100,14 @@ run_spider(MySpider, log_stats_interval=10)
 ```
 
 Stats include:
-- `requests_sent`, `responses_received`, `items_scraped`, `errors`
-- `queue_size`, `seen_requests`, `requests_per_second`
-- `memory_mb`, `elapsed_seconds`
+- `requests_sent`, `responses_received`, `items_scraped`, `items_dropped`, `errors`, `retries`
+- `dupe_filtered`, `offsite_filtered`, `depth_filtered`, `ignored_requests`, `dropped_requests`
+- `queue_size`, `in_flight`, `seen_requests`, `requests_per_second`
+- `memory_mb`, `elapsed_seconds`, and the final `close_reason`
+- breakdowns: `responses_by_status`, `requests_by_domain`, `errors_by_type`, `items_dropped_by_reason`, `ignored_by_reason`
+
+The same numbers are returned as a `CrawlResult` and can be served to Prometheus
+with `metrics_port`; see [Observability](production.md#observability).
 
 ### Custom Spider Stats
 Every spider has a `stats_payload` dict whose entries are merged into the periodic
@@ -119,7 +124,8 @@ class QuotesSpider(Spider):
 ```
 
 Keys starting with `_` and names reserved by the engine (the stats listed above,
-plus `spider` and `event_loop`) are rejected with `KeyError`.
+plus `spider` and `event_loop`) are rejected with `KeyError`. Numeric custom stats
+are also exported as `silkworm_custom_<name>` Prometheus gauges.
 
 ## Example Scripts
 - Logger configuration: [examples/logger_configuration_demo.py](https://github.com/BitingSnakes/silkworm/blob/main/examples/logger_configuration_demo.py)

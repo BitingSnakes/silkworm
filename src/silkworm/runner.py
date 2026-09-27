@@ -13,13 +13,20 @@ spider takes arguments, so they are type-checked against its ``__init__``.
 from __future__ import annotations
 
 import asyncio
+import signal
 import sys
+import threading
 from collections.abc import Callable
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Unpack
 
 from .engine import Engine, EngineOptions
+from .settings import resolve_options
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from ._stats import CrawlResult
     from .spiders import Spider
 
 type LoopFactory = Callable[[], asyncio.AbstractEventLoop]
@@ -71,63 +78,158 @@ def _as_spider(spider: Spider | type[Spider]) -> Spider:
     return spider() if isinstance(spider, type) else spider
 
 
+class _ShutdownSignals:
+    """Translate SIGINT/SIGTERM into a graceful engine stop, then a forced one."""
+
+    def __init__(self, engine: Engine, task: asyncio.Task[object] | None) -> None:
+        self.engine = engine
+        self.task = task
+        self.received = 0
+        self.forced = False
+
+    def handle(self, signal_name: str) -> None:
+        self.received += 1
+        if self.received == 1:
+            self.engine.logger.warning(
+                "Received shutdown signal; finishing in-flight requests "
+                "(send it again to stop immediately)",
+                signal=signal_name,
+            )
+            self.engine.stop("shutdown")
+            return
+        self.engine.logger.warning(
+            "Received second shutdown signal; cancelling the crawl",
+            signal=signal_name,
+        )
+        self.forced = True
+        if self.task is not None:
+            self.task.cancel()
+
+
+@contextmanager
+def _graceful_shutdown(engine: Engine) -> Iterator[_ShutdownSignals]:
+    """Install SIGINT/SIGTERM handlers for the duration of a crawl."""
+    loop = asyncio.get_running_loop()
+    handler = _ShutdownSignals(engine, asyncio.current_task())
+    loop_signals: list[signal.Signals] = []
+    previous: dict[signal.Signals, object] = {}
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        try:
+            loop.add_signal_handler(sig, handler.handle, sig.name)
+            loop_signals.append(sig)
+        except (NotImplementedError, RuntimeError, ValueError):
+            # e.g. Windows event loops: fall back to plain signal handlers,
+            # which only work in the main thread.
+            if threading.current_thread() is not threading.main_thread():
+                continue
+
+            def forward(signum: int, _frame: object) -> None:
+                loop.call_soon_threadsafe(handler.handle, signal.Signals(signum).name)
+
+            previous[sig] = signal.signal(sig, forward)
+    try:
+        yield handler
+    finally:
+        for sig in loop_signals:
+            loop.remove_signal_handler(sig)
+        for sig, old_handler in previous.items():
+            signal.signal(sig, old_handler)  # type: ignore[arg-type]
+
+
 async def crawl(
     spider: Spider | type[Spider],
+    *,
+    handle_signals: bool = False,
     **options: Unpack[EngineOptions],
-) -> None:
+) -> CrawlResult:
     """Run ``spider`` to completion on the current event loop.
+
+    Options are resolved through :func:`silkworm.settings.resolve_options`, so
+    ``SILKWORM_*`` environment variables and the spider's ``custom_settings``
+    apply beneath the options passed here.
 
     Args:
         spider: Spider instance, or a no-argument spider class.
+        handle_signals: Stop gracefully on the first SIGINT/SIGTERM and cancel
+            on the second. Off by default because the calling application owns
+            the event loop and may handle signals itself.
         **options: :class:`~silkworm.engine.EngineOptions` forwarded to the
             engine.
+
+    Returns:
+        The crawl's :class:`~silkworm.CrawlResult`.
+
+    Raises:
+        CrawlFailedError: If the crawl violated its failure policy.
+        KeyboardInterrupt: If a second shutdown signal forced cancellation.
 
     Use this coroutine when the application already owns an event loop; use a
     ``run_spider*`` function from synchronous code.
     """
-    await Engine(_as_spider(spider), **options).run()
+    instance = _as_spider(spider)
+    engine = Engine(instance, **resolve_options(instance, options))
+    if not handle_signals:
+        return await engine.run()
+    with _graceful_shutdown(engine) as signals:
+        try:
+            return await engine.run()
+        except asyncio.CancelledError:
+            if signals.forced:
+                raise KeyboardInterrupt from None
+            raise
 
 
 def run_spider(
     spider: Spider | type[Spider],
     *,
     loop_factory: LoopFactory | None = None,
+    handle_signals: bool = True,
     **options: Unpack[EngineOptions],
-) -> None:
+) -> CrawlResult:
     """
     Run ``spider`` with ``asyncio``, blocking until the crawl finishes.
+
+    The first SIGINT (Ctrl+C) or SIGTERM stops the crawl gracefully: pending
+    requests are discarded (or saved with ``job_dir``), in-flight requests
+    finish, and pipelines close normally. A second signal cancels immediately.
 
     Args:
         spider: Spider instance, or a spider class to instantiate without arguments.
         loop_factory: Optional event loop factory, e.g. from uvloop.
+        handle_signals: Install the graceful shutdown handlers described above.
         **options: Engine options; see :class:`~silkworm.engine.EngineOptions`.
+
+    Returns:
+        The crawl's :class:`~silkworm.CrawlResult`.
+
+    Raises:
+        CrawlFailedError: If the crawl violated its failure policy.
     """
-    coroutine = crawl(spider, **options)
+    coroutine = crawl(spider, handle_signals=handle_signals, **options)
     if loop_factory is None:
-        asyncio.run(coroutine)
-        return
+        return asyncio.run(coroutine)
 
     with asyncio.Runner(loop_factory=loop_factory) as runner:
-        runner.run(coroutine)
+        return runner.run(coroutine)
 
 
 def run_spider_uvloop(
     spider: Spider | type[Spider],
     **options: Unpack[EngineOptions],
-) -> None:
+) -> CrawlResult:
     """
     Run ``spider`` on a uvloop event loop (``pip install silkworm-rs[uvloop]``).
 
     Raises:
         ImportError: If uvloop is not installed.
     """
-    run_spider(spider, loop_factory=_install_uvloop(), **options)
+    return run_spider(spider, loop_factory=_install_uvloop(), **options)
 
 
 def run_spider_winloop(
     spider: Spider | type[Spider],
     **options: Unpack[EngineOptions],
-) -> None:
+) -> CrawlResult:
     """
     Run ``spider`` on a winloop event loop, optimized for Windows
     (``pip install silkworm-rs[winloop]``).
@@ -135,26 +237,26 @@ def run_spider_winloop(
     Raises:
         ImportError: If winloop is not installed.
     """
-    run_spider(spider, loop_factory=_install_winloop(), **options)
+    return run_spider(spider, loop_factory=_install_winloop(), **options)
 
 
 def run_spider_rsloop(
     spider: Spider | type[Spider],
     **options: Unpack[EngineOptions],
-) -> None:
+) -> CrawlResult:
     """
     Run ``spider`` on an rsloop event loop (``pip install silkworm-rs[rsloop]``).
 
     Raises:
         ImportError: If rsloop is not installed.
     """
-    run_spider(spider, loop_factory=_install_rsloop(), **options)
+    return run_spider(spider, loop_factory=_install_rsloop(), **options)
 
 
 def run_spider_trio(
     spider: Spider | type[Spider],
     **options: Unpack[EngineOptions],
-) -> None:
+) -> CrawlResult:
     """
     Run ``spider`` with trio as the async backend (``pip install silkworm-rs[trio]``).
 
@@ -197,13 +299,13 @@ def run_spider_trio(
         )
         raise ImportError(msg) from err
 
-    async def run_with_trio_asyncio() -> None:
+    async def run_with_trio_asyncio() -> CrawlResult:
         async with trio_asyncio.open_loop():
             # Run the asyncio-based crawl within trio's event loop so asyncio
-            # TaskGroups have a parent task.
-            await trio_asyncio.aio_as_trio(crawl)(spider, **options)
+            # TaskGroups have a parent task. trio handles Ctrl+C itself.
+            return await trio_asyncio.aio_as_trio(crawl)(spider, **options)
 
-    trio.run(run_with_trio_asyncio)
+    return trio.run(run_with_trio_asyncio)
 
 
 __all__ = [

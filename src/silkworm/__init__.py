@@ -8,16 +8,26 @@ available from :mod:`silkworm.middlewares` and :mod:`silkworm.pipelines`.
 
 from __future__ import annotations
 
+from ._stats import CrawlResult
+from ._urls import canonicalize_url, request_fingerprint
 from .api import fetch_html, fetch_html_cdp, fetch_html_servo
 from .cdp import CDPClient
 from .engine import DedupKey, Engine, EngineLogger, EngineOptions, default_dedup_key
 from .exceptions import (
+    CloseSpider,
+    CrawlFailedError,
+    DropItem,
+    HttpConnectionError,
     HttpError,
+    HttpTimeoutError,
+    IgnoreRequest,
     MarkdownConversionError,
+    ResponseTooLargeError,
     SelectorError,
     SilkwormError,
     SpiderError,
 )
+from .httpcache import HttpCache
 from .logging import get_logger
 from .markdown import (
     MarkdownStream,
@@ -27,9 +37,12 @@ from .markdown import (
     stream_html_to_markdown_async,
 )
 from .middlewares import (
+    AutoThrottleMiddleware,
     CookiesMiddleware,
     RequestResponseStreamMiddleware,
+    RetryMiddleware,
     RobotsTxtDelayMiddleware,
+    RobotsTxtMiddleware,
 )
 from .onionlink import OnionLinkClient
 from .request import Request
@@ -46,26 +59,39 @@ from .servo import ServoFetchClient
 from .spiders import Spider
 
 __all__ = [
+    "AutoThrottleMiddleware",
     "CDPClient",
+    "CloseSpider",
     "CookiesMiddleware",
+    "CrawlFailedError",
+    "CrawlResult",
     "DedupKey",
+    "DropItem",
     "Engine",
     "EngineLogger",
     "EngineOptions",
     "HTMLResponse",
+    "HttpCache",
+    "HttpConnectionError",
     "HttpError",
+    "HttpTimeoutError",
+    "IgnoreRequest",
     "MarkdownConversionError",
     "MarkdownStream",
     "OnionLinkClient",
     "Request",
     "RequestResponseStreamMiddleware",
     "Response",
+    "ResponseTooLargeError",
+    "RetryMiddleware",
     "RobotsTxtDelayMiddleware",
+    "RobotsTxtMiddleware",
     "SelectorError",
     "ServoFetchClient",
     "SilkwormError",
     "Spider",
     "SpiderError",
+    "canonicalize_url",
     "convert_html_to_markdown",
     "crawl",
     "default_dedup_key",
@@ -74,6 +100,7 @@ __all__ = [
     "fetch_html_servo",
     "get_logger",
     "html_to_markdown",
+    "request_fingerprint",
     "run_spider",
     "run_spider_rsloop",
     "run_spider_trio",
