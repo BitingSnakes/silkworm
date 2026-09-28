@@ -241,6 +241,21 @@ wheels = [
 ]
 
 [[package]]
+name = "apache-iggy"
+version = "0.9.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e5/58/c1a1ce0716efb6e49f955258a1217e90f137a09c88064e149bfa5711c1ca/apache_iggy-0.9.0.tar.gz", hash = "sha256:0c8edc47cb54886ab3fbc7a83725dad949f98c1beb3460dfb9270a3a777b6c8e", size = 782506, upload-time = "2026-09-18T18:28:06.628Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d2/07/1cc66d42e5434ef411ebdc9006610497268c05af072c4f1ac542d0863249/apache_iggy-0.9.0-cp313-cp313-macosx_10_12_x86_64.whl", hash = "sha256:9b802cff27c4eccf00be7ebefbe52c6c11ce9f17e7014b439b6932d28c76d82d", size = 6525102, upload-time = "2026-09-18T18:27:54.274Z" },
+    { url = "https://files.pythonhosted.org/packages/22/7e/51000b2f75fe7bafedaaf56f6ce53742a9372e5b6b0ff2e364e28f99b135/apache_iggy-0.9.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:2fcee7ed3a999670000e28865dcf664622138ed1fb0ad15d0fdac92df3336e26", size = 6277397, upload-time = "2026-09-18T18:27:55.841Z" },
+    { url = "https://files.pythonhosted.org/packages/48/e8/2e7c438536f2ef11270cd5785133ec3ce888980e88201d64c72f473a9d33/apache_iggy-0.9.0-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:277d9f5a333e6d6709e618e3ada3c6d28b047f0e5671f86cc65e036ad646452b", size = 7188120, upload-time = "2026-09-18T18:27:57.399Z" },
+    { url = "https://files.pythonhosted.org/packages/be/96/35fd2b51831a59c25a41a8ae7840299e9add954a4e0a1133cc1e51854609/apache_iggy-0.9.0-cp313-cp313-manylinux_2_34_x86_64.whl", hash = "sha256:1e233f7c1409b5e7030cfd0ed1dd5ae90a224eb0ba07b4f080a3aa3f5e418ba9", size = 6940391, upload-time = "2026-09-18T18:27:59.181Z" },
+    { url = "https://files.pythonhosted.org/packages/ac/b9/f2fddc436c16635a51652fe515cee83b0b2922ded0df5b6c9278dc96f2d3/apache_iggy-0.9.0-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:f2ae3640cd4fa53ac665339793ce94036e6c3b6644519b9e73cf7e2850840e37", size = 7353933, upload-time = "2026-09-18T18:28:01.15Z" },
+    { url = "https://files.pythonhosted.org/packages/11/f6/d05dc959ff7989dda6dce5a49aa81d12feb0376b0b5328d5e8399bb5c102/apache_iggy-0.9.0-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:ecc5c4a4acf1faaaa59507dc1d68d3988958647ce6a06ca804cf330052ecceed", size = 7524341, upload-time = "2026-09-18T18:28:02.825Z" },
+    { url = "https://files.pythonhosted.org/packages/34/e5/42feaaf40007a7ab06b8e8990e7986fc88812899c2354a53c53bdec080d4/apache_iggy-0.9.0-cp313-cp313-win_amd64.whl", hash = "sha256:5e102259a867f0492de3502243193bf210c24b96b2f7e190988bfd2196f9d02d", size = 5957693, upload-time = "2026-09-18T18:28:04.423Z" },
+]
+
+[[package]]
 name = "asn1crypto"
 version = "1.5.1"
 source = { registry = "https://pypi.org/simple" }
@@ -372,8 +387,8 @@ name = "cassandra-driver"
 version = "3.30.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "deprecated", marker = "python_full_version < '3.14'" },
-    { name = "geomet", marker = "python_full_version < '3.14'" },
+    { name = "deprecated" },
+    { name = "geomet" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/bb/ed/4e16210e194660f107929ee494f1cf18557252655067d9b39029c241be2d/cassandra_driver-3.30.1.tar.gz", hash = "sha256:0c6a3e1428f7c6a9aa6c944b9c47a37cd2cdbeb5b5a82d42c33afdd56f14e398", size = 289233, upload-time = "2026-07-06T20:14:31.37Z" }
 wheels = [
@@ -925,7 +940,7 @@ name = "geomet"
 version = "1.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "click", marker = "python_full_version < '3.14'" },
+    { name = "click" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/2a/8c/dde022aa6747b114f6b14a7392871275dea8867e2bd26cddb80cc6d66620/geomet-1.1.0.tar.gz", hash = "sha256:51e92231a0ef6aaa63ac20c443377ba78a303fd2ecd179dc3567de79f3c11605", size = 28732, upload-time = "2023-11-14T15:43:36.764Z" }
 wheels = [
@@ -2454,6 +2469,9 @@ gsheets = [
     { name = "google-api-python-client" },
     { name = "google-auth" },
 ]
+iggy = [
+    { name = "apache-iggy", marker = "python_full_version < '3.14'" },
+]
 memray = [
     { name = "memray" },
 ]
@@ -2535,6 +2553,7 @@ requires-dist = [
     { name = "aiocouch", marker = "extra == 'couchdb'", specifier = "==4.0.1" },
     { name = "aioftp", marker = "extra == 'ftp'", specifier = "==0.28.3" },
     { name = "aiomysql", marker = "extra == 'mysql'", specifier = "==0.3.2" },
+    { name = "apache-iggy", marker = "python_full_version < '3.14' and extra == 'iggy'", specifier = "==0.9.0" },
     { name = "asyncpg", marker = "extra == 'postgresql'", specifier = "==0.31.0" },
     { name = "asyncssh", marker = "extra == 'sftp'", specifier = "==2.24.0" },
     { name = "cassandra-driver", marker = "python_full_version < '3.14' and sys_platform != 'win32' and extra == 'cassandra'", specifier = "==3.30.1" },
@@ -2567,7 +2586,7 @@ requires-dist = [
     { name = "winloop", marker = "extra == 'winloop'", specifier = "==0.6.4" },
     { name = "wreq", specifier = ">=0.12.2" },
 ]
-provides-extras = ["rsloop", "taskiq", "zenoh", "uvloop", "winloop", "trio", "msgpack", "polars", "excel", "yaml", "avro", "elasticsearch", "mongodb", "s3", "vortex", "mysql", "postgresql", "gsheets", "snowflake", "ftp", "sftp", "cassandra", "couchdb", "dynamodb", "duckdb", "memray", "cdp", "onionlink"]
+provides-extras = ["rsloop", "taskiq", "zenoh", "iggy", "uvloop", "winloop", "trio", "msgpack", "polars", "excel", "yaml", "avro", "elasticsearch", "mongodb", "s3", "vortex", "mysql", "postgresql", "gsheets", "snowflake", "ftp", "sftp", "cassandra", "couchdb", "dynamodb", "duckdb", "memray", "cdp", "onionlink"]
 
 [package.metadata.requires-dev]
 dev = [
@@ -2906,10 +2925,10 @@ name = "trio-asyncio"
 version = "0.16.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "greenlet", marker = "python_full_version < '3.14'" },
-    { name = "outcome", marker = "python_full_version < '3.14'" },
-    { name = "sniffio", marker = "python_full_version < '3.14'" },
-    { name = "trio", marker = "python_full_version < '3.14'" },
+    { name = "greenlet" },
+    { name = "outcome" },
+    { name = "sniffio" },
+    { name = "trio" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/e1/76/b6317ad0536e155a9cce6c3f0db9a3b3f63e579e176779712ef3403d4af5/trio_asyncio-0.16.0.tar.gz", hash = "sha256:9f4e80aa344555548bf440e0f43072743aac1b3a538ebe3994f52363b7752d6f", size = 77120, upload-time = "2026-05-15T21:27:42.66Z" }
 wheels = [

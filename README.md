@@ -279,6 +279,7 @@ from silkworm.pipelines import (
     XMLPipeline,
     TaskiqPipeline,  # requires: pip install silkworm-rs[taskiq]
     ZenohPipeline,  # requires: pip install silkworm-rs[zenoh]
+    IggyPipeline,  # requires: pip install silkworm-rs[iggy]
     PolarsPipeline,  # requires: pip install silkworm-rs[polars]
     ExcelPipeline,  # requires: pip install silkworm-rs[excel]
     YAMLPipeline,  # requires: pip install silkworm-rs[yaml]
@@ -345,6 +346,7 @@ run_spider(
 - `MsgPackPipeline` writes items in binary MessagePack format using [ormsgpack](https://github.com/aviramha/ormsgpack) for fast and compact serialization (requires `pip install silkworm-rs[msgpack]`).
 - `TaskiqPipeline` sends items to a [Taskiq](https://taskiq-python.github.io/) queue for distributed processing (requires `pip install silkworm-rs[taskiq]`).
 - `ZenohPipeline` publishes JSON items to a static or dynamically resolved [Zenoh](https://zenoh.io/) key expression (requires `pip install silkworm-rs[zenoh]`).
+- `IggyPipeline` publishes each item as a JSON message through an [Apache Iggy](https://iggy.apache.org/) high-level producer (requires `pip install silkworm-rs[iggy]`).
 - `PolarsPipeline` writes items to a Parquet file using Polars for efficient columnar storage (requires `pip install silkworm-rs[polars]`).
 - `ExcelPipeline` writes items to an Excel .xlsx file (requires `pip install silkworm-rs[excel]`).
 - `YAMLPipeline` writes items to a YAML file (requires `pip install silkworm-rs[yaml]`).

@@ -1,7 +1,7 @@
 # Getting Started
 
 ## Requirements
-- **Python**: 3.13, 3.14 or 3.15. On Python 3.15 the `msgpack`, `vortex` and `onionlink` extras install without their backing library until it ships 3.15 wheels, so those pipelines/clients are unavailable there for now. `run_spider_trio` is available on Python 3.13 only until trio-asyncio supports Python 3.14+ (the `trio` extra skips trio-asyncio there). `cassandra` is limited to Python 3.13.
+- **Python**: 3.13, 3.14 or 3.15. On Python 3.15 the `msgpack`, `vortex` and `onionlink` extras install without their backing library until it ships 3.15 wheels, so those pipelines/clients are unavailable there for now. `run_spider_trio` is available on Python 3.13 only until trio-asyncio supports Python 3.14+ (the `trio` extra skips trio-asyncio there). The `iggy` and `cassandra` extras are limited to Python 3.13.
 - **Project metadata**: [pyproject.toml](https://github.com/BitingSnakes/silkworm/blob/main/pyproject.toml)
 
 ## Installation
@@ -59,6 +59,7 @@ pip install "silkworm-rs[rsloop,polars]"
 | `duckdb` | DuckDB export | [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py) |
 | `taskiq` | Taskiq queue pipeline | [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py) |
 | `zenoh` | Zenoh pub/sub pipeline | [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py) |
+| `iggy` | Apache Iggy message-streaming pipeline (Python 3.13) | [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py) |
 | `memray` | Memory profiling | [justfile](https://github.com/BitingSnakes/silkworm/blob/main/justfile) |
 | `cdp` | CDP browser client and rendered HTML fetch | [src/silkworm/cdp.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/cdp.py) |
 | `onionlink` | Tor v3 onion-service client | [src/silkworm/onionlink.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/onionlink.py) |

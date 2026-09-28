@@ -46,6 +46,7 @@ from ._pipelines.google_sheets_pipeline import (
     GOOGLE_SHEETS_AVAILABLE,
     GoogleSheetsPipeline,
 )
+from ._pipelines.iggy_pipeline import IGGY_AVAILABLE, IggyPipeline
 from ._pipelines.jsonlines_pipeline import (
     OPENDAL_AVAILABLE,
     JsonLinesPipeline,
@@ -122,6 +123,7 @@ __all__ = [
     "ELASTICSEARCH_AVAILABLE",
     "FASTAVRO_AVAILABLE",
     "GOOGLE_SHEETS_AVAILABLE",
+    "IGGY_AVAILABLE",
     "MOTOR_AVAILABLE",
     "OPENDAL_AVAILABLE",
     "OPENPYXL_AVAILABLE",
@@ -144,6 +146,7 @@ __all__ = [
     "ExcelPipeline",
     "FTPPipeline",
     "GoogleSheetsPipeline",
+    "IggyPipeline",
     "ItemCallback",
     "ItemPipeline",
     "ItemSchema",

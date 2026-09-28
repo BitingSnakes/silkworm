@@ -71,6 +71,10 @@ taskiq = [
 zenoh = [
   "eclipse-zenoh==1.10.1",
 ]
+iggy = [
+  # Apache Iggy publishes wheels through Python 3.13 only.
+  "apache-iggy==0.9.0; python_version < '3.14'",
+]
 uvloop = [
   "uvloop==0.22.1",
 ]

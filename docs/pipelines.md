@@ -212,6 +212,25 @@ from silkworm.pipelines import ZenohPipeline
 ZenohPipeline("scraping/items")
 ```
 
+### IggyPipeline
+- **Purpose**: Publish each item as a compact JSON message to Apache Iggy.
+- **Options**: `stream`, `topic`, optional `connection_string` or connected `client`, `partitioning`, producer `mode`, stream/topic creation settings, and retry settings.
+- **Behavior**: Uses Iggy's high-level producer. Background producer modes are flushed during pipeline shutdown.
+- **Extras**: `iggy`.
+- **Code**: [src/silkworm/_pipelines/iggy_pipeline.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/_pipelines/iggy_pipeline.py)
+
+```python
+from apache_iggy import BackgroundProducerConfig
+from silkworm.pipelines import IggyPipeline
+
+pipeline = IggyPipeline(
+    "scraping",
+    "items",
+    connection_string="iggy+tcp://iggy:iggy@127.0.0.1:8090",
+    mode=BackgroundProducerConfig(),
+)
+```
+
 ### PolarsPipeline
 - **Purpose**: Write Parquet via Polars (buffered).
 - **Options**: `path`, `mode` (`write` or `append`).
