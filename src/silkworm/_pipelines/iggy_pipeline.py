@@ -41,6 +41,7 @@ _DEFAULT_CONNECTION_STRING = "iggy+tcp://iggy:iggy@127.0.0.1:8090"
 
 
 class IggyPipeline(_BatchPipelineMixin):
+    native_batch = True
     """
     Pipeline that publishes JSON-serialized items to Apache Iggy.
 

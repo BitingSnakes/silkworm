@@ -50,6 +50,7 @@ class _PublisherOptions(TypedDict, total=False):
 
 
 class ZenohPipeline(_BatchPipelineMixin):
+    native_batch = True
     """
     Pipeline that publishes JSON-serialized items to Zenoh.
 
@@ -201,6 +202,32 @@ class ZenohPipeline(_BatchPipelineMixin):
             spider=spider.name,
         )
         return item
+
+    async def process_items(
+        self, items: list[JSONValue], spider: Spider
+    ) -> list[JSONValue]:
+        if not items:
+            return items
+        if self._session is None:
+            raise RuntimeError("ZenohPipeline not opened")
+        keys = await asyncio.gather(
+            *(self._resolve_key(item, spider) for item in items)
+        )
+        publishers = await asyncio.gather(*(self._get_publisher(key) for key in keys))
+        payloads = [json.dumps(item, ensure_ascii=False) for item in items]
+        await asyncio.gather(
+            *(
+                asyncio.to_thread(publisher.put, payload)
+                for publisher, payload in zip(publishers, payloads, strict=True)
+            )
+        )
+        log_pipeline_item(
+            self,
+            "Published item batch to Zenoh",
+            item_count=len(items),
+            spider=spider.name,
+        )
+        return items
 
     async def _resolve_key(self, item: JSONValue, spider: Spider) -> str:
         """Resolve and validate the key expression for one item."""

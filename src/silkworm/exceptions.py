@@ -30,6 +30,18 @@ class SpiderError(SilkwormError):
     """Raised when a spider callback errors."""
 
 
+class BatchPipelineError(SilkwormError):
+    """Raised when a backend rejects one or more items from a bulk request."""
+
+    def __init__(self, pipeline: str, *, total: int, failed: int) -> None:
+        super().__init__(
+            f"{pipeline} rejected {failed} of {total} items during batch processing"
+        )
+        self.pipeline = pipeline
+        self.total = total
+        self.failed = failed
+
+
 class SelectorError(SilkwormError):
     """Raised when CSS/XPath selector evaluation fails."""
 

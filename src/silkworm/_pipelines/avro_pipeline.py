@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
 
 class AvroPipeline(_BatchPipelineMixin):
+    native_batch = True
     """
     Pipeline that writes items to an Avro file.
 
@@ -101,6 +102,20 @@ class AvroPipeline(_BatchPipelineMixin):
             spider=spider.name,
         )
         return item
+
+    async def process_items(
+        self, items: list[JSONValue], spider: Spider
+    ) -> list[JSONValue]:
+        self._items.extend(items)
+        if items:
+            log_pipeline_item(
+                self,
+                "Buffered item batch for Avro",
+                path=str(self.path),
+                spider=spider.name,
+                item_count=len(items),
+            )
+        return items
 
     def _infer_schema(self, item: JSONValue) -> dict[str, Any]:
         """Infer a simple Avro schema from the first item."""

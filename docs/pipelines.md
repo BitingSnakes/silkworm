@@ -15,12 +15,29 @@ class BatchItemPipeline(ItemPipeline):
     async def process_items(self, items, spider): ...
 ```
 
-All built-in pipelines implement `BatchItemPipeline`. The engine calls `open()` once
-at startup, `process_item()` for every emitted item, and `close()` at shutdown. Call
-`process_items()` explicitly when you already have a batch. Its default implementation
-processes items sequentially through `process_item()`, preserving order,
-transformations, and error behavior. Pipelines may override it with a native batch
-operation; `IggyPipeline` does so.
+All built-in pipelines implement `BatchItemPipeline`. By default the engine calls
+`process_item()` immediately for every emitted item. Set `item_batch_size` above one
+to let the engine combine emitted items and use native bulk operations; partial batches
+flush after `item_batch_wait` (0.05 seconds by default), when a callback drains, and at
+shutdown.
+
+```python
+run_spider(
+    MySpider,
+    item_pipelines=[SQLitePipeline("data/items.db")],
+    item_batch_size=100,
+    item_batch_wait=0.05,
+)
+```
+
+Database, service, streaming-file, and buffered built-ins opt into native batching.
+Callback and validation stages remain per-item unless `CallbackPipeline` receives a
+`batch_callback`, preserving transformations and `DropItem` statistics. Custom
+pipelines may set `native_batch = True` when `process_items()` returns exactly one
+ordered result for every input and never uses `DropItem` for individual rows.
+
+Explicit `process_items()` calls remain available. A client bulk request can partially
+persist data before reporting a failure; any reported row failure raises for the batch.
 
 ## Pipeline Usage
 
@@ -39,7 +56,8 @@ run_spider(
 ## Streaming vs Buffered Pipelines
 - **Streaming (per item)**: `JsonLinesPipeline`, `CSVPipeline`, `XMLPipeline`, `SQLitePipeline`, `WebhookPipeline` (batch_size=1), `ZenohPipeline`.
 - **Buffered (write on close)**: `PolarsPipeline`, `ExcelPipeline`, `YAMLPipeline`, `AvroPipeline`, `VortexPipeline`, `S3JsonLinesPipeline`, `FTPPipeline`, `SFTPPipeline`, `RssPipeline`.
-- **Batching**: `WebhookPipeline` (batch_size > 1), `GoogleSheetsPipeline`.
+- **Native bulk ingestion**: SQL/database pipelines, Iggy, Elasticsearch,
+  Google Sheets, Webhook, Taskiq, Zenoh, and coalesced file writers.
 
 > **Note:** Buffered pipelines keep items in memory. Prefer streaming ones for large crawls.
 

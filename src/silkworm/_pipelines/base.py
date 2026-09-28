@@ -58,6 +58,8 @@ class ItemPipeline(Protocol):
 class BatchItemPipeline(ItemPipeline, Protocol):
     """Item pipeline that can process an explicit batch in one call."""
 
+    native_batch: bool
+
     async def process_items(
         self,
         items: list[JSONValue],
@@ -69,6 +71,8 @@ class BatchItemPipeline(ItemPipeline, Protocol):
 
 class _BatchPipelineMixin:
     """Provide ordered batch processing through a pipeline's single-item API."""
+
+    native_batch = False
 
     async def process_items(
         self,
@@ -94,6 +98,11 @@ class LoggedPipeline(_BatchPipelineMixin):
         self.log_level: LogLevel = log_level
         # Any pipeline may carry a log level; LoggedPipeline controls it.
         cast("_LevelledPipeline", self.pipeline).log_level = log_level
+
+    @property
+    def native_batch(self) -> bool:
+        """Whether the wrapped pipeline opts into engine-managed batching."""
+        return bool(getattr(self.pipeline, "native_batch", False))
 
     async def open(self, spider: Spider) -> None:
         """Open the wrapped pipeline."""

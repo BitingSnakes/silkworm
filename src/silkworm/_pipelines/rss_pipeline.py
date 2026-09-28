@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 
 class RssPipeline(_BatchPipelineMixin):
+    native_batch = True
     """
     Pipeline that writes items to an RSS 2.0 feed (buffered).
 
@@ -129,12 +130,43 @@ class RssPipeline(_BatchPipelineMixin):
         Non-mapping items and mappings missing required fields are logged and
         returned without being added to the feed.
         """
+        rss_item = self._normalize_item(item, spider)
+        if rss_item is not None:
+            self._items.append(rss_item)
+            log_pipeline_item(
+                self,
+                "Buffered item for RSS",
+                path=str(self.path),
+                spider=spider.name,
+            )
+        return item
+
+    async def process_items(
+        self, items: list[JSONValue], spider: Spider
+    ) -> list[JSONValue]:
+        normalized = [
+            rss_item
+            for item in items
+            if (rss_item := self._normalize_item(item, spider)) is not None
+        ]
+        self._items.extend(normalized)
+        if normalized:
+            log_pipeline_item(
+                self,
+                "Buffered item batch for RSS",
+                path=str(self.path),
+                spider=spider.name,
+                item_count=len(normalized),
+            )
+        return items
+
+    def _normalize_item(self, item: JSONValue, spider: Spider) -> dict[str, str] | None:
         if not isinstance(item, Mapping):
             self.logger.warning(
                 "Skipping non-mapping item for RSS feed",
                 spider=spider.name,
             )
-            return item
+            return None
 
         title = self._stringify(item.get(self.item_title_field))
         link = self._stringify(item.get(self.item_link_field))
@@ -147,7 +179,7 @@ class RssPipeline(_BatchPipelineMixin):
                 link_field=self.item_link_field,
                 description_field=self.item_description_field,
             )
-            return item
+            return None
 
         rss_item: dict[str, str] = {
             "title": title,
@@ -171,14 +203,7 @@ class RssPipeline(_BatchPipelineMixin):
             if author is not None:
                 rss_item["author"] = author
 
-        self._items.append(rss_item)
-        log_pipeline_item(
-            self,
-            "Buffered item for RSS",
-            path=str(self.path),
-            spider=spider.name,
-        )
-        return item
+        return rss_item
 
     @staticmethod
     def _stringify(value: JSONValue) -> str | None:

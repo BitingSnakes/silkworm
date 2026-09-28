@@ -172,13 +172,15 @@ returning results, they push them to the engine while they run. See
 | `await self.follow_all(targets, ...)` | Calls `follow` for every non-`None` target, in order. |
 | `await response.follow(href, ...)` / `await response.follow_all(hrefs, ...)` | Schedules links relative to that response. |
 
-Each `await` finishes only when the work is done: the item has passed every
-pipeline, or the request has been deduplicated and placed in the queue. `follow`
+With the default `item_batch_size=1`, each `await emit` finishes after the item
+has passed every pipeline. When batching is enabled, it finishes after bounded
+enqueueing; the callback scope drains its pending batches before returning, so
+pipeline errors still fail the callback. `follow`
 waits while the queue is full if it is the only callback waiting; otherwise it
 enqueues past the bound so workers keep crawling and cannot deadlock (see
 [Queue Capacity](engine-and-http.md#queue-capacity-and-deadlock-freedom)).
-This gives you natural backpressure and means pipeline errors surface at the
-`emit` call site, where you can catch them.
+Both modes apply backpressure. Per-item pipeline errors surface at the `emit`
+call site; batch failures surface while the callback scope drains.
 
 ```python
 from silkworm import Request, Response, Spider
@@ -255,6 +257,7 @@ All framework exceptions derive from `SilkwormError` and are importable from `si
 | `MarkdownConversionError` | HTML-to-Markdown conversion fails. |
 | `DeclarativeError` (and subclasses) | Declarative item extraction fails; see [Declarative Extraction](declarative.md#errors). |
 | `CrawlFailedError` | The crawl violated its failure policy; `exc.result` holds the `CrawlResult`. See [Production Crawling](production.md#failure-policy). |
+| `BatchPipelineError` | A bulk destination reported one or more rejected items; count details are available on the exception. |
 
 Three exceptions are control-flow signals rather than errors: `IgnoreRequest`
 (drop a request from a middleware), `DropItem` (discard an item from a pipeline),

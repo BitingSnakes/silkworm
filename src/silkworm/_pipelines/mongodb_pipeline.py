@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
 
 class MongoDBPipeline(_BatchPipelineMixin):
+    native_batch = True
     """
     Pipeline that sends items to a MongoDB collection.
 
@@ -102,3 +103,21 @@ class MongoDBPipeline(_BatchPipelineMixin):
             spider=spider.name,
         )
         return item
+
+    async def process_items(
+        self, items: list[JSONValue], spider: Spider
+    ) -> list[JSONValue]:
+        if not items:
+            return items
+        if self._coll is None:
+            raise RuntimeError("MongoDBPipeline not opened")
+        documents = [dict(item) if isinstance(item, dict) else item for item in items]
+        await self._coll.insert_many(documents, ordered=True)
+        log_pipeline_item(
+            self,
+            "Inserted item batch in MongoDB",
+            collection=self.collection,
+            spider=spider.name,
+            item_count=len(items),
+        )
+        return items

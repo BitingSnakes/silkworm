@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 
 
 class ExcelPipeline(_BatchPipelineMixin):
+    native_batch = True
     """
     Pipeline that writes items to an Excel file (.xlsx).
 
@@ -119,6 +120,20 @@ class ExcelPipeline(_BatchPipelineMixin):
             spider=spider.name,
         )
         return item
+
+    async def process_items(
+        self, items: list[JSONValue], spider: Spider
+    ) -> list[JSONValue]:
+        self._items.extend(items)
+        if items:
+            log_pipeline_item(
+                self,
+                "Buffered item batch for Excel",
+                path=str(self.path),
+                spider=spider.name,
+                item_count=len(items),
+            )
+        return items
 
     def _flatten_dict(
         self,

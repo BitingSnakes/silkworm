@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
 
 class DynamoDBPipeline(_BatchPipelineMixin):
+    native_batch = True
     """
     Pipeline that sends items to AWS DynamoDB.
 
@@ -169,3 +170,30 @@ class DynamoDBPipeline(_BatchPipelineMixin):
             spider=spider.name,
         )
         return item
+
+    async def process_items(
+        self, items: list[JSONValue], spider: Spider
+    ) -> list[JSONValue]:
+        if not items:
+            return items
+        if not self._table:
+            raise RuntimeError("DynamoDBPipeline not opened")
+        import uuid
+
+        async with self._table.batch_writer() as writer:
+            for item in items:
+                await writer.put_item(
+                    Item={
+                        "id": str(uuid.uuid4()),
+                        "spider": spider.name,
+                        "data": json.dumps(item, ensure_ascii=False),
+                    }
+                )
+        log_pipeline_item(
+            self,
+            "Inserted item batch in DynamoDB",
+            table_name=self.table_name,
+            spider=spider.name,
+            item_count=len(items),
+        )
+        return items

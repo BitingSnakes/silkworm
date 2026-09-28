@@ -94,6 +94,8 @@ SETTING_CONVERTERS: dict[str, Callable[[object], object]] = {
     "request_timeout": _optional(_as_float),
     "html_max_size_bytes": _as_int,
     "max_response_size_bytes": _optional(_as_int),
+    "item_batch_size": _as_int,
+    "item_batch_wait": _as_float,
     "log_stats_interval": _optional(_as_float),
     "keep_alive": _as_bool,
     "concurrency_per_domain": _optional(_as_int),

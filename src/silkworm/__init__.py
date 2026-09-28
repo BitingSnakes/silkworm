@@ -14,6 +14,7 @@ from .api import fetch_html, fetch_html_cdp, fetch_html_servo
 from .cdp import CDPClient
 from .engine import DedupKey, Engine, EngineLogger, EngineOptions, default_dedup_key
 from .exceptions import (
+    BatchPipelineError,
     CloseSpider,
     CrawlFailedError,
     DropItem,
@@ -60,6 +61,7 @@ from .spiders import Spider
 
 __all__ = [
     "AutoThrottleMiddleware",
+    "BatchPipelineError",
     "CDPClient",
     "CloseSpider",
     "CookiesMiddleware",

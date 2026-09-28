@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 
 
 class GoogleSheetsPipeline(_BatchPipelineMixin):
+    native_batch = True
     """
     Pipeline that appends items to a Google Sheet.
 
@@ -131,6 +132,17 @@ class GoogleSheetsPipeline(_BatchPipelineMixin):
             await self._write_batch()
 
         return item
+
+    async def process_items(
+        self, items: list[JSONValue], spider: Spider
+    ) -> list[JSONValue]:
+        if not items:
+            return items
+        if not self._service:
+            raise RuntimeError("GoogleSheetsPipeline not opened")
+        self._batch.extend(items)
+        await self._write_batch()
+        return items
 
     async def _write_batch(self) -> None:
         """Write the current batch of items to Google Sheets."""

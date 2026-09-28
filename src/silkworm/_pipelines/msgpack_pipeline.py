@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
 
 class MsgPackPipeline(_BatchPipelineMixin):
+    native_batch = True
     """
     Pipeline that writes items to a file in MessagePack format.
 
@@ -109,3 +110,22 @@ class MsgPackPipeline(_BatchPipelineMixin):
             spider=spider.name,
         )
         return item
+
+    async def process_items(
+        self, items: list[JSONValue], spider: Spider
+    ) -> list[JSONValue]:
+        if not items:
+            return items
+        if not self._fp:
+            raise RuntimeError("MsgPackPipeline not opened")
+        payload = b"".join(ormsgpack.packb(item) for item in items)  # pyright: ignore[reportPossiblyUnboundVariable]
+        self._fp.write(payload)
+        self._fp.flush()
+        log_pipeline_item(
+            self,
+            "Wrote item batch to MsgPack",
+            path=str(self.path),
+            spider=spider.name,
+            item_count=len(items),
+        )
+        return items

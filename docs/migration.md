@@ -4,6 +4,22 @@ This page collects behavior changes that may require updates when upgrading
 Silkworm. Read every section between your installed version and the target
 version.
 
+## Upgrading to 0.14
+
+- Destination pipelines now use bulk client calls or coalesced writes instead
+  of repeated single-row ingestion when processing a batch.
+- Engine batching is opt-in with `item_batch_size`; the default of `1` preserves
+  existing `emit()` timing. Partial batches flush after `item_batch_wait`.
+- `CallbackPipeline` accepts an optional `batch_callback` for ordered,
+  one-to-one batch transformations.
+- Backend-reported partial batch failures raise `BatchPipelineError` when the
+  client exposes per-item results.
+
+With batching disabled, every `await spider.emit(item)` still sends one item
+through the configured pipeline chain immediately. With batching enabled,
+`emit()` queues with bounded backpressure and pending results are drained before
+the callback completes.
+
 ## Upgrading to 0.13
 
 - Every built-in pipeline now provides `process_items(items, spider)` for
@@ -14,10 +30,6 @@ version.
 - `BatchItemPipeline` is available as a public protocol for batch-capable custom
   pipelines. Existing custom pipelines implementing only `ItemPipeline` remain
   valid.
-
-The crawl engine remains streaming: every `await spider.emit(item)` still sends
-one item through the configured pipeline chain. `process_items()` is an explicit
-pipeline API for callers that already hold a batch.
 
 ## Upgrading to 0.12
 

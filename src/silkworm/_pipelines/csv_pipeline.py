@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 
 class CSVPipeline(_BatchPipelineMixin):
+    native_batch = True
     """Stream flattened items to a UTF-8 CSV file.
 
     Args:
@@ -87,6 +88,39 @@ class CSVPipeline(_BatchPipelineMixin):
             self, "Wrote item to CSV", path=str(self.path), spider=spider.name
         )
         return item
+
+    async def process_items(
+        self, items: list[JSONValue], spider: Spider
+    ) -> list[JSONValue]:
+        if not items:
+            return items
+        if not self._fp:
+            raise RuntimeError("CSVPipeline not opened")
+        rows = [
+            self._flatten_dict(item)
+            if isinstance(item, Mapping)
+            else {"value": str(item)}
+            for item in items
+        ]
+        if not self._writer:
+            if self.fieldnames is None:
+                self.fieldnames = list(rows[0].keys())
+            self._writer = csv.DictWriter(
+                self._fp, fieldnames=self.fieldnames, extrasaction="ignore"
+            )
+        if not self._header_written:
+            self._writer.writeheader()
+            self._header_written = True
+        self._writer.writerows(rows)
+        self._fp.flush()
+        log_pipeline_item(
+            self,
+            "Wrote item batch to CSV",
+            path=str(self.path),
+            spider=spider.name,
+            item_count=len(items),
+        )
+        return items
 
     def _flatten_dict(
         self,

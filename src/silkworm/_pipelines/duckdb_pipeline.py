@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
 
 class DuckDBPipeline(_BatchPipelineMixin):
+    native_batch = True
     """
     Pipeline that sends items to a DuckDB database.
 
@@ -127,3 +128,29 @@ class DuckDBPipeline(_BatchPipelineMixin):
             spider=spider.name,
         )
         return item
+
+    async def process_items(
+        self, items: list[JSONValue], spider: Spider
+    ) -> list[JSONValue]:
+        if not items:
+            return items
+        if not self._conn:
+            raise RuntimeError("DuckDBPipeline not opened")
+        self._conn.execute("BEGIN TRANSACTION")
+        try:
+            self._conn.executemany(
+                f"INSERT INTO {self.table} (spider, data) VALUES (?, ?)",
+                [(spider.name, json.dumps(item, ensure_ascii=False)) for item in items],
+            )
+            self._conn.execute("COMMIT")
+        except Exception:
+            self._conn.execute("ROLLBACK")
+            raise
+        log_pipeline_item(
+            self,
+            "Inserted item batch in DuckDB",
+            table=self.table,
+            spider=spider.name,
+            item_count=len(items),
+        )
+        return items

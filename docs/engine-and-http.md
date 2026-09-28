@@ -23,6 +23,10 @@ Common Engine options (also exposed by `run_spider` and `crawl` in [src/silkworm
 - **`request_timeout`**: per-request timeout (seconds or `timedelta`); defaults to 60 seconds, `None` disables it, and `Request.timeout` overrides it per request. It covers the whole exchange including the body download, restarts per redirect hop, and excludes waiting for a concurrency slot.
 - **`html_max_size_bytes`**: HTML parsing size limit for selectors.
 - **`max_response_size_bytes`**: largest downloaded body (default 50 MB; `None` for no limit).
+- **`item_batch_size`**: emitted items per pipeline batch; defaults to `1`, which
+  preserves immediate per-item processing.
+- **`item_batch_wait`**: maximum wait for a partial item batch; defaults to 0.05
+  seconds and applies only when batching is enabled.
 - **`log_stats_interval`**: periodic stats logging interval (seconds).
 - **`keep_alive`**: reuse HTTP connections when supported.
 - **`http_client`**: optional client instance to use instead of the default wreq-backed `HttpClient`.
@@ -82,7 +86,7 @@ Workers are the only consumers of the request queue, and callbacks run inside wo
 So the queue is hard-bounded for seeding and for a single producing callback, and may exceed `max_pending_requests` only when several callbacks produce requests at the same time. Workers can never deadlock on the queue. Priority ordering and deduplication are unaffected: dedup runs before any waiting, and all requests share one priority queue.
 
 ### Callback Execution
-Every callback, errback, and `start_requests()` runs inside a crawl scope bound to the current task through a context variable. `emit` sends items straight to the pipelines and `follow` straight to the deduplicating, bounded queue, so both apply backpressure while the callback is still running (without ever deadlocking the workers; see above). Callbacks must be `async` functions returning `None`; async generators, synchronous callables, and non-`None` return values raise `SpiderError` with migration hints. The scope closes when the callback returns, so detached tasks cannot report results after the response has been released. See [Core Concepts](core-concepts.md#reporting-results-emit-and-follow).
+Every callback, errback, and `start_requests()` runs inside a crawl scope bound to the current task through a context variable. `emit` sends items directly to pipelines by default or to the bounded item queue when batching is enabled; `follow` sends requests to the deduplicating request queue. Both apply backpressure without deadlocking workers. Callback scopes drain pending item batches before returning. Callbacks must be `async` functions returning `None`; async generators, synchronous callables, and non-`None` return values raise `SpiderError` with migration hints. The scope closes when the callback returns, so detached tasks cannot report results after the response has been released. See [Core Concepts](core-concepts.md#reporting-results-emit-and-follow).
 
 ## HttpClient
 HttpClient wraps wreq and is responsible for request serialization, redirects, and HTML detection. See [src/silkworm/http.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/http.py).

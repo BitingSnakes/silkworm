@@ -211,6 +211,8 @@ class EngineOptions(TypedDict, total=False):
     request_middlewares: Iterable[RequestMiddleware] | None
     response_middlewares: Iterable[ResponseMiddleware] | None
     item_pipelines: Iterable[ItemPipeline] | None
+    item_batch_size: int
+    item_batch_wait: float
     log_stats_interval: float | None
     keep_alive: bool
     http_client: FetchClient | None
@@ -272,6 +274,10 @@ class Engine:
         response_middlewares: Response processors applied in list order.
         item_pipelines: Item processors applied in list order, passing each
             returned value to the next pipeline.
+        item_batch_size: Number of emitted items processed together. The
+            default ``1`` preserves immediate per-item processing.
+        item_batch_wait: Maximum seconds to wait for a partial batch when
+            ``item_batch_size`` is greater than one.
         log_stats_interval: Seconds between statistics messages, or ``None`` to
             disable periodic summaries.
         keep_alive: Request connection reuse from the default client when
@@ -324,6 +330,8 @@ class Engine:
         request_middlewares: Iterable[RequestMiddleware] | None = None,
         response_middlewares: Iterable[ResponseMiddleware] | None = None,
         item_pipelines: Iterable[ItemPipeline] | None = None,
+        item_batch_size: int = 1,
+        item_batch_wait: float = 0.05,
         log_stats_interval: float | None = None,
         keep_alive: bool = False,
         http_client: FetchClient | None = None,
@@ -344,6 +352,9 @@ class Engine:
         metrics_host: str = "127.0.0.1",
     ) -> None:
         require_positive_int(concurrency, "concurrency")
+        require_positive_int(item_batch_size, "item_batch_size")
+        if item_batch_wait <= 0:
+            raise ValueError("item_batch_wait must be positive")
         for name, value in (
             ("max_requests", max_requests),
             ("max_items", max_items),
@@ -414,6 +425,13 @@ class Engine:
             response_middlewares or []
         )
         self.item_pipelines: list[ItemPipeline] = list(item_pipelines or [])
+        self.item_batch_size = item_batch_size
+        self.item_batch_wait = float(item_batch_wait)
+        self._item_queue: (
+            asyncio.Queue[tuple[JSONValue, asyncio.Future[None]]] | None
+        ) = None
+        self._item_batch_ready = asyncio.Event()
+        self._item_worker_task: asyncio.Task[None] | None = None
         self._lifecycle_closers: list[LifecycleCloser] = []
 
         # Scheduling policy
@@ -519,6 +537,13 @@ class Engine:
                     lambda pipe=pipe: pipe.close(self.spider),
                 )
                 await pipe.open(self.spider)
+
+            if self.item_batch_size > 1:
+                self._start_item_worker()
+                self._register_lifecycle_close(
+                    "item batch coordinator",
+                    self._close_item_worker,
+                )
 
             self._restore_pending_requests()
             try:
@@ -1106,17 +1131,18 @@ class Engine:
             owner=name,
             emit_item=self._emit_item,
             schedule_request=partial(self._enqueue, parent=parent),
+            flush_items=self._request_item_flush,
             response=response,
         )
-        async with enter_scope(scope):
-            try:
+        try:
+            async with enter_scope(scope):
                 await invoke_callback(invoke, name)
-            except CallbackContractError:
-                raise
-            except CloseSpider as exc:
-                self.stop(exc.reason)
-            except Exception as exc:
-                raise self._callback_failure(name, url, exc) from exc
+        except CallbackContractError:
+            raise
+        except CloseSpider as exc:
+            self.stop(exc.reason)
+        except Exception as exc:
+            raise self._callback_failure(name, url, exc) from exc
 
     def _callback_failure(
         self,
@@ -1134,11 +1160,18 @@ class Engine:
         )
         return SpiderError(f"Spider callback '{name}' failed for {self.spider.name}")
 
-    async def _emit_item(self, item: JSONLike) -> None:
+    async def _emit_item(self, item: JSONLike) -> Awaitable[None] | None:
         if self.max_items is not None and self._items_reserved >= self.max_items:
             self._count_dropped_item(MAX_ITEMS_DROP_REASON)
-            return
+            return None
         self._items_reserved += 1
+        if self._item_queue is not None:
+            completion: asyncio.Future[None] = (
+                asyncio.get_running_loop().create_future()
+            )
+            await self._item_queue.put((cast(JSONValue, item), completion))
+            self._item_batch_ready.set()
+            return completion
         accepted = False
         try:
             self.logger.debug(
@@ -1158,6 +1191,77 @@ class Engine:
             and self.stats.get("items_scraped") >= self.max_items
         ):
             self.stop(MAX_ITEMS_DROP_REASON)
+        return None
+
+    def _start_item_worker(self) -> None:
+        self._item_queue = asyncio.Queue(maxsize=self.item_batch_size * 10)
+        self._item_worker_task = asyncio.create_task(self._item_batch_worker())
+
+    def _request_item_flush(self) -> None:
+        if self._item_queue is not None:
+            self._item_batch_ready.set()
+
+    async def _close_item_worker(self) -> None:
+        queue = self._item_queue
+        task = self._item_worker_task
+        if queue is None or task is None:
+            return
+        self._item_batch_ready.set()
+        await queue.join()
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
+        self._item_queue = None
+        self._item_worker_task = None
+
+    async def _item_batch_worker(self) -> None:
+        queue = self._item_queue
+        assert queue is not None
+        while True:
+            first = await queue.get()
+            batch = [first]
+            deadline = asyncio.get_running_loop().time() + self.item_batch_wait
+            while len(batch) < self.item_batch_size:
+                while len(batch) < self.item_batch_size:
+                    try:
+                        batch.append(queue.get_nowait())
+                    except asyncio.QueueEmpty:
+                        break
+                if len(batch) >= self.item_batch_size:
+                    break
+                self._item_batch_ready.clear()
+                if not queue.empty():
+                    continue
+                remaining = deadline - asyncio.get_running_loop().time()
+                if remaining <= 0:
+                    break
+                try:
+                    async with asyncio.timeout(remaining):
+                        await self._item_batch_ready.wait()
+                except TimeoutError:
+                    break
+
+            items = [item for item, _ in batch]
+            try:
+                accepted = await self._process_items(items)
+            except Exception as exc:  # noqa: BLE001 - report one failure to every waiter
+                self._items_reserved -= len(batch)
+                for _, completion in batch:
+                    if not completion.done():
+                        completion.set_exception(exc)
+            else:
+                self._items_reserved -= len(batch) - accepted
+                for _, completion in batch:
+                    if not completion.done():
+                        completion.set_result(None)
+                if (
+                    self.max_items is not None
+                    and self.stats.get("items_scraped") >= self.max_items
+                ):
+                    self.stop(MAX_ITEMS_DROP_REASON)
+            finally:
+                for _ in batch:
+                    queue.task_done()
 
     async def _process_item(self, item: JSONValue) -> bool:
         """Run ``item`` through the pipelines; return whether it was kept."""
@@ -1180,6 +1284,41 @@ class Engine:
                 return False
         self.stats.inc("items_scraped")
         return True
+
+    async def _process_items(self, items: list[JSONValue]) -> int:
+        """Run a batch through pipelines, using native bulk paths when safe."""
+        active = items
+        for pipe in self.item_pipelines:
+            self.engine_logger.running_item_pipeline(
+                self.logger,
+                pipe,
+                self.spider,
+            )
+            if getattr(pipe, "native_batch", False):
+                processed = await pipe.process_items(active, self.spider)  # type: ignore[attr-defined]
+                if len(processed) != len(active):
+                    raise RuntimeError(
+                        f"{pipe.__class__.__name__}.process_items() must return "
+                        "one item for every input when native_batch is enabled"
+                    )
+                active = processed
+                continue
+
+            processed = []
+            for item in active:
+                try:
+                    processed.append(await pipe.process_item(item, self.spider))
+                except DropItem as exc:
+                    self._count_dropped_item(exc.reason)
+                    self.logger.debug(
+                        "Dropped item",
+                        pipeline=pipe.__class__.__name__,
+                        reason=exc.reason,
+                        detail=str(exc),
+                    )
+            active = processed
+        self.stats.inc("items_scraped", len(active))
+        return len(active)
 
     def _count_dropped_item(self, reason: str) -> None:
         self.stats.inc("items_dropped")

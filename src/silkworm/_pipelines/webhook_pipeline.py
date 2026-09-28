@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 
 
 class WebhookPipeline(_BatchPipelineMixin):
+    native_batch = True
     """
     Pipeline that sends items to a webhook endpoint using the wreq HTTP client.
 
@@ -127,6 +128,17 @@ class WebhookPipeline(_BatchPipelineMixin):
             await self._send_batch()
 
         return item
+
+    async def process_items(
+        self, items: list[JSONValue], spider: Spider
+    ) -> list[JSONValue]:
+        if not items:
+            return items
+        if not self._client:
+            raise RuntimeError("WebhookPipeline not opened")
+        self._batch.extend(items)
+        await self._send_batch()
+        return items
 
     async def _send_batch(self) -> None:
         """Send the current batch of items to the webhook."""

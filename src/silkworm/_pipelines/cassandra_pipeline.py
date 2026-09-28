@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import sys
 from typing import TYPE_CHECKING
@@ -15,6 +16,9 @@ try:
     from cassandra.cluster import (  # pyright: ignore[reportMissingImports]
         Cluster,
     )
+    from cassandra.concurrent import (  # pyright: ignore[reportMissingImports]
+        execute_concurrent_with_args,
+    )
 
     CASSANDRA_AVAILABLE = True
 except ImportError:
@@ -22,6 +26,7 @@ except ImportError:
     PlainTextAuthProvider = None
     CASSANDRA_AVAILABLE = False
 
+from ..exceptions import BatchPipelineError
 from ..logging import Logger, get_logger
 from .base import _BatchPipelineMixin, log_pipeline_item, validate_table_name
 
@@ -31,6 +36,7 @@ if TYPE_CHECKING:
 
 
 class CassandraPipeline(_BatchPipelineMixin):
+    native_batch = True
     """
     Pipeline that sends items to an Apache Cassandra database.
 
@@ -91,6 +97,7 @@ class CassandraPipeline(_BatchPipelineMixin):
         self.port = port
         self._cluster = None
         self._session = None
+        self._insert_statement = None
         self.logger: Logger = get_logger(component="CassandraPipeline")
 
     async def open(self, spider: Spider) -> None:
@@ -118,6 +125,10 @@ class CassandraPipeline(_BatchPipelineMixin):
                 CREATE KEYSPACE IF NOT EXISTS {self.keyspace}
                 WITH replication = {{'class': 'SimpleStrategy', 'replication_factor': 1}}
                 """,
+            )
+            self._insert_statement = session.prepare(
+                f"INSERT INTO {self.table} (id, spider, data, created_at) "
+                "VALUES (?, ?, ?, ?)"
             )
             session.set_keyspace(self.keyspace)
             session.execute(
@@ -151,6 +162,7 @@ class CassandraPipeline(_BatchPipelineMixin):
         cluster = self._cluster
         self._cluster = None
         self._session = None
+        self._insert_statement = None
         if cluster:
             cluster.shutdown()
             self.logger.info("Closed Cassandra pipeline", table=self.table)
@@ -184,3 +196,43 @@ class CassandraPipeline(_BatchPipelineMixin):
             spider=spider.name,
         )
         return item
+
+    async def process_items(
+        self, items: list[JSONValue], spider: Spider
+    ) -> list[JSONValue]:
+        if not items:
+            return items
+        if not self._session or self._insert_statement is None:
+            raise RuntimeError("CassandraPipeline not opened")
+        import uuid
+        from datetime import UTC, datetime
+
+        arguments = [
+            (
+                uuid.uuid4(),
+                spider.name,
+                json.dumps(item, ensure_ascii=False),
+                datetime.now(UTC),
+            )
+            for item in items
+        ]
+        results = await asyncio.to_thread(
+            execute_concurrent_with_args,  # pyright: ignore[reportPossiblyUnboundVariable]
+            self._session,
+            self._insert_statement,
+            arguments,
+            raise_on_first_error=False,
+        )
+        failures = [result for success, result in results if not success]
+        if failures:
+            raise BatchPipelineError(
+                "CassandraPipeline", total=len(items), failed=len(failures)
+            ) from failures[0]
+        log_pipeline_item(
+            self,
+            "Inserted item batch in Cassandra",
+            table=self.table,
+            spider=spider.name,
+            item_count=len(items),
+        )
+        return items

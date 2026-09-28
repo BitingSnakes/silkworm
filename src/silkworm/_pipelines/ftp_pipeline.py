@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 
 class FTPPipeline(_BatchPipelineMixin):
+    native_batch = True
     """
     Pipeline that writes items to an FTP server in JSON Lines format.
 
@@ -134,3 +135,17 @@ class FTPPipeline(_BatchPipelineMixin):
             spider=spider.name,
         )
         return item
+
+    async def process_items(
+        self, items: list[JSONValue], spider: Spider
+    ) -> list[JSONValue]:
+        self._items.extend(json.dumps(item, ensure_ascii=False) for item in items)
+        if items:
+            log_pipeline_item(
+                self,
+                "Buffered item batch for FTP",
+                remote_path=self.remote_path,
+                spider=spider.name,
+                item_count=len(items),
+            )
+        return items

@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 
 class XMLPipeline(_BatchPipelineMixin):
+    native_batch = True
     """Stream mapping items into one XML document.
 
     Args:
@@ -88,6 +89,29 @@ class XMLPipeline(_BatchPipelineMixin):
             self, "Wrote item to XML", path=str(self.path), spider=spider.name
         )
         return item
+
+    async def process_items(
+        self, items: list[JSONValue], spider: Spider
+    ) -> list[JSONValue]:
+        if not items:
+            return items
+        if not self._fp:
+            raise RuntimeError("XMLPipeline not opened")
+        chunks = []
+        for item in items:
+            node = self._to_node(self.item_element, item)
+            xml_str = rxml.write_string(node, indent=2, default_xml_def=False)
+            chunks.append("\n".join(f"  {line}" for line in xml_str.splitlines()))
+        self._fp.write("\n".join(chunks) + "\n")
+        self._fp.flush()
+        log_pipeline_item(
+            self,
+            "Wrote item batch to XML",
+            path=str(self.path),
+            spider=spider.name,
+            item_count=len(items),
+        )
+        return items
 
     def _to_node(self, key: str, data: JSONValue) -> rxml.Node:
         """Convert a Python structure to an rxml Node tree."""

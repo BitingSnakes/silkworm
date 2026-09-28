@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
 
 class SnowflakePipeline(_BatchPipelineMixin):
+    native_batch = True
     """
     Pipeline that sends items to a Snowflake data warehouse.
 
@@ -176,3 +177,28 @@ class SnowflakePipeline(_BatchPipelineMixin):
             spider=spider.name,
         )
         return item
+
+    async def process_items(
+        self, items: list[JSONValue], spider: Spider
+    ) -> list[JSONValue]:
+        if not items:
+            return items
+        if not self._cursor or not self._conn:
+            raise RuntimeError("SnowflakePipeline not opened")
+        try:
+            self._cursor.executemany(
+                f"INSERT INTO {self.table} (spider, data) VALUES (%s, %s)",
+                [(spider.name, json.dumps(item, ensure_ascii=False)) for item in items],
+            )
+            self._conn.commit()
+        except Exception:
+            self._conn.rollback()
+            raise
+        log_pipeline_item(
+            self,
+            "Inserted item batch in Snowflake",
+            table=self.table,
+            spider=spider.name,
+            item_count=len(items),
+        )
+        return items

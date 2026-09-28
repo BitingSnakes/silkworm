@@ -190,8 +190,10 @@ class Spider:
     async def emit(self, item: JSONLike) -> None:
         """Send a scraped item through the item pipelines.
 
-        Returns after every pipeline processed the item, so pipeline errors
-        surface at this call site.
+        With the default per-item processing, returns after every pipeline has
+        processed the item. When engine batching is enabled, returns after the
+        item is queued; pending batches drain and surface errors before the
+        callback completes.
 
         Raises:
             SpiderError: If awaited outside an engine-run callback, or after

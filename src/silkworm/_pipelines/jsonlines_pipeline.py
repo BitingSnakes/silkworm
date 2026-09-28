@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
 
 class JsonLinesPipeline(_BatchPipelineMixin):
+    native_batch = True
     """Append one JSON value per line to a local file.
 
     Args:
@@ -117,6 +118,49 @@ class JsonLinesPipeline(_BatchPipelineMixin):
             spider=spider.name,
         )
         return item
+
+    async def process_items(
+        self, items: list[JSONValue], spider: Spider
+    ) -> list[JSONValue]:
+        if not items:
+            return items
+        content = "".join(f"{json.dumps(item, ensure_ascii=False)}\n" for item in items)
+        if self._operator:
+            try:
+                await self._append_with_opendal(content)
+            except Exception as exc:
+                self.logger.warning(
+                    "OpenDAL write failed, falling back to local file handle",
+                    path=str(self.path),
+                    error=str(exc),
+                    exc_info=True,
+                )
+                self._operator = None
+                self._object_path = None
+                self._fp = self.path.open("a", encoding="utf-8")
+            else:
+                log_pipeline_item(
+                    self,
+                    "Wrote item batch to JSONL",
+                    path=str(self.path),
+                    spider=spider.name,
+                    item_count=len(items),
+                    backend="opendal",
+                )
+                return items
+        if not self._fp:
+            raise RuntimeError("JsonLinesPipeline not opened")
+        self._fp.write(content)
+        self._fp.flush()
+        log_pipeline_item(
+            self,
+            "Wrote item batch to JSONL",
+            path=str(self.path),
+            spider=spider.name,
+            item_count=len(items),
+            backend="file",
+        )
+        return items
 
     async def _append_with_opendal(self, data: str) -> None:
         if not self._operator or not self._object_path:

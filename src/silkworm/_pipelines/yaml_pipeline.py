@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 
 class YAMLPipeline(_BatchPipelineMixin):
+    native_batch = True
     """
     Pipeline that writes items to a YAML file.
 
@@ -75,3 +76,17 @@ class YAMLPipeline(_BatchPipelineMixin):
             spider=spider.name,
         )
         return item
+
+    async def process_items(
+        self, items: list[JSONValue], spider: Spider
+    ) -> list[JSONValue]:
+        self._items.extend(items)
+        if items:
+            log_pipeline_item(
+                self,
+                "Buffered item batch for YAML",
+                path=str(self.path),
+                spider=spider.name,
+                item_count=len(items),
+            )
+        return items

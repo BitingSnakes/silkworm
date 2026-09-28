@@ -13,7 +13,11 @@ from ._pipelines.base import (
     ItemPipeline,
     LoggedPipeline,
 )
-from ._pipelines.callback_pipeline import CallbackPipeline, ItemCallback
+from ._pipelines.callback_pipeline import (
+    BatchItemCallback,
+    CallbackPipeline,
+    ItemCallback,
+)
 from ._pipelines.cassandra_pipeline import (
     CASSANDRA_AVAILABLE,
     CassandraPipeline,
@@ -137,6 +141,7 @@ __all__ = [
     "YAML_AVAILABLE",
     "ZENOH_AVAILABLE",
     "AvroPipeline",
+    "BatchItemCallback",
     "BatchItemPipeline",
     "CSVPipeline",
     "CallbackPipeline",

@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
 
 class MySQLPipeline(_BatchPipelineMixin):
+    native_batch = True
     """
     Pipeline that sends items to a MySQL database.
 
@@ -165,3 +166,32 @@ class MySQLPipeline(_BatchPipelineMixin):
             spider=spider.name,
         )
         return item
+
+    async def process_items(
+        self, items: list[JSONValue], spider: Spider
+    ) -> list[JSONValue]:
+        if not items:
+            return items
+        if not self._pool:
+            raise RuntimeError("MySQLPipeline not opened")
+        async with self._pool.acquire() as conn, conn.cursor() as cur:
+            try:
+                await cur.executemany(
+                    f"INSERT INTO {self.table} (spider, data) VALUES (%s, %s)",
+                    [
+                        (spider.name, json.dumps(item, ensure_ascii=False))
+                        for item in items
+                    ],
+                )
+                await conn.commit()
+            except Exception:
+                await conn.rollback()
+                raise
+        log_pipeline_item(
+            self,
+            "Inserted item batch in MySQL",
+            table=self.table,
+            spider=spider.name,
+            item_count=len(items),
+        )
+        return items

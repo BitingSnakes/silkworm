@@ -31,12 +31,16 @@ class CrawlScope:
     """
 
     owner: str
-    emit_item: Callable[[JSONLike], Awaitable[None]]
+    emit_item: Callable[[JSONLike], Awaitable[Awaitable[None] | None]]
     schedule_request: Callable[[Request], Awaitable[None]]
+    flush_items: Callable[[], None] | None = None
     response: Response | None = None
     closed: bool = False
     _in_flight: int = field(default=0, init=False, repr=False)
     _idle: asyncio.Event = field(default_factory=asyncio.Event, init=False, repr=False)
+    _pending_items: list[Awaitable[None]] = field(
+        default_factory=list, init=False, repr=False
+    )
 
     def __post_init__(self) -> None:
         self._idle.set()
@@ -45,7 +49,16 @@ class CrawlScope:
         self._ensure_open("emit")
         if isinstance(item, Request):
             raise TypeError("emit() received a Request; use follow() to schedule it")
-        await self._track(self.emit_item(item))
+        self._in_flight += 1
+        self._idle.clear()
+        try:
+            completion = await self.emit_item(item)
+            if completion is not None:
+                self._pending_items.append(completion)
+        finally:
+            self._in_flight -= 1
+            if self._in_flight == 0:
+                self._idle.set()
 
     async def follow(self, request: Request) -> None:
         self._ensure_open("follow")
@@ -59,6 +72,11 @@ class CrawlScope:
         """Close the scope and wait for ``emit``/``follow`` calls in progress."""
         self.closed = True
         await self._idle.wait()
+        if self._pending_items:
+            if self.flush_items is not None:
+                self.flush_items()
+            pending, self._pending_items = self._pending_items, []
+            await asyncio.gather(*pending)
 
     async def _track(self, operation: Awaitable[None]) -> None:
         self._in_flight += 1

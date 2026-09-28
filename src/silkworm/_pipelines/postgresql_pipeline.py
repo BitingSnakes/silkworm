@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 
 class PostgreSQLPipeline(_BatchPipelineMixin):
+    native_batch = True
     """
     Pipeline that sends items to a PostgreSQL database.
 
@@ -145,3 +146,28 @@ class PostgreSQLPipeline(_BatchPipelineMixin):
             spider=spider.name,
         )
         return item
+
+    async def process_items(
+        self, items: list[JSONValue], spider: Spider
+    ) -> list[JSONValue]:
+        if not items:
+            return items
+        if not self._pool:
+            raise RuntimeError("PostgreSQLPipeline not opened")
+        async with self._pool.acquire() as conn:
+            await conn.copy_records_to_table(
+                self.table,
+                records=[
+                    (spider.name, json.dumps(item, ensure_ascii=False))
+                    for item in items
+                ],
+                columns=("spider", "data"),
+            )
+        log_pipeline_item(
+            self,
+            "Inserted item batch in PostgreSQL",
+            table=self.table,
+            spider=spider.name,
+            item_count=len(items),
+        )
+        return items

@@ -9,6 +9,7 @@ try:
 except ImportError:
     AIOCOUCH_AVAILABLE = False
 
+from ..exceptions import BatchPipelineError
 from ..logging import Logger, get_logger
 from .base import _BatchPipelineMixin, log_pipeline_item
 
@@ -18,6 +19,7 @@ if TYPE_CHECKING:
 
 
 class CouchDBPipeline(_BatchPipelineMixin):
+    native_batch = True
     """
     Pipeline that sends items to a CouchDB database.
 
@@ -135,3 +137,32 @@ class CouchDBPipeline(_BatchPipelineMixin):
             spider=spider.name,
         )
         return item
+
+    async def process_items(
+        self, items: list[JSONValue], spider: Spider
+    ) -> list[JSONValue]:
+        if not items:
+            return items
+        if not self._db:
+            raise RuntimeError("CouchDBPipeline not opened")
+        import uuid
+
+        bulk = self._db.create_docs([str(uuid.uuid4()) for _ in items])
+        async with bulk:
+            index = 0
+            async for document in bulk:
+                document["spider"] = spider.name
+                document["data"] = items[index]
+                index += 1
+        if bulk.error:
+            raise BatchPipelineError(
+                "CouchDBPipeline", total=len(items), failed=len(bulk.error)
+            )
+        log_pipeline_item(
+            self,
+            "Inserted item batch in CouchDB",
+            database=self.database,
+            spider=spider.name,
+            item_count=len(items),
+        )
+        return items

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING, Any
 
 try:
@@ -24,6 +25,7 @@ if TYPE_CHECKING:
 
 
 class TaskiqPipeline(_BatchPipelineMixin):
+    native_batch = True
     """
     Pipeline that sends scraped items to a Taskiq broker/queue instead of writing to a file.
 
@@ -150,3 +152,20 @@ class TaskiqPipeline(_BatchPipelineMixin):
             spider=spider.name,
         )
         return item
+
+    async def process_items(
+        self, items: list[JSONValue], spider: Spider
+    ) -> list[JSONValue]:
+        if not items:
+            return items
+        if self._task is None:
+            raise RuntimeError("TaskiqPipeline not opened")
+        results = await asyncio.gather(*(self._task.kiq(item) for item in items))
+        log_pipeline_item(
+            self,
+            "Sent item batch to Taskiq queue",
+            task_name=self._task.task_name,
+            item_count=len(results),
+            spider=spider.name,
+        )
+        return items

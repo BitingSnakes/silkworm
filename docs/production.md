@@ -307,6 +307,11 @@ error naming the variable. `custom_settings` keys that are not engine options ar
 left for your own use. `Engine(...)` itself takes its arguments literally; see
 {mod}`silkworm.settings` to resolve the layers yourself.
 
+Item batching is opt-in through `item_batch_size`; for example,
+`SILKWORM_ITEM_BATCH_SIZE=100` combines emitted items and
+`SILKWORM_ITEM_BATCH_WAIT=0.05` bounds partial-batch latency. Pending batches are
+flushed before pipelines close.
+
 ## Validating items
 
 {class}`~silkworm.pipelines.ValidationPipeline` checks items against a Pydantic

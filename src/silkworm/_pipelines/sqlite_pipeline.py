@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 
 class SQLitePipeline(_BatchPipelineMixin):
+    native_batch = True
     """Stream items into a SQLite table as JSON documents.
 
     Args:
@@ -80,3 +81,28 @@ class SQLitePipeline(_BatchPipelineMixin):
             self, "Stored item in SQLite", table=self.table, spider=spider.name
         )
         return item
+
+    async def process_items(
+        self, items: list[JSONValue], spider: Spider
+    ) -> list[JSONValue]:
+        if not items:
+            return items
+        if not self._conn:
+            raise RuntimeError("SQLitePipeline not opened")
+        try:
+            self._conn.executemany(
+                f"INSERT INTO {self.table} (spider, data) VALUES (?, ?)",
+                [(spider.name, json.dumps(item, ensure_ascii=False)) for item in items],
+            )
+            self._conn.commit()
+        except Exception:
+            self._conn.rollback()
+            raise
+        log_pipeline_item(
+            self,
+            "Stored item batch in SQLite",
+            table=self.table,
+            spider=spider.name,
+            item_count=len(items),
+        )
+        return items

@@ -17,6 +17,12 @@ type ItemCallback = Callable[
 ]
 """Callback for :class:`CallbackPipeline`; returning ``None`` keeps the item."""
 
+type BatchItemCallback = Callable[
+    [list[JSONValue], Spider],
+    list[JSONValue] | Awaitable[list[JSONValue] | None] | None,
+]
+"""Optional native batch callback; returning ``None`` keeps the batch."""
+
 
 class CallbackPipeline(_BatchPipelineMixin):
     """
@@ -55,7 +61,11 @@ class CallbackPipeline(_BatchPipelineMixin):
     """
 
     def __init__(
-        self, callback: ItemCallback, *, log_level: LogLevel = "DEBUG"
+        self,
+        callback: ItemCallback,
+        *,
+        batch_callback: BatchItemCallback | None = None,
+        log_level: LogLevel = "DEBUG",
     ) -> None:
         """
         Initialize CallbackPipeline.
@@ -69,6 +79,10 @@ class CallbackPipeline(_BatchPipelineMixin):
             raise TypeError(msg)
 
         self.callback: ItemCallback = callback
+        if batch_callback is not None and not callable(batch_callback):
+            raise TypeError("batch_callback must be callable")
+        self.batch_callback = batch_callback
+        self.native_batch = batch_callback is not None
         self.log_level: LogLevel = log_level
         self.logger: Logger = get_logger(component="CallbackPipeline")
 
@@ -97,5 +111,25 @@ class CallbackPipeline(_BatchPipelineMixin):
             self,
             "Processed item with callback",
             spider=spider.name,
+        )
+        return result
+
+    async def process_items(
+        self, items: list[JSONValue], spider: Spider
+    ) -> list[JSONValue]:
+        if self.batch_callback is None:
+            return await super().process_items(items, spider)
+        result = self.batch_callback(items, spider)
+        if inspect.isawaitable(result):
+            result = await result
+        if result is None:
+            return items
+        if len(result) != len(items):
+            raise ValueError("batch_callback must return one item for every input")
+        log_pipeline_item(
+            self,
+            "Processed item batch with callback",
+            spider=spider.name,
+            item_count=len(items),
         )
         return result

@@ -365,12 +365,16 @@ def test_resolve_options_layers_env_spider_and_explicit() -> None:
         "SILKWORM_CONCURRENCY": "8",
         "SILKWORM_MAX_ITEMS": "100",
         "SILKWORM_KEEP_ALIVE": "yes",
+        "SILKWORM_ITEM_BATCH_SIZE": "50",
+        "SILKWORM_ITEM_BATCH_WAIT": "0.1",
     }
     options = resolve_options(SettingsSpider(), {"max_depth": 5}, environ=env)
     assert options == {
         "concurrency": 4,
         "max_items": 100,
         "keep_alive": True,
+        "item_batch_size": 50,
+        "item_batch_wait": 0.1,
         "max_depth": 5,
     }
 

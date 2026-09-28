@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 
 class S3JsonLinesPipeline(_BatchPipelineMixin):
+    native_batch = True
     """
     Pipeline that writes items to S3 in JSON Lines format using async OpenDAL.
 
@@ -119,3 +120,17 @@ class S3JsonLinesPipeline(_BatchPipelineMixin):
             self, "Buffered item for S3", key=self.key, spider=spider.name
         )
         return item
+
+    async def process_items(
+        self, items: list[JSONValue], spider: Spider
+    ) -> list[JSONValue]:
+        self._items.extend(json.dumps(item, ensure_ascii=False) for item in items)
+        if items:
+            log_pipeline_item(
+                self,
+                "Buffered item batch for S3",
+                key=self.key,
+                spider=spider.name,
+                item_count=len(items),
+            )
+        return items

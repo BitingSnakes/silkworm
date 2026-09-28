@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 try:
     from elasticsearch import AsyncElasticsearch  # type: ignore[import-not-found]
+    from elasticsearch.helpers import async_bulk  # type: ignore[import-not-found]
 
     ELASTICSEARCH_AVAILABLE = True
 except ImportError:
@@ -18,6 +19,7 @@ if TYPE_CHECKING:
 
 
 class ElasticsearchPipeline(_BatchPipelineMixin):
+    native_batch = True
     """
     Pipeline that sends items to an Elasticsearch index.
 
@@ -92,3 +94,25 @@ class ElasticsearchPipeline(_BatchPipelineMixin):
             spider=spider.name,
         )
         return item
+
+    async def process_items(
+        self, items: list[JSONValue], spider: Spider
+    ) -> list[JSONValue]:
+        if not items:
+            return items
+        if not self._client:
+            raise RuntimeError("ElasticsearchPipeline not opened")
+        await async_bulk(  # pyright: ignore[reportPossiblyUnboundVariable]
+            self._client,
+            ({"_index": self.index, "_source": item} for item in items),
+            raise_on_error=True,
+            raise_on_exception=True,
+        )
+        log_pipeline_item(
+            self,
+            "Indexed item batch in Elasticsearch",
+            index=self.index,
+            spider=spider.name,
+            item_count=len(items),
+        )
+        return items
