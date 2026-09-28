@@ -1,0 +1,4 @@
+interface:
+  display_name: "Silkworm Scrapers"
+  short_description: "Build robust async Silkworm spiders"
+  default_prompt: "Use $silkworm-scrapers to build a tested Silkworm spider for this site."
