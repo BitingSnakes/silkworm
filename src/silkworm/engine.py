@@ -426,7 +426,7 @@ class Engine:
         )
         self.item_pipelines: list[ItemPipeline] = list(item_pipelines or [])
         self.item_batch_size = item_batch_size
-        self.item_batch_wait = float(item_batch_wait)
+        self.item_batch_wait: float = float(item_batch_wait)
         self._item_queue: (
             asyncio.Queue[tuple[JSONValue, asyncio.Future[None]]] | None
         ) = None

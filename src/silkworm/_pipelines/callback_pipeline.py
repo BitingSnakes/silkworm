@@ -82,7 +82,7 @@ class CallbackPipeline(_BatchPipelineMixin):
         if batch_callback is not None and not callable(batch_callback):
             raise TypeError("batch_callback must be callable")
         self.batch_callback = batch_callback
-        self.native_batch = batch_callback is not None
+        self.native_batch: bool = batch_callback is not None
         self.log_level: LogLevel = log_level
         self.logger: Logger = get_logger(component="CallbackPipeline")
 
