@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Literal, Protocol, cast, runtime_checkable
 
 from ..exceptions import DropItem
 from ..logging import Logger, get_logger
+from .base import _BatchPipelineMixin
 
 if TYPE_CHECKING:
     from .._types import JSONValue
@@ -24,7 +25,7 @@ type ItemValidator = Callable[[JSONValue], JSONValue]
 type ItemSchema = ModelSchema | type[object] | ItemValidator
 
 
-class ValidationPipeline:
+class ValidationPipeline(_BatchPipelineMixin):
     """Validate items against a schema and drop (or reject) invalid ones.
 
     ``schema`` is either a Pydantic-style model class (anything exposing

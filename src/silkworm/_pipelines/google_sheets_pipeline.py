@@ -19,14 +19,14 @@ except ImportError:
 
 from .._resources import close_resource, raise_cleanup_errors
 from ..logging import Logger, get_logger
-from .base import log_pipeline_item
+from .base import _BatchPipelineMixin, log_pipeline_item
 
 if TYPE_CHECKING:
     from .._types import JSONValue
     from ..spiders import Spider
 
 
-class GoogleSheetsPipeline:
+class GoogleSheetsPipeline(_BatchPipelineMixin):
     """
     Pipeline that appends items to a Google Sheet.
 

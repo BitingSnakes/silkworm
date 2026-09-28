@@ -25,10 +25,14 @@ class _FakePartitioning:
 class _FakeProducer:
     def __init__(self) -> None:
         self.messages: list[_FakeMessage] = []
+        self.batches: list[list[_FakeMessage]] = []
         self.shutdown_calls = 0
 
     async def send_one(self, message: _FakeMessage) -> None:
         self.messages.append(message)
+
+    async def send(self, messages: list[_FakeMessage]) -> None:
+        self.batches.append(messages)
 
     async def shutdown(self) -> None:
         self.shutdown_calls += 1
@@ -138,6 +142,38 @@ async def test_iggy_pipeline_configures_high_level_producer(fake_iggy: Any) -> N
     await pipeline.close(Spider())
 
 
+async def test_iggy_pipeline_publishes_item_batch(fake_iggy: Any) -> None:
+    pipeline = fake_iggy.IggyPipeline("scraping", "items")
+    spider = Spider(name="products")
+    items = [
+        {"id": 1, "name": "Київ"},
+        {"id": 2, "name": "Lviv"},
+    ]
+
+    await pipeline.open(spider)
+    returned = await pipeline.process_items(items, spider)
+    await pipeline.close(spider)
+
+    producer = _FakeClient.created[0].producer_instance
+    assert returned is items
+    assert len(producer.batches) == 1
+    assert [json.loads(message.data) for message in producer.batches[0]] == items
+    assert "Київ" in producer.batches[0][0].data
+
+
+async def test_iggy_pipeline_accepts_empty_item_batch(fake_iggy: Any) -> None:
+    pipeline = fake_iggy.IggyPipeline("scraping", "items")
+    items: list[object] = []
+
+    await pipeline.open(Spider())
+    returned = await pipeline.process_items(items, Spider())
+    await pipeline.close(Spider())
+
+    producer = _FakeClient.created[0].producer_instance
+    assert returned is items
+    assert producer.batches == []
+
+
 async def test_iggy_pipeline_uses_balanced_partitioning_by_default(
     fake_iggy: Any,
 ) -> None:
@@ -158,6 +194,8 @@ async def test_iggy_pipeline_lifecycle_guards(fake_iggy: Any) -> None:
 
     with pytest.raises(RuntimeError, match="IggyPipeline not opened"):
         await pipeline.process_item({"id": 1}, spider)
+    with pytest.raises(RuntimeError, match="IggyPipeline not opened"):
+        await pipeline.process_items([{"id": 1}], spider)
 
     await pipeline.open(spider)
     with pytest.raises(RuntimeError, match="IggyPipeline already opened"):

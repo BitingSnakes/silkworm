@@ -303,6 +303,6 @@ It covers:
 - **Callbacks**: `Callback` and `Errback` (async callables returning `None`).
 - **Engine and runners**: `EngineOptions`, `DedupKey`, `LoopFactory`, `CrawlResult`, and the `FetchClient` protocol for custom HTTP clients.
 - **Logging**: the `Logger` protocol and `LogLevel`.
-- **Middleware and pipeline protocols**: `RequestMiddleware`, `ResponseMiddleware`, `ExceptionMiddleware`, `ItemPipeline`, plus `ItemCallback` (for `CallbackPipeline`), `ItemSchema`/`ItemValidator`/`ModelSchema` (for `ValidationPipeline`), and `ZenohKeyResolver` (for `ZenohPipeline`).
+- **Middleware and pipeline protocols**: `RequestMiddleware`, `ResponseMiddleware`, `ExceptionMiddleware`, `ItemPipeline`, `BatchItemPipeline`, plus `ItemCallback` (for `CallbackPipeline`), `ItemSchema`/`ItemValidator`/`ModelSchema` (for `ValidationPipeline`), and `ZenohKeyResolver` (for `ZenohPipeline`).
 
 See the [`silkworm.types` reference](api/types.md) for each definition.

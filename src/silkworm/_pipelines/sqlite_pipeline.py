@@ -7,14 +7,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ..logging import Logger, get_logger
-from .base import log_pipeline_item, validate_table_name
+from .base import _BatchPipelineMixin, log_pipeline_item, validate_table_name
 
 if TYPE_CHECKING:
     from .._types import JSONValue
     from ..spiders import Spider
 
 
-class SQLitePipeline:
+class SQLitePipeline(_BatchPipelineMixin):
     """Stream items into a SQLite table as JSON documents.
 
     Args:

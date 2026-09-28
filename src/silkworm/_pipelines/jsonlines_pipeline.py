@@ -13,14 +13,14 @@ except ImportError:
     OPENDAL_AVAILABLE = False
 
 from ..logging import Logger, LogLevel, get_logger
-from .base import log_pipeline_item
+from .base import _BatchPipelineMixin, log_pipeline_item
 
 if TYPE_CHECKING:
     from .._types import JSONValue
     from ..spiders import Spider
 
 
-class JsonLinesPipeline:
+class JsonLinesPipeline(_BatchPipelineMixin):
     """Append one JSON value per line to a local file.
 
     Args:

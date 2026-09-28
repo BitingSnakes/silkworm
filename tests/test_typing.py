@@ -20,6 +20,7 @@ from silkworm import (
     run_spider,
 )
 from silkworm.pipelines import (
+    BatchItemPipeline,
     CallbackPipeline,
     ItemPipeline,
     JsonLinesPipeline,
@@ -99,6 +100,9 @@ def test_callback_and_pipeline_protocols() -> None:
         JsonLinesPipeline("items.jl"),
     ]
     assert len(callbacks) == len(pipelines) == 2
+
+    batch_pipeline: BatchItemPipeline = CallbackPipeline(callback=keep)
+    assert callable(batch_pipeline.process_items)
 
 
 def test_zenoh_key_resolver_type() -> None:

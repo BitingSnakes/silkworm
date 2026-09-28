@@ -3,16 +3,24 @@
 Pipelines process scraped items and write them to files, databases, or external services. They are executed **in order** and each pipeline receives the output of the previous one. See [src/silkworm/pipelines.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/pipelines.py).
 
 ## Pipeline Interface
-Each pipeline implements three async methods:
+Every pipeline implements three core async methods:
 
 ```python
 class ItemPipeline:
     async def open(self, spider) -> None: ...
     async def close(self, spider) -> None: ...
     async def process_item(self, item, spider): ...
+
+class BatchItemPipeline(ItemPipeline):
+    async def process_items(self, items, spider): ...
 ```
 
-The engine calls `open()` once at startup, `process_item()` for every item, and `close()` at shutdown.
+All built-in pipelines implement `BatchItemPipeline`. The engine calls `open()` once
+at startup, `process_item()` for every emitted item, and `close()` at shutdown. Call
+`process_items()` explicitly when you already have a batch. Its default implementation
+processes items sequentially through `process_item()`, preserving order,
+transformations, and error behavior. Pipelines may override it with a native batch
+operation; `IggyPipeline` does so.
 
 ## Pipeline Usage
 
@@ -49,6 +57,7 @@ Pipelines backed by optional extras are always importable; constructing one with
 | `OPENPYXL_AVAILABLE` | `ExcelPipeline` |
 | `AIOFTP_AVAILABLE` | `FTPPipeline` |
 | `GOOGLE_SHEETS_AVAILABLE` | `GoogleSheetsPipeline` |
+| `IGGY_AVAILABLE` | `IggyPipeline` |
 | `MOTOR_AVAILABLE` | `MongoDBPipeline` |
 | `ORMSGPACK_AVAILABLE` | `MsgPackPipeline` |
 | `AIOMYSQL_AVAILABLE` | `MySQLPipeline` |
@@ -215,7 +224,7 @@ ZenohPipeline("scraping/items")
 ### IggyPipeline
 - **Purpose**: Publish each item as a compact JSON message to Apache Iggy.
 - **Options**: `stream`, `topic`, optional `connection_string` or connected `client`, `partitioning`, producer `mode`, stream/topic creation settings, and retry settings.
-- **Behavior**: Uses Iggy's high-level producer. Background producer modes are flushed during pipeline shutdown.
+- **Behavior**: Uses Iggy's high-level producer. `process_item(...)` publishes one message, while `process_items(...)` publishes a list as one native Iggy batch. Background producer modes are flushed during pipeline shutdown.
 - **Extras**: `iggy`.
 - **Code**: [src/silkworm/_pipelines/iggy_pipeline.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/_pipelines/iggy_pipeline.py)
 
@@ -229,6 +238,12 @@ pipeline = IggyPipeline(
     connection_string="iggy+tcp://iggy:iggy@127.0.0.1:8090",
     mode=BackgroundProducerConfig(),
 )
+
+await pipeline.open(spider)
+try:
+    await pipeline.process_items([{"id": 1}, {"id": 2}], spider)
+finally:
+    await pipeline.close(spider)
 ```
 
 ### PolarsPipeline

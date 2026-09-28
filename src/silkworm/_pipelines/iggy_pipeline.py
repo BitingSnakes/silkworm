@@ -19,7 +19,7 @@ except ImportError:
     IGGY_AVAILABLE = False
 
 from ..logging import Logger, get_logger
-from .base import log_pipeline_item
+from .base import _BatchPipelineMixin, log_pipeline_item
 
 if TYPE_CHECKING:
     from apache_iggy import (  # type: ignore[import-not-found]
@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 _DEFAULT_CONNECTION_STRING = "iggy+tcp://iggy:iggy@127.0.0.1:8090"
 
 
-class IggyPipeline:
+class IggyPipeline(_BatchPipelineMixin):
     """
     Pipeline that publishes JSON-serialized items to Apache Iggy.
 
@@ -65,6 +65,7 @@ class IggyPipeline:
 
     Each item is encoded as one compact UTF-8 JSON message. Closing the pipeline
     shuts down its producer and flushes messages accepted by a background producer.
+    Use :meth:`process_items` to publish several items in one native Iggy batch.
 
     Example::
 
@@ -187,3 +188,31 @@ class IggyPipeline:
             spider=spider.name,
         )
         return item
+
+    async def process_items(
+        self,
+        items: list[JSONValue],
+        spider: Spider,
+    ) -> list[JSONValue]:
+        """Publish several JSON items in one Iggy batch and return them unchanged."""
+        producer = self._producer
+        if producer is None:
+            raise RuntimeError("IggyPipeline not opened")
+        if not items:
+            return items
+
+        assert SendMessage is not None
+        messages = [
+            SendMessage(json.dumps(item, ensure_ascii=False, separators=(",", ":")))
+            for item in items
+        ]
+        await producer.send(messages)
+        log_pipeline_item(
+            self,
+            "Published item batch to Apache Iggy",
+            stream=self.stream,
+            topic=self.topic,
+            item_count=len(items),
+            spider=spider.name,
+        )
+        return items

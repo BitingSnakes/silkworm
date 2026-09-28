@@ -55,7 +55,32 @@ class ItemPipeline(Protocol):
         ...
 
 
-class LoggedPipeline:
+class BatchItemPipeline(ItemPipeline, Protocol):
+    """Item pipeline that can process an explicit batch in one call."""
+
+    async def process_items(
+        self,
+        items: list[JSONValue],
+        spider: Spider,
+    ) -> list[JSONValue]:
+        """Process a batch in order and return items for the next pipeline."""
+        ...
+
+
+class _BatchPipelineMixin:
+    """Provide ordered batch processing through a pipeline's single-item API."""
+
+    async def process_items(
+        self,
+        items: list[JSONValue],
+        spider: Spider,
+    ) -> list[JSONValue]:
+        """Process a batch sequentially, preserving single-item semantics."""
+        pipeline = cast("ItemPipeline", self)
+        return [await pipeline.process_item(item, spider) for item in items]
+
+
+class LoggedPipeline(_BatchPipelineMixin):
     """
     Wrap any item pipeline and control its per-item log level.
 
@@ -82,3 +107,15 @@ class LoggedPipeline:
         """Apply the configured log level and delegate item processing."""
         cast("_LevelledPipeline", self.pipeline).log_level = self.log_level
         return await self.pipeline.process_item(item, spider)
+
+    async def process_items(
+        self,
+        items: list[JSONValue],
+        spider: Spider,
+    ) -> list[JSONValue]:
+        """Delegate native batching when available, otherwise process in order."""
+        cast("_LevelledPipeline", self.pipeline).log_level = self.log_level
+        batch_processor = getattr(self.pipeline, "process_items", None)
+        if batch_processor is not None:
+            return await batch_processor(items, spider)
+        return await super().process_items(items, spider)

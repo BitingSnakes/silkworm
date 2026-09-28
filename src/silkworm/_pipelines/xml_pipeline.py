@@ -8,14 +8,14 @@ from typing import TYPE_CHECKING
 import rxml
 
 from ..logging import Logger, get_logger
-from .base import log_pipeline_item
+from .base import _BatchPipelineMixin, log_pipeline_item
 
 if TYPE_CHECKING:
     from .._types import JSONValue
     from ..spiders import Spider
 
 
-class XMLPipeline:
+class XMLPipeline(_BatchPipelineMixin):
     """Stream mapping items into one XML document.
 
     Args:

@@ -7,14 +7,14 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from ..logging import Logger, get_logger
-from .base import log_pipeline_item
+from .base import _BatchPipelineMixin, log_pipeline_item
 
 if TYPE_CHECKING:
     from .._types import JSONValue
     from ..spiders import Spider
 
 
-class CSVPipeline:
+class CSVPipeline(_BatchPipelineMixin):
     """Stream flattened items to a UTF-8 CSV file.
 
     Args:

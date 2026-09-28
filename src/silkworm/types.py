@@ -25,6 +25,7 @@ from .http import FetchClient
 from .logging import Logger, LogLevel
 from .middlewares import ExceptionMiddleware, RequestMiddleware, ResponseMiddleware
 from .pipelines import (
+    BatchItemPipeline,
     ItemCallback,
     ItemPipeline,
     ItemSchema,
@@ -36,6 +37,7 @@ from .request import Callback, Errback
 from .runner import LoopFactory
 
 __all__ = [
+    "BatchItemPipeline",
     "BodyData",
     "Callback",
     "CrawlResult",

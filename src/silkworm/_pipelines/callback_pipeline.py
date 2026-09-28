@@ -5,7 +5,7 @@ from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING
 
 from ..logging import Logger, LogLevel, get_logger
-from .base import log_pipeline_item
+from .base import _BatchPipelineMixin, log_pipeline_item
 
 if TYPE_CHECKING:
     from .._types import JSONValue
@@ -18,7 +18,7 @@ type ItemCallback = Callable[
 """Callback for :class:`CallbackPipeline`; returning ``None`` keeps the item."""
 
 
-class CallbackPipeline:
+class CallbackPipeline(_BatchPipelineMixin):
     """
     Pipeline that invokes a callback function to process each item.
 

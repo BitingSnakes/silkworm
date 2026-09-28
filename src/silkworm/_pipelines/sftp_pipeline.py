@@ -13,14 +13,14 @@ except ImportError:
     ASYNCSSH_AVAILABLE = False
 
 from ..logging import Logger, get_logger
-from .base import log_pipeline_item
+from .base import _BatchPipelineMixin, log_pipeline_item
 
 if TYPE_CHECKING:
     from .._types import JSONValue
     from ..spiders import Spider
 
 
-class SFTPPipeline:
+class SFTPPipeline(_BatchPipelineMixin):
     """
     Pipeline that writes items to an SFTP server in JSON Lines format.
 

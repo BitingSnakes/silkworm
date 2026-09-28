@@ -16,7 +16,7 @@ except ImportError:
 
 from .._resources import raise_cleanup_errors
 from ..logging import Logger, get_logger
-from .base import log_pipeline_item
+from .base import _BatchPipelineMixin, log_pipeline_item
 
 if TYPE_CHECKING:
     from zenoh import (  # type: ignore[import-not-found]
@@ -49,7 +49,7 @@ class _PublisherOptions(TypedDict, total=False):
     allowed_destination: Locality
 
 
-class ZenohPipeline:
+class ZenohPipeline(_BatchPipelineMixin):
     """
     Pipeline that publishes JSON-serialized items to Zenoh.
 

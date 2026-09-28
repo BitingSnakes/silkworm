@@ -11,7 +11,7 @@ except ImportError:
     TASKIQ_AVAILABLE = False
 
 from ..logging import Logger, get_logger
-from .base import log_pipeline_item
+from .base import _BatchPipelineMixin, log_pipeline_item
 
 if TYPE_CHECKING:
     from taskiq import AsyncBroker as _AsyncBroker  # type: ignore[import-not-found]
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     type _TaskiqTask = AsyncTaskiqDecoratedTask[Any, Any]
 
 
-class TaskiqPipeline:
+class TaskiqPipeline(_BatchPipelineMixin):
     """
     Pipeline that sends scraped items to a Taskiq broker/queue instead of writing to a file.
 

@@ -9,6 +9,7 @@ from ._pipelines.avro_pipeline import (
     AvroPipeline,
 )
 from ._pipelines.base import (
+    BatchItemPipeline,
     ItemPipeline,
     LoggedPipeline,
 )
@@ -136,6 +137,7 @@ __all__ = [
     "YAML_AVAILABLE",
     "ZENOH_AVAILABLE",
     "AvroPipeline",
+    "BatchItemPipeline",
     "CSVPipeline",
     "CallbackPipeline",
     "CassandraPipeline",

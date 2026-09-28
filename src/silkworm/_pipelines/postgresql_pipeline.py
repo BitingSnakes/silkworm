@@ -11,14 +11,14 @@ except ImportError:
     ASYNCPG_AVAILABLE = False
 
 from ..logging import Logger, get_logger
-from .base import log_pipeline_item, validate_table_name
+from .base import _BatchPipelineMixin, log_pipeline_item, validate_table_name
 
 if TYPE_CHECKING:
     from .._types import JSONValue
     from ..spiders import Spider
 
 
-class PostgreSQLPipeline:
+class PostgreSQLPipeline(_BatchPipelineMixin):
     """
     Pipeline that sends items to a PostgreSQL database.
 

@@ -13,7 +13,7 @@ except ImportError:
     OPENPYXL_AVAILABLE = False
 
 from ..logging import Logger, get_logger
-from .base import log_pipeline_item
+from .base import _BatchPipelineMixin, log_pipeline_item
 
 if TYPE_CHECKING:
     from openpyxl.worksheet.worksheet import Worksheet  # type: ignore[import-untyped]
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from ..spiders import Spider
 
 
-class ExcelPipeline:
+class ExcelPipeline(_BatchPipelineMixin):
     """
     Pipeline that writes items to an Excel file (.xlsx).
 
