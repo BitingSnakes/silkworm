@@ -5,7 +5,7 @@
 ## Features
 - **Async engine** with configurable concurrency, deadlock-free bounded queue backpressure, request priorities, deduplication, and crawl statistics.
 - **wreq-powered HTTP client** with browser impersonation, redirect handling, keep-alive, proxies, and HTML detection.
-- **Typed spiders and callbacks** with `HTMLResponse` CSS/XPath selectors, `follow` helpers, and flexible callback outputs.
+- **Typed spiders and callbacks** with `HTMLResponse` CSS/XPath selectors and push-style `emit`/`follow` helpers.
 - **Declarative extraction** with `Item`, `Text`, and `Attr` field plans.
 - **Middlewares** for user agents, proxies, cookies, delays, robots.txt, retries, telemetry streaming, and Cloudflare crawl jobs.
 - **Pipelines** for files (JSON Lines, CSV, XML, Parquet, Excel, ...), databases, queues, and cloud storage.
@@ -76,6 +76,8 @@ runners
 production
 cli
 logging-and-stats
+limitations
+migration
 ```
 
 ```{toctree}
