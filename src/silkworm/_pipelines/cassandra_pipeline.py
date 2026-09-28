@@ -90,7 +90,7 @@ class CassandraPipeline(_BatchPipelineMixin):
             )
 
         self.hosts: list[str] = hosts or ["127.0.0.1"]
-        self.keyspace = keyspace
+        self.keyspace: str = validate_table_name(keyspace)
         self.table: str = validate_table_name(table)
         self.username = username
         self.password = password
@@ -126,10 +126,6 @@ class CassandraPipeline(_BatchPipelineMixin):
                 WITH replication = {{'class': 'SimpleStrategy', 'replication_factor': 1}}
                 """,
             )
-            self._insert_statement = session.prepare(
-                f"INSERT INTO {self.table} (id, spider, data, created_at) "
-                "VALUES (?, ?, ?, ?)"
-            )
             session.set_keyspace(self.keyspace)
             session.execute(
                 f"""
@@ -140,6 +136,10 @@ class CassandraPipeline(_BatchPipelineMixin):
                     created_at timestamp
                 )
                 """,
+            )
+            self._insert_statement = session.prepare(
+                f"INSERT INTO {self.keyspace}.{self.table} "
+                "(id, spider, data, created_at) VALUES (?, ?, ?, ?)"
             )
         except BaseException as exc:
             self._cluster = None
