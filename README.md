@@ -49,7 +49,7 @@ uv add silkworm-rs
 Integrations are installed as optional extras. For example:
 
 ```bash
-pip install "silkworm-rs[uvloop,polars]"
+pip install "silkworm-rs[rsloop,polars]"
 ```
 
 See [Getting Started](https://bitingsnakes.github.io/silkworm/getting-started.html)
