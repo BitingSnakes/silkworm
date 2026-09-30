@@ -795,7 +795,7 @@ async def parse(self, response: Response) -> None:
 - `wreq`: HTTP client with browser impersonation
 - `scraper-rust`: Fast HTML parsing
 - `logly`: Structured logging
-- `rxml`: XML parsing/writing
+- `turboxml`: XML parsing/writing
 - `charset-norm`: Character encoding detection (Rust port of charset-normalizer)
 
 ### Optional Dependencies (Extras)
@@ -1003,7 +1003,7 @@ Add support for custom delay functions in DelayMiddleware
 - wreq
 - scraper-rs: https://github.com/RustedBytes/scraper-rs
 - logly: https://github.com/muhammad-fiaz/logly
-- rxml: https://github.com/nephi-dev/rxml
+- turboxml: https://github.com/RustedBytes/turboxml
 
 ### Development Tools
 - uv: https://docs.astral.sh/uv/

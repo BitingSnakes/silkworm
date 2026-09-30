@@ -5,7 +5,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
-import rxml
+import turboxml
 
 from silkworm.pipelines import (
     CallbackPipeline,
@@ -17,11 +17,11 @@ from silkworm.pipelines import (
 from silkworm.spiders import Spider
 
 
-def _children_named(node: rxml.Node, name: str) -> list[rxml.Node]:
+def _children_named(node: turboxml.Node, name: str) -> list[turboxml.Node]:
     return [child for child in node.children if child.name == name]
 
 
-def _child(node: rxml.Node, name: str) -> rxml.Node:
+def _child(node: turboxml.Node, name: str) -> turboxml.Node:
     return next(child for child in node.children if child.name == name)
 
 
@@ -37,7 +37,7 @@ async def test_xml_pipeline_creates_valid_xml():
         await pipeline.close(spider)
 
         # Verify XML is valid
-        root = rxml.read_file(str(xml_path), "items")
+        root = turboxml.read_file(str(xml_path), "items")
 
         assert root.name == "items"
         items = root.children
@@ -64,7 +64,7 @@ async def test_xml_pipeline_custom_elements():
         await pipeline.process_item({"text": "Test"}, spider)
         await pipeline.close(spider)
 
-        root = rxml.read_file(str(xml_path), "quotes")
+        root = turboxml.read_file(str(xml_path), "quotes")
 
         assert root.name == "quotes"
         assert root.children[0].name == "quote"
@@ -82,7 +82,7 @@ async def test_xml_pipeline_handles_nested_dict():
         )
         await pipeline.close(spider)
 
-        root = rxml.read_file(str(xml_path), "items")
+        root = turboxml.read_file(str(xml_path), "items")
         item = root.children[0]
 
         user = _child(item, "user")
@@ -101,7 +101,7 @@ async def test_xml_pipeline_handles_list():
         await pipeline.process_item({"tags": ["python", "web", "scraping"]}, spider)
         await pipeline.close(spider)
 
-        root = rxml.read_file(str(xml_path), "items")
+        root = turboxml.read_file(str(xml_path), "items")
         item = root.children[0]
 
         tags_elem = _child(item, "tags")
@@ -147,7 +147,7 @@ async def test_rss_pipeline_respects_max_items():
         )
         await pipeline.close(spider)
 
-        root = rxml.read_file(str(rss_path), "rss")
+        root = turboxml.read_file(str(rss_path), "rss")
         channel = _child(root, "channel")
         items = _children_named(channel, "item")
         assert len(items) == 2
@@ -177,7 +177,7 @@ async def test_rss_pipeline_skips_items_missing_required_fields():
         )
         await pipeline.close(spider)
 
-        root = rxml.read_file(str(rss_path), "rss")
+        root = turboxml.read_file(str(rss_path), "rss")
         channel = _child(root, "channel")
         items = _children_named(channel, "item")
         assert len(items) == 1

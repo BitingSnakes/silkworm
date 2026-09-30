@@ -23,7 +23,7 @@ from typing import Any, cast
 
 import anyio
 import pytest
-import rxml
+import turboxml
 
 from silkworm import Engine, HTMLResponse, Request, Response, Spider
 from silkworm.pipelines import (
@@ -41,11 +41,11 @@ SAMPLE_QUOTES = [
 ]
 
 
-def _children_named(node: rxml.Node, name: str) -> list[rxml.Node]:
+def _children_named(node: turboxml.Node, name: str) -> list[turboxml.Node]:
     return [child for child in node.children if child.name == name]
 
 
-def _child(node: rxml.Node, name: str) -> rxml.Node:
+def _child(node: turboxml.Node, name: str) -> turboxml.Node:
     return next(child for child in node.children if child.name == name)
 
 
@@ -148,7 +148,7 @@ async def test_xml_pipeline_integration():
         # Verify the file exists and has correct content
         assert output_path.exists()
 
-        root = rxml.read_file(str(output_path), "items")
+        root = turboxml.read_file(str(output_path), "items")
 
         assert root.name == "items"
         items = root.children
@@ -227,7 +227,7 @@ async def test_xml_pipeline_custom_elements():
         # Verify the file exists and has correct structure
         assert output_path.exists()
 
-        root = rxml.read_file(str(output_path), "quotes")
+        root = turboxml.read_file(str(output_path), "quotes")
 
         assert root.name == "quotes"
         items = root.children
@@ -532,7 +532,7 @@ async def test_multiple_pipelines_simultaneously():
         assert len(rows) == len(SAMPLE_QUOTES)
 
         # Quick verification of XML
-        root = rxml.read_file(str(xml_path), "items")
+        root = turboxml.read_file(str(xml_path), "items")
         items = root.children
         assert len(items) == len(SAMPLE_QUOTES)
 

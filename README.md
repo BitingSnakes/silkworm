@@ -130,7 +130,7 @@ and open an issue or pull request on GitHub.
 
 ## Acknowledgements
 
-Silkworm builds on wreq, scraper-rs, fast-h2m, rxml, and optional integrations
+Silkworm builds on wreq, scraper-rs, fast-h2m, turboxml, and optional integrations
 including OnionLink and Servo. Thank you to their maintainers and contributors.
 
 ## License

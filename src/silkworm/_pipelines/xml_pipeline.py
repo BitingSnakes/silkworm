@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import rxml
+import turboxml
 
 from ..logging import Logger, get_logger
 from .base import _BatchPipelineMixin, log_pipeline_item
@@ -80,7 +80,7 @@ class XMLPipeline(_BatchPipelineMixin):
             raise RuntimeError("XMLPipeline not opened")
 
         node = self._to_node(self.item_element, item)
-        xml_str = rxml.write_string(node, indent=2, default_xml_def=False)
+        xml_str = turboxml.write_string(node, indent=2, default_xml_def=False)
         indented_xml = "\n".join(f"  {line}" for line in xml_str.splitlines())
 
         self._fp.write(indented_xml + "\n")
@@ -100,7 +100,7 @@ class XMLPipeline(_BatchPipelineMixin):
         chunks = []
         for item in items:
             node = self._to_node(self.item_element, item)
-            xml_str = rxml.write_string(node, indent=2, default_xml_def=False)
+            xml_str = turboxml.write_string(node, indent=2, default_xml_def=False)
             chunks.append("\n".join(f"  {line}" for line in xml_str.splitlines()))
         self._fp.write("\n".join(chunks) + "\n")
         self._fp.flush()
@@ -113,20 +113,20 @@ class XMLPipeline(_BatchPipelineMixin):
         )
         return items
 
-    def _to_node(self, key: str, data: JSONValue) -> rxml.Node:
-        """Convert a Python structure to an rxml Node tree."""
+    def _to_node(self, key: str, data: JSONValue) -> turboxml.Node:
+        """Convert a Python structure to a turboxml Node tree."""
         tag = self._sanitize_tag(key)
 
         if isinstance(data, dict):
             children = [self._to_node(k, v) for k, v in data.items()]
-            return rxml.Node(tag, children=children)
+            return turboxml.Node(tag, children=children)
 
         if isinstance(data, list):
             children = [self._to_node("item", item) for item in data]
-            return rxml.Node(tag, children=children)
+            return turboxml.Node(tag, children=children)
 
         text = "" if data is None else str(data)
-        return rxml.Node(tag, text=text)
+        return turboxml.Node(tag, text=text)
 
     @staticmethod
     def _sanitize_tag(tag: object) -> str:

@@ -8,7 +8,7 @@ from email.utils import format_datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import rxml
+import turboxml
 
 from ..logging import Logger, get_logger
 from .base import _BatchPipelineMixin, log_pipeline_item
@@ -91,32 +91,32 @@ class RssPipeline(_BatchPipelineMixin):
 
     async def close(self, spider: Spider) -> None:
         """Build and write the RSS 2.0 document from buffered items."""
-        item_nodes: list[rxml.Node] = []
+        item_nodes: list[turboxml.Node] = []
         for item in self._items:
             children = [
-                rxml.Node("title", text=item["title"]),
-                rxml.Node("link", text=item["link"]),
-                rxml.Node("description", text=item["description"]),
+                turboxml.Node("title", text=item["title"]),
+                turboxml.Node("link", text=item["link"]),
+                turboxml.Node("description", text=item["description"]),
             ]
             if pub_date := item.get("pub_date"):
-                children.append(rxml.Node("pubDate", text=pub_date))
+                children.append(turboxml.Node("pubDate", text=pub_date))
             if guid := item.get("guid"):
-                children.append(rxml.Node("guid", text=guid))
+                children.append(turboxml.Node("guid", text=guid))
             if author := item.get("author"):
-                children.append(rxml.Node("author", text=author))
-            item_nodes.append(rxml.Node("item", children=children))
+                children.append(turboxml.Node("author", text=author))
+            item_nodes.append(turboxml.Node("item", children=children))
 
-        channel = rxml.Node(
+        channel = turboxml.Node(
             "channel",
             children=[
-                rxml.Node("title", text=self.channel_title),
-                rxml.Node("link", text=self.channel_link),
-                rxml.Node("description", text=self.channel_description),
+                turboxml.Node("title", text=self.channel_title),
+                turboxml.Node("link", text=self.channel_link),
+                turboxml.Node("description", text=self.channel_description),
                 *item_nodes,
             ],
         )
-        rss = rxml.Node("rss", attrs={"version": "2.0"}, children=[channel])
-        rxml.write_file(rss, str(self.path), indent=2)
+        rss = turboxml.Node("rss", attrs={"version": "2.0"}, children=[channel])
+        turboxml.write_file(rss, str(self.path), indent=2)
 
         self.logger.info(
             "Closed RSS pipeline",

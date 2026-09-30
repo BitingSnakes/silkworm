@@ -22,7 +22,7 @@ This spider handles both. For every page it collects:
 
 What you will learn:
 - Using two different callbacks: `parse_sitemap` for XML, `parse_page` for HTML.
-- Parsing XML with rxml.
+- Parsing XML with turboxml.
 - Using a dict to map HTML tag names to output field names.
 
 How to run:
@@ -37,8 +37,9 @@ from __future__ import annotations
 
 import argparse
 import re
+from typing import cast
 
-import rxml
+import turboxml
 
 from silkworm import HTMLResponse, Request, Response, Spider, run_spider_uvloop
 from silkworm.middlewares import (
@@ -76,15 +77,16 @@ META_FIELDS = {
 }
 
 
-def find_loc_urls(parent, child_tag: str) -> list[str]:
+def find_loc_urls(parent: turboxml.Node, child_tag: str) -> list[str]:
     """
     Return the <loc> URL inside every <child_tag> element under `parent`.
 
     For example, find_loc_urls(root, "url") returns the page URLs of a sitemap.
     """
     urls = []
-    for element in parent.search_by_name(child_tag):
-        loc_nodes = element.search_by_name("loc")
+    tag_search = cast(turboxml.SearchType, turboxml.SearchType.Tag)
+    for element in parent.search(tag_search, child_tag):
+        loc_nodes = element.search(tag_search, "loc")
         if loc_nodes and loc_nodes[0].text:
             urls.append(loc_nodes[0].text.strip())
     return urls
@@ -127,7 +129,7 @@ class SitemapSpider(Spider):
             )
             return
 
-        # rxml needs to know the name of the root tag ("urlset" or "sitemapindex").
+        # turboxml needs the root tag name ("urlset" or "sitemapindex").
         # We find it with a regular expression: the first "<name" in the file.
         # [a-zA-Z] skips "<?xml ...?>" and "<!-- comments -->".
         match = re.search(r"<([a-zA-Z][\w-]*?)[\s>]", response.text)
@@ -136,7 +138,7 @@ class SitemapSpider(Spider):
             return
 
         try:
-            root = rxml.read_string(response.text, match.group(1))
+            root = turboxml.read_string(response.text, match.group(1))
         except ValueError as exc:
             self.log.error(
                 "Failed to parse sitemap XML", url=response.url, error=str(exc)
