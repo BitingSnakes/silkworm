@@ -90,7 +90,7 @@ def test_response_charset_detection_uses_bounded_sample(monkeypatch):
 
     monkeypatch.setitem(
         sys.modules,
-        "charset_normalizer",
+        "charset_norm",
         SimpleNamespace(from_bytes=fake_from_bytes),
     )
 

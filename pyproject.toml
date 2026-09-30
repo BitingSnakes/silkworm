@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "silkworm-rs"
-version = "0.14.0"
+version = "0.14.1"
 description = "Async-first web scraping framework built on wreq and scraper-rs"
 authors = [
   { name = "Yehor Smoliakov", email = "egorsmkv@gmail.com" }
@@ -51,7 +51,7 @@ classifiers = [
 ]
 
 dependencies = [
-  "charset-normalizer==3.5.1",
+  "charset-norm==4.0.0",
   "scraper-rust>=0.11.0",
   "rxml==3.0.0",
   "wreq>=0.12.2",

@@ -127,7 +127,7 @@ if isinstance(response, HTMLResponse):
 ```
 
 ### Text Decoding
-`Response.text` uses BOM, headers, and HTML meta tags before falling back to `charset-normalizer` when available.
+`Response.text` uses BOM, headers, and HTML meta tags before falling back to `charset-norm` when available.
 See [src/silkworm/response.py](https://github.com/BitingSnakes/silkworm/blob/main/src/silkworm/response.py).
 
 ### Mock Responses for Testing

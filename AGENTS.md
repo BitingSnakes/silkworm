@@ -796,7 +796,7 @@ async def parse(self, response: Response) -> None:
 - `scraper-rust`: Fast HTML parsing
 - `logly`: Structured logging
 - `rxml`: XML parsing/writing
-- `charset-normalizer`: Character encoding detection
+- `charset-norm`: Character encoding detection (Rust port of charset-normalizer)
 
 ### Optional Dependencies (Extras)
 

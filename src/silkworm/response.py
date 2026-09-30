@@ -147,7 +147,7 @@ class Response:
         """Return the normalized encoding used by :attr:`text`.
 
         Detection checks byte-order marks, HTTP headers, HTML/XML declarations,
-        and finally ``charset-normalizer`` before falling back to UTF-8 with
+        and finally ``charset-norm`` before falling back to UTF-8 with
         replacement characters.
         """
         if self._decoded_text is None:
@@ -191,7 +191,7 @@ class Response:
             if decoded is not None:
                 return decoded
 
-        normalized = self._decode_with_charset_normalizer(body)
+        normalized = self._decode_with_charset_norm(body)
         if normalized is not None:
             return normalized
 
@@ -259,9 +259,9 @@ class Response:
                 return self._normalize_encoding(match.group(1))
         return None
 
-    def _decode_with_charset_normalizer(self, body: bytes) -> tuple[str, str] | None:
+    def _decode_with_charset_norm(self, body: bytes) -> tuple[str, str] | None:
         try:
-            from charset_normalizer import from_bytes
+            from charset_norm import from_bytes
         except ImportError:
             return None
 
