@@ -14,12 +14,12 @@
 - **Production controls**: `CrawlResult` + failure policy, stop limits, `allowed_domains`, per-domain concurrency, graceful signal shutdown, response size limits, `job_dir` pause/resume, `HttpCache`, Prometheus metrics, layered settings, a `silkworm` CLI, and `silkworm.testing` helpers (see `docs/production.md`)
 
 ### Target Python Versions
-- **Python 3.11+** (`pyproject.toml` requires `>=3.11,<3.16`; CI tests 3.11–3.15 and PyPy 3.11)
+- **Python 3.11+** (`pyproject.toml` requires `>=3.11,<3.16`; CI tests 3.11–3.15 and PyPy 3.11/3.12)
 - **Python 3.14** experimental support (including free-threaded build via `justfile-3.14t`)
 
 ## Python 3.11+ Language Features and Best Practices
 
-All library code must parse and run on Python 3.11. PyPy 3.11 is supported on Linux x86-64 with PyPy 8.0 or newer.
+All library code must parse and run on Python 3.11. PyPy 3.11 and 3.12 are supported on Linux x86-64 with PyPy 8.0 or newer; PyPy 3.12 is beta and currently builds wreq from source.
 
 ### Type aliases and generic classes
 
@@ -950,7 +950,7 @@ await self.follow(same_url, dont_filter=True)
 
 ### Python 3.11–3.13
 - Core features supported on CPython
-- PyPy 3.11 on Linux x86-64 requires PyPy 8.0 or newer
+- PyPy 3.11 and 3.12 on Linux x86-64 require PyPy 8.0 or newer; PyPy 3.12 is beta
 
 ### Python 3.14 (Experimental)
 - Free-threaded build support (`PYTHON_GIL=0`)

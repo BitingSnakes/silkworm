@@ -10,7 +10,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-import pydantic
 import pytest
 
 from silkworm import (
@@ -488,14 +487,19 @@ def test_response_from_file_picks_response_type(tmp_path: Path) -> None:
 # -- #15 item validation --------------------------------------------------------------------------
 
 
-class Quote(pydantic.BaseModel):
-    text: str
-    author: str
-    tags: list[str] = []
+def _quote_model() -> type[Any]:
+    pydantic = pytest.importorskip("pydantic")
+
+    class Quote(pydantic.BaseModel):
+        text: str
+        author: str
+        tags: list[str] = pydantic.Field(default_factory=list)
+
+    return Quote
 
 
 async def test_validation_pipeline_with_model_normalizes_and_drops() -> None:
-    pipeline = ValidationPipeline(Quote, log_limit=1)
+    pipeline = ValidationPipeline(_quote_model(), log_limit=1)
     spider = Spider()
     await pipeline.open(spider)
     assert await pipeline.process_item({"text": "a", "author": "b"}, spider) == {
@@ -540,7 +544,7 @@ async def test_engine_counts_invalid_items_and_fails_on_drop_rate() -> None:
 
     engine = Engine(
         Redesigned(),
-        item_pipelines=[ValidationPipeline(Quote)],
+        item_pipelines=[ValidationPipeline(_quote_model())],
         max_item_drop_rate=0.5,
     )
 

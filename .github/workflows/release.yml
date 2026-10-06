@@ -49,14 +49,20 @@ jobs:
         run: uv run --group dev pytest -o "anyio_mode=auto"
 
   pypy-test:
-    name: Test (PyPy 3.11)
+    name: Test (PyPy ${{ matrix.pypy-version }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        pypy-version: ["3.11", "3.12"]
+    env:
+      CARGO_BUILD_JOBS: "2"
     steps:
       - uses: actions/checkout@v6
 
       - uses: actions/setup-python@v6
         with:
-          python-version: "pypy3.11-v8.0.0"
+          python-version: pypy${{ matrix.pypy-version }}-v8.0.0
 
       - uses: astral-sh/setup-uv@v7
         with:
@@ -65,7 +71,10 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --no-dev --frozen --python "$(command -v python)"
-          uv pip install --python .venv/bin/python pytest==9.1.1 anyio==4.15.1 pydantic==2.13.5
+          uv pip install --python .venv/bin/python pytest==9.1.1 anyio==4.15.1
+          if [ "${{ matrix.pypy-version }}" = "3.11" ]; then
+            uv pip install --python .venv/bin/python pydantic==2.13.5
+          fi
 
       - name: Build wheel under PyPy
         run: uv build --wheel --python "$(command -v python)"
