@@ -14,11 +14,19 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from threading import RLock
 from types import TracebackType
-from typing import Literal, Protocol, TextIO, assert_never, cast, runtime_checkable
+from typing import (
+    Literal,
+    Protocol,
+    TextIO,
+    TypeAlias,
+    assert_never,
+    cast,
+    runtime_checkable,
+)
 
 from ._resources import raise_cleanup_errors
 
-type _NormalizedLogLevel = Literal[
+_NormalizedLogLevel: TypeAlias = Literal[
     "TRACE",
     "DEBUG",
     "INFO",
@@ -28,8 +36,8 @@ type _NormalizedLogLevel = Literal[
     "CRITICAL",
     "FAIL",
 ]
-type LogLevel = _NormalizedLogLevel | Literal["WARN", "ERR", "FATAL"] | None
-type _ExcInfo = (
+LogLevel: TypeAlias = _NormalizedLogLevel | Literal["WARN", "ERR", "FATAL"] | None
+_ExcInfo: TypeAlias = (
     bool
     | tuple[type[BaseException], BaseException, TracebackType | None]
     | tuple[None, None, None]

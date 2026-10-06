@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from functools import partial
 from itertools import count
-from typing import TYPE_CHECKING, TypedDict, cast
+from typing import TYPE_CHECKING, TypeAlias, TypedDict, cast
 
 try:  # resource is POSIX-only
     import resource
@@ -158,9 +158,9 @@ _SAFE_REPR.maxdict = 8
 _SAFE_REPR.maxset = 8
 _SAFE_REPR.maxtuple = 8
 
-type DedupKey = Callable[[Request], str]
-type PrioritizedRequest = tuple[int, int, Request]
-type LifecycleCloser = tuple[str, Callable[[], Awaitable[object]]]
+DedupKey: TypeAlias = Callable[[Request], str]
+PrioritizedRequest: TypeAlias = tuple[int, int, Request]
+LifecycleCloser: TypeAlias = tuple[str, Callable[[], Awaitable[object]]]
 
 # Index of the engine worker whose callback (or a task it spawned) is running;
 # ``None`` outside workers, e.g. while ``start_requests()`` seeds the queue.

@@ -62,7 +62,7 @@ Each event is a method you can override in a subclass to redact or reshape it:
 `running_item_pipeline`.
 
 ```python
-from typing import override
+from typing_extensions import override
 
 from silkworm import EngineLogger, Request, Response, Spider
 from silkworm.types import Logger

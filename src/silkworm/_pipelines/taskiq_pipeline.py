@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Any
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Protocol, cast
 
 try:
     from taskiq import AsyncBroker  # type: ignore[import-not-found]
@@ -16,12 +17,19 @@ from .base import _BatchPipelineMixin, log_pipeline_item
 
 if TYPE_CHECKING:
     from taskiq import AsyncBroker as _AsyncBroker  # type: ignore[import-not-found]
-    from taskiq.decor import AsyncTaskiqDecoratedTask  # type: ignore[import-not-found]
 
     from .._types import JSONValue
     from ..spiders import Spider
 
-    type _TaskiqTask = AsyncTaskiqDecoratedTask[Any, Any]
+
+class _TaskiqMessage(Protocol):
+    task_id: str | None
+
+
+class _TaskiqTask(Protocol):
+    task_name: str
+
+    async def kiq(self, item: JSONValue) -> _TaskiqMessage: ...
 
 
 class TaskiqPipeline(_BatchPipelineMixin):
@@ -58,7 +66,7 @@ class TaskiqPipeline(_BatchPipelineMixin):
     def __init__(
         self,
         broker: _AsyncBroker,
-        task: _TaskiqTask | None = None,
+        task: _TaskiqTask | Callable[..., object] | None = None,
         task_name: str | None = None,
     ) -> None:
         """
@@ -78,7 +86,7 @@ class TaskiqPipeline(_BatchPipelineMixin):
             raise ValueError("Either 'task' or 'task_name' must be provided")
 
         self.broker: _AsyncBroker = broker
-        self._provided_task: _TaskiqTask | None = task
+        self._provided_task = cast("_TaskiqTask | None", task)
         self._task: _TaskiqTask | None = None
         self.task_name = task_name
         self._started = False

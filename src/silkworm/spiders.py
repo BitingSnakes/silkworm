@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, overload, override
+from typing import TYPE_CHECKING, overload
+
+from typing_extensions import override
 
 from ._scope import current_scope
 from ._stats import BASE_COUNTERS, BASE_LABELED_COUNTERS

@@ -5,7 +5,7 @@ import inspect
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import timedelta
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, TypeAlias, cast
 from urllib.parse import urlsplit, urlunsplit
 from urllib.robotparser import RobotFileParser
 
@@ -21,8 +21,8 @@ if TYPE_CHECKING:
     from ..spiders import Spider
 
 
-type RobotsTxtFetcher = Callable[[str], Awaitable[str]]
-type RobotsOrigin = tuple[str, str, int | None]
+RobotsTxtFetcher: TypeAlias = Callable[[str], Awaitable[str]]
+RobotsOrigin: TypeAlias = tuple[str, str, int | None]
 
 
 class RobotsTxtDelayMiddleware:

@@ -36,7 +36,9 @@
 
 .. autofunction:: silkworm.canonicalize_url
 
-.. autotype:: silkworm.DedupKey
+.. py:data:: silkworm.DedupKey
+
+   Callable that maps a request to a deduplication key.
 ```
 
 ## Runners

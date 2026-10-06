@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any, Protocol, Self, overload
+from typing import Any, Generic, Protocol, Self, overload
+
+from typing_extensions import TypeVar
+
+T = TypeVar("T", default=str)
 
 
 class _Missing:
@@ -22,7 +26,7 @@ class _ItemInstance(Protocol):
     _values: dict[str, object]
 
 
-class Field[T = str]:
+class Field(Generic[T]):
     """Base descriptor for a field in a declarative item.
 
     Args:
@@ -103,7 +107,7 @@ class Field[T = str]:
         instance._values[self.name] = value
 
 
-class _TextField[T = str](Field[T]):
+class _TextField(Field[T]):
     __slots__ = ("strip",)
 
     def __init__(
@@ -118,7 +122,7 @@ class _TextField[T = str](Field[T]):
         self.strip = strip
 
 
-class _AttrField[T = str](Field[T]):
+class _AttrField(Field[T]):
     __slots__ = ("absolute", "attribute")
 
     def __init__(
@@ -138,7 +142,7 @@ class _AttrField[T = str](Field[T]):
 
 
 @overload
-def Text[T](
+def Text(
     selector: str,
     *,
     transform: Callable[[str], T],
@@ -184,7 +188,7 @@ def Text(
 
 
 @overload
-def Attr[T](
+def Attr(
     selector: str,
     name: str,
     *,

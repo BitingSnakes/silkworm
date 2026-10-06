@@ -34,7 +34,7 @@ production crawl controls.
 
 ## Install
 
-Silkworm supports Python 3.13–3.15.
+Silkworm supports Python 3.11–3.15, including PyPy 3.11 on Linux x86-64.
 
 ```bash
 pip install silkworm-rs

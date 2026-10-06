@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field, replace
 from datetime import timedelta
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING, Self, TypeAlias
 
 from ._types import (
     BodyData,
@@ -74,7 +74,7 @@ class Request:
         return replace(self, **kwargs)
 
 
-type Callback = Callable[["Response"], Awaitable[None]]
-type Errback = Callable[[Request, Exception], Awaitable[None]]
+Callback: TypeAlias = Callable[["Response"], Awaitable[None]]
+Errback: TypeAlias = Callable[[Request, Exception], Awaitable[None]]
 
 __all__ = ["Callback", "Errback", "Request"]

@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Literal, Protocol, cast, runtime_checkable
+from typing import TYPE_CHECKING, Literal, Protocol, TypeAlias, cast, runtime_checkable
 
+from .._types import JSONValue
 from ..exceptions import DropItem
 from ..logging import Logger, get_logger
 from .base import _BatchPipelineMixin
 
 if TYPE_CHECKING:
-    from .._types import JSONValue
     from ..spiders import Spider
 
 
@@ -21,8 +21,8 @@ class ModelSchema(Protocol):
         ...
 
 
-type ItemValidator = Callable[[JSONValue], JSONValue]
-type ItemSchema = ModelSchema | type[object] | ItemValidator
+ItemValidator: TypeAlias = Callable[[JSONValue], JSONValue]
+ItemSchema: TypeAlias = ModelSchema | type[object] | ItemValidator
 
 
 class ValidationPipeline(_BatchPipelineMixin):

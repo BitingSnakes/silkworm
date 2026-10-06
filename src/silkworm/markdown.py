@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterable, Iterable, Mapping
-from typing import Literal
+from typing import Literal, TypeAlias
 
 from .exceptions import MarkdownConversionError
 
-type MarkdownMode = Literal["full", "minimal", "mdream"]
-type MarkdownOptions = Mapping[str, object]
-type MarkdownResult = dict[str, object]
+MarkdownMode: TypeAlias = Literal["full", "minimal", "mdream"]
+MarkdownOptions: TypeAlias = Mapping[str, object]
+MarkdownResult: TypeAlias = dict[str, object]
 
 _MODE_TIER_STRATEGY: dict[MarkdownMode, str | None] = {
     "full": None,

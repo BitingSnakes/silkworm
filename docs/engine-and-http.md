@@ -110,7 +110,7 @@ To configure the runtime for a crawl:
 ```python
 from __future__ import annotations
 
-from typing import override
+from typing_extensions import override
 
 from wreq import Runtime
 

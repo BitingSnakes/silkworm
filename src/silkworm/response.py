@@ -6,14 +6,17 @@ import asyncio
 import codecs
 import re
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Self, override
+from typing import TYPE_CHECKING, Self, TypeVar
 from urllib.parse import urljoin
 
 from scraper_rs.asyncio import (
     parse as parse_async,
 )
+from typing_extensions import override
 
 from .exceptions import SelectorError
+
+T = TypeVar("T")
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable, Iterable
@@ -439,7 +442,7 @@ class HTMLResponse(Response):
             include_max_size=True,
         )
 
-    async def _run_document_op[T](
+    async def _run_document_op(
         self,
         func: Callable[..., Awaitable[T]],
         *args: object,
@@ -465,7 +468,7 @@ class HTMLResponse(Response):
                 f"{kind} '{label}' failed for {self.url}{suffix}",
             ) from exc
 
-    async def _run_selector[T](
+    async def _run_selector(
         self,
         func: Callable[..., Awaitable[T]],
         query: str,

@@ -14,42 +14,30 @@
 - **Production controls**: `CrawlResult` + failure policy, stop limits, `allowed_domains`, per-domain concurrency, graceful signal shutdown, response size limits, `job_dir` pause/resume, `HttpCache`, Prometheus metrics, layered settings, a `silkworm` CLI, and `silkworm.testing` helpers (see `docs/production.md`)
 
 ### Target Python Versions
-- **Python 3.13+** (primary target; `pyproject.toml` requires `>=3.13,<3.16`, CI tests 3.13, 3.14 and 3.15)
+- **Python 3.11+** (`pyproject.toml` requires `>=3.11,<3.16`; CI tests 3.11–3.15 and PyPy 3.11)
 - **Python 3.14** experimental support (including free-threaded build via `justfile-3.14t`)
 
-## Python 3.13/3.14 Language Features and Best Practices
+## Python 3.11+ Language Features and Best Practices
 
-This project **requires** Python 3.13+ and makes extensive use of modern Python language features. When working on this codebase, you **MUST** use these features appropriately.
+All library code must parse and run on Python 3.11. PyPy 3.11 is supported on Linux x86-64 with PyPy 8.0 or newer.
 
-### PEP 695: Type Parameter Syntax (Python 3.12+)
+### Type aliases and generic classes
 
-**CRITICAL:** This project uses the `type` statement for type aliases. This is the preferred way to define type aliases in Python 3.12+.
+Use `TypeAlias` for named aliases, including quoted forward references in recursive aliases. Use `TypeVar` and `Generic` for generic classes and functions. Python 3.12's `type` statement and type-parameter syntax do not parse on Python 3.11.
 
-#### ✅ Correct Usage (PEP 695)
 ```python
-# From src/silkworm/_types.py
-type JSONScalar = str | int | float | bool | None
-type JSONValue = JSONScalar | dict[str, JSONValue] | list[JSONValue]
-type Headers = dict[str, str]
-type MetaData = dict[str, JSONValue]
+from typing import Generic, TypeAlias
+from typing_extensions import TypeVar
 
-# From src/silkworm/request.py
-type Callback = Callable[["Response"], Awaitable[None]]
-type Errback = Callable[[Request, Exception], Awaitable[None]]
-```
-
-#### ❌ Incorrect (Old Style - DO NOT USE)
-```python
-# Don't use TypeAlias annotation (pre-3.12 style)
-from typing import TypeAlias
 JSONScalar: TypeAlias = str | int | float | bool | None
+JSONValue: TypeAlias = JSONScalar | dict[str, "JSONValue"] | list["JSONValue"]
+T = TypeVar("T", default=str)
 
-# Don't use generic type parameters in classes without PEP 695
-from typing import Generic, TypeVar
-T = TypeVar('T')
+class Field(Generic[T]):
+    ...
 ```
 
-**When to use:** Always prefer `type` statements for type aliases in this codebase.
+Import `override` from `typing_extensions`, since Python 3.11 does not expose it in `typing`.
 
 ### PEP 636: Structural Pattern Matching (Python 3.10+)
 
@@ -153,7 +141,7 @@ class Request:
 Use `@override` for overridden methods; it is already used in the codebase (e.g., `HTMLResponse` overrides `Response.close`).
 
 ```python
-from typing import override
+from typing_extensions import override
 
 class QuotesSpider(Spider):
     @override
@@ -241,7 +229,7 @@ silkworm/
 │   ├── _metrics.py        # Prometheus text exposition + /metrics server
 │   ├── _scope.py          # Per-callback emit/follow routing (ContextVar)
 │   ├── _stats.py          # CrawlStats counters and the CrawlResult
-│   ├── _types.py          # Type aliases (using PEP 695)
+│   ├── _types.py          # Type aliases compatible with Python 3.11
 │   ├── _urls.py           # canonicalize_url, request_fingerprint, domain matching
 │   ├── api.py             # Convenience API (fetch_html)
 │   ├── cli.py             # `silkworm` command line (crawl, parse, fetch)
@@ -960,18 +948,14 @@ await self.follow(same_url, dont_filter=True)
 
 ## Version Compatibility Notes
 
-### Python 3.13
-- All features fully supported
-- Primary development target
-- Recommended for production use
+### Python 3.11–3.13
+- Core features supported on CPython
+- PyPy 3.11 on Linux x86-64 requires PyPy 8.0 or newer
 
 ### Python 3.14 (Experimental)
 - Free-threaded build support (`PYTHON_GIL=0`)
 - Use `justfile-3.14t` for development
 - May have compatibility issues with some dependencies
-
-### Breaking Changes from Python 3.12
-- None expected (3.13+ is the minimum requirement)
 
 ## Contributing Guidelines
 
@@ -994,10 +978,11 @@ Add support for custom delay functions in DelayMiddleware
 ## Resources
 
 ### Official Documentation
+- Python 3.11: https://docs.python.org/3.11/
 - Python 3.13: https://docs.python.org/3.13/
 - Python 3.14: https://docs.python.org/3.14/ (alpha/beta)
 - Type Hints: https://peps.python.org/pep-0484/
-- PEP 695 (Type Parameters): https://peps.python.org/pep-0695/
+- Type aliases: https://docs.python.org/3.11/library/typing.html#typing.TypeAlias
 
 ### Project Dependencies
 - wreq
@@ -1015,8 +1000,8 @@ Add support for custom delay functions in DelayMiddleware
 
 When working on this codebase, ensure you:
 
-- [ ] Use Python 3.13+ syntax exclusively
-- [ ] Use `type` statement for type aliases (PEP 695)
+- [ ] Keep all library syntax compatible with Python 3.11
+- [ ] Use `TypeAlias` and `TypeVar` for aliases and generics
 - [ ] Use `|` for unions instead of `Union` (PEP 604)
 - [ ] Use built-in types (`list`, `dict`) not `typing` equivalents (PEP 585)
 - [ ] Use `match`/`case` for multi-way conditionals (PEP 636)
