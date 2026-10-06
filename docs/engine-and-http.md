@@ -105,6 +105,34 @@ Core features:
 
 wreq also provides `Emulation.Chrome154` and `Emulation.Firefox152`; pass either as `emulation=` to use the newer browser profile. Silkworm converts wreq's read-only `memoryview` body and header data to its existing `bytes` and `str` response fields.
 
+To configure the runtime for a crawl:
+
+```python
+from __future__ import annotations
+
+from typing import override
+
+from wreq import Runtime
+
+from silkworm import Response, Spider, run_spider
+from silkworm.http import HttpClient
+
+
+class ExampleSpider(Spider):
+    name = "runtime-example"
+    start_urls = ("https://example.com/",)
+
+    @override
+    async def parse(self, response: Response) -> None:
+        await self.emit({"url": response.url, "status": response.status})
+
+
+runtime = Runtime(workers=4, work_steal=False)
+run_spider(ExampleSpider, http_client=HttpClient(concurrency=16, runtime=runtime))
+```
+
+`workers` sets the number of wreq runtime threads. `concurrency` separately limits requests in flight within Silkworm.
+
 ### Redirect Behavior
 The client follows redirects for 301/302/303/307/308 responses with `Location`.
 For 301/302/303, non-GET/HEAD methods are switched to GET (body cleared). It also updates `request.meta["redirect_times"]`.
