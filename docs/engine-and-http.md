@@ -101,6 +101,9 @@ Core features:
 - **Proxy support**: uses `request.meta["proxy"]`.
 - **Query merging**: `Request.params` are merged with existing query strings.
 - **HTML detection**: returns `HTMLResponse` when content-type/sniffing indicates HTML.
+- **wreq 0.13 runtime**: pass a `wreq.Runtime` through `HttpClient(runtime=...)` to choose worker count and work stealing. The runtime can be shared with other wreq clients.
+
+wreq 0.13 also provides `Emulation.Chrome154` and `Emulation.Firefox152`; pass either as `emulation=` to use the newer browser profile. Silkworm converts wreq's read-only `memoryview` body and header data to its existing `bytes` and `str` response fields.
 
 ### Redirect Behavior
 The client follows redirects for 301/302/303/307/308 responses with `Location`.

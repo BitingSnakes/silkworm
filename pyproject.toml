@@ -53,7 +53,7 @@ classifiers = [
 dependencies = [
   "charset-norm==4.0.0",
   "scraper-rust>=0.11.0",
-  "wreq>=0.12.2",
+  "wreq>=0.13.0",
   "fast-h2m==0.4.4",
   "turboxml==1.0.0",
 ]
