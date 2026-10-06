@@ -2,22 +2,19 @@ from __future__ import annotations
 
 import inspect
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING
+from typing import TypeAlias
 
+from .._types import JSONValue
 from ..logging import Logger, LogLevel, get_logger
+from ..spiders import Spider
 from .base import _BatchPipelineMixin, log_pipeline_item
 
-if TYPE_CHECKING:
-    from .._types import JSONValue
-    from ..spiders import Spider
-
-
-type ItemCallback = Callable[
+ItemCallback: TypeAlias = Callable[
     [JSONValue, Spider], JSONValue | Awaitable[JSONValue | None] | None
 ]
 """Callback for :class:`CallbackPipeline`; returning ``None`` keeps the item."""
 
-type BatchItemCallback = Callable[
+BatchItemCallback: TypeAlias = Callable[
     [list[JSONValue], Spider],
     list[JSONValue] | Awaitable[list[JSONValue] | None] | None,
 ]

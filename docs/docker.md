@@ -157,7 +157,7 @@ Optional extras from `pyproject.toml` can be enabled on the `uv sync` lines inst
 
 ### Example: Using a Different Python Version
 
-Pass the `PYTHON_VERSION` build arg (any Python 3.13+ release with a `-slim-trixie` image):
+Pass the `PYTHON_VERSION` build arg (any supported Python release with a `-slim-trixie` image):
 
 ```bash
 docker build --build-arg PYTHON_VERSION=3.13.14 -t silkworm-rs:py313 .

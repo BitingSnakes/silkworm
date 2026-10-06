@@ -4,7 +4,7 @@ import asyncio
 import inspect
 import json
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, TypeAlias, TypedDict
 
 try:
     import zenoh  # type: ignore[import-not-found]
@@ -15,7 +15,9 @@ except ImportError:
     ZENOH_AVAILABLE = False
 
 from .._resources import raise_cleanup_errors
+from .._types import JSONValue
 from ..logging import Logger, get_logger
+from ..spiders import Spider
 from .base import _BatchPipelineMixin, log_pipeline_item
 
 if TYPE_CHECKING:
@@ -30,10 +32,7 @@ if TYPE_CHECKING:
         Session,
     )
 
-    from .._types import JSONValue
-    from ..spiders import Spider
-
-type ZenohKeyResolver = Callable[
+ZenohKeyResolver: TypeAlias = Callable[
     [JSONValue, Spider],
     str | Awaitable[str],
 ]

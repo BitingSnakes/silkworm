@@ -25,7 +25,8 @@ from __future__ import annotations
 
 import argparse
 import json
-from typing import override
+
+from typing_extensions import override
 
 from silkworm import EngineLogger, Request, Response, Spider, run_spider
 from silkworm.http import MOCK_RESPONSE_META_KEY

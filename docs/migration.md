@@ -26,7 +26,7 @@ the callback completes.
   explicit batch processing. The default preserves the order, transformations,
   and errors of repeated `process_item` calls.
 - `IggyPipeline` uses Apache Iggy's native producer batch operation. Install it
-  with `pip install "silkworm-rs[iggy]"` on Python 3.13.
+  with `pip install "silkworm-rs[iggy]"` on Python 3.11–3.13.
 - `BatchItemPipeline` is available as a public protocol for batch-capable custom
   pipelines. Existing custom pipelines implementing only `ItemPipeline` remain
   valid.

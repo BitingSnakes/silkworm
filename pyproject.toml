@@ -10,7 +10,7 @@ authors = [
   { name = "Yehor Smoliakov", email = "egorsmkv@gmail.com" }
 ]
 readme = { file = "README.md", content-type = "text/markdown" }
-requires-python = ">=3.13,<3.16"
+requires-python = ">=3.11,<3.16"
 license = { file = "LICENSE" }
 keywords = [
   "web-scraping",
@@ -34,10 +34,13 @@ classifiers = [
   "Operating System :: POSIX :: Linux",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
   "Programming Language :: Python :: 3.15",
   "Programming Language :: Python :: Implementation :: CPython",
+  "Programming Language :: Python :: Implementation :: PyPy",
   "Topic :: Internet",
   "Topic :: Internet :: WWW/HTTP",
   "Topic :: Internet :: WWW/HTTP :: Indexing/Search",
@@ -54,8 +57,9 @@ dependencies = [
   "charset-norm==4.0.0",
   "scraper-rust>=0.11.0",
   "wreq>=0.13.0",
-  "fast-h2m==0.4.4",
+  "fast-h2m==0.4.5",
   "turboxml==1.0.0",
+  "typing-extensions>=4.15.0",
 ]
 
 [project.scripts]
@@ -185,13 +189,14 @@ dev = [
 docs = [
     "furo==2025.12.19",
     "myst-parser==5.1.0",
-    "sphinx==9.1.0",
+    "sphinx==8.2.3; python_version < '3.12'",
+    "sphinx==9.1.0; python_version >= '3.12'",
     "sphinx-copybutton==0.5.2",
 ]
 
 [tool.pyright]
 include = ["src", "tests", "examples"]
-pythonVersion = "3.13"
+pythonVersion = "3.11"
 typeCheckingMode = "standard"
 executionEnvironments = [
   # Tests import optional dependencies inside try/except guarded by skipif, and

@@ -20,6 +20,7 @@ import json
 import sqlite3
 import time
 from collections.abc import Iterable, Mapping
+from contextlib import closing
 from datetime import timedelta
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
@@ -77,19 +78,34 @@ class JobState:
         self._pending_writes = 0
         self._last_commit = time.monotonic()
         self._db = sqlite3.connect(self.directory / JOB_FILE_NAME)
-        self._db.execute("PRAGMA journal_mode=WAL")
-        self._db.execute("PRAGMA synchronous=NORMAL")
-        self._db.executescript(_SCHEMA)
+        self._execute("PRAGMA journal_mode=WAL")
+        self._execute("PRAGMA synchronous=NORMAL")
+        with closing(self._db.executescript(_SCHEMA)):
+            pass
         self.resumed = self._start()
 
+    def _execute(self, sql: str, parameters: tuple[object, ...] = ()) -> int:
+        with closing(self._db.execute(sql, parameters)) as cursor:
+            return cursor.rowcount
+
+    def _fetchone(
+        self, sql: str, parameters: tuple[object, ...] = ()
+    ) -> tuple[object, ...] | None:
+        with closing(self._db.execute(sql, parameters)) as cursor:
+            return cast("tuple[object, ...] | None", cursor.fetchone())
+
+    def _fetchall(
+        self, sql: str, parameters: tuple[object, ...] = ()
+    ) -> list[tuple[object, ...]]:
+        with closing(self._db.execute(sql, parameters)) as cursor:
+            return cast("list[tuple[object, ...]]", cursor.fetchall())
+
     def _state(self, key: str) -> str | None:
-        row = self._db.execute(
-            "SELECT value FROM state WHERE key = ?", (key,)
-        ).fetchone()
+        row = self._fetchone("SELECT value FROM state WHERE key = ?", (key,))
         return None if row is None else str(row[0])
 
     def _set_state(self, key: str, value: str) -> None:
-        self._db.execute(
+        self._execute(
             "INSERT INTO state (key, value) VALUES (?, ?) "
             "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
             (key, value),
@@ -106,8 +122,8 @@ class JobState:
             raise ValueError(msg)
         resumed = self._state("status") in {"running", "paused"}
         if not resumed:
-            self._db.execute("DELETE FROM seen")
-            self._db.execute("DELETE FROM pending")
+            self._execute("DELETE FROM seen")
+            self._execute("DELETE FROM pending")
         self._set_state("spider", self._spider.name)
         self._set_state("status", "running")
         self._db.commit()
@@ -120,21 +136,23 @@ class JobState:
 
     def seen_add(self, digest: bytes) -> bool:
         """Record ``digest``; return ``False`` when it was already recorded."""
-        cursor = self._db.execute(
-            "INSERT OR IGNORE INTO seen (digest) VALUES (?)", (digest,)
+        inserted = (
+            self._execute("INSERT OR IGNORE INTO seen (digest) VALUES (?)", (digest,))
+            == 1
         )
-        inserted = cursor.rowcount == 1
         if inserted:
             self._wrote()
         return inserted
 
     def seen_count(self) -> int:
         """Return the number of recorded deduplication digests."""
-        return int(self._db.execute("SELECT COUNT(*) FROM seen").fetchone()[0])
+        row = self._fetchone("SELECT COUNT(*) FROM seen")
+        assert row is not None
+        return int(cast("int", row[0]))
 
     def add_pending(self, seq: int, request: Request, payload: str) -> None:
         """Journal a queued request under its queue sequence number."""
-        self._db.execute(
+        self._execute(
             "INSERT OR REPLACE INTO pending (seq, priority, payload) VALUES (?, ?, ?)",
             (seq, request.priority, payload),
         )
@@ -142,19 +160,22 @@ class JobState:
 
     def remove_pending(self, seq: int) -> None:
         """Forget a request after it was fully processed."""
-        self._db.execute("DELETE FROM pending WHERE seq = ?", (seq,))
+        self._execute("DELETE FROM pending WHERE seq = ?", (seq,))
         self._wrote()
 
     def pending_count(self) -> int:
         """Return the number of journaled, unfinished requests."""
-        return int(self._db.execute("SELECT COUNT(*) FROM pending").fetchone()[0])
+        row = self._fetchone("SELECT COUNT(*) FROM pending")
+        assert row is not None
+        return int(cast("int", row[0]))
 
     def load_pending(self) -> list[tuple[int, Request]]:
         """Return journaled requests in their original queue order."""
-        rows = self._db.execute(
-            "SELECT seq, payload FROM pending ORDER BY seq"
-        ).fetchall()
-        return [(int(seq), self.deserialize(str(payload))) for seq, payload in rows]
+        rows = self._fetchall("SELECT seq, payload FROM pending ORDER BY seq")
+        return [
+            (int(cast("int", seq)), self.deserialize(str(payload)))
+            for seq, payload in rows
+        ]
 
     def _wrote(self) -> None:
         self._pending_writes += 1
@@ -175,7 +196,7 @@ class JobState:
         """Commit and close; ``finished`` resets the job for the next run."""
         try:
             if finished:
-                self._db.execute("DELETE FROM pending")
+                self._execute("DELETE FROM pending")
             self._set_state("status", "finished" if finished else "paused")
             self.commit()
         finally:

@@ -50,11 +50,11 @@ See [Streaming vs Buffered Pipelines](pipelines.md#streaming-vs-buffered-pipelin
 
 ## Optional integrations have platform constraints
 
-- Apache Iggy and Cassandra extras are currently limited to Python 3.13.
+- Apache Iggy and Cassandra extras are currently limited to Python 3.11–3.13.
 - On Python 3.15, the MsgPack, Vortex, and OnionLink extras install without their
   backing libraries until compatible wheels are published.
 - Cassandra is unavailable on Windows.
-- The Trio runner currently requires Python 3.13.
+- The Trio runner currently requires Python 3.11–3.13.
 - Servo is distributed as separate `servofetch` wheels rather than a Silkworm
   package extra.
 

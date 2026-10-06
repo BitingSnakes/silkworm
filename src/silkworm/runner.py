@@ -18,7 +18,7 @@ import sys
 import threading
 from collections.abc import Callable
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Unpack
+from typing import TYPE_CHECKING, TypeAlias, Unpack
 
 from .engine import Engine, EngineOptions
 from .settings import resolve_options
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from ._stats import CrawlResult
     from .spiders import Spider
 
-type LoopFactory = Callable[[], asyncio.AbstractEventLoop]
+LoopFactory: TypeAlias = Callable[[], asyncio.AbstractEventLoop]
 
 
 def _install_uvloop() -> LoopFactory:
@@ -261,7 +261,7 @@ def run_spider_trio(
     Run ``spider`` with trio as the async backend (``pip install silkworm-rs[trio]``).
 
     The engine uses asyncio primitives, so it runs inside trio via trio-asyncio.
-    This runner is currently available on Python 3.13 only because
+    This runner is currently available on Python 3.11–3.13 because
     trio-asyncio 0.16 is incompatible with Python 3.14 and newer.
 
     Raises:
