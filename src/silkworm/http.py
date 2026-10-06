@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 from collections.abc import AsyncIterable, Callable, Iterable, Mapping, Sequence
+from contextlib import AsyncExitStack
 from datetime import timedelta
 from typing import TYPE_CHECKING, Any, Protocol, Self, cast, runtime_checkable
 from urllib.parse import urljoin
@@ -536,14 +537,20 @@ class HttpClient:
             if isinstance(stream, AsyncIterable):
                 chunks: list[bytes] = []
                 size = 0
-                async for chunk in cast("AsyncIterable[object]", stream):
-                    data = self._ensure_bytes(chunk)
-                    size += len(data)
-                    if limit is not None and size > limit:
-                        raise ResponseTooLargeError(
-                            f"Response from {url} exceeded the {limit}-byte limit"
-                        )
-                    chunks.append(data)
+                async with AsyncExitStack() as stack:
+                    if callable(getattr(type(stream), "__aexit__", None)):
+                        await stack.enter_async_context(cast("Any", stream))
+                    async for chunk in cast("AsyncIterable[object]", stream):
+                        # wreq also yields HeaderMap frames for HTTP trailers.
+                        if not isinstance(chunk, (bytes, bytearray, memoryview)):
+                            continue
+                        data = self._ensure_bytes(chunk)
+                        size += len(data)
+                        if limit is not None and size > limit:
+                            raise ResponseTooLargeError(
+                                f"Response from {url} exceeded the {limit}-byte limit"
+                            )
+                        chunks.append(data)
                 return b"".join(chunks)
 
         body = await self._read_whole_body(resp)
@@ -582,6 +589,16 @@ class HttpClient:
     async def _close_response(self, resp: object | None) -> None:
         """Release the underlying HTTP response if it exposes a close hook."""
         if resp is None:
+            return
+
+        # wreq 0.13 keeps a fully consumed connection reusable when leaving the
+        # response context. Its close() method explicitly forbids reuse.
+        exit_context = getattr(type(resp), "__aexit__", None)
+        if callable(exit_context):
+            try:
+                await self._maybe_await(exit_context(resp, None, None, None))
+            except Exception:
+                self.logger.debug("Failed to exit response context", exc_info=True)
             return
 
         closer = getattr(resp, "aclose", None) or getattr(resp, "close", None)
@@ -656,8 +673,8 @@ class HttpClient:
 
     @staticmethod
     def _textify(value: object) -> str:
-        if isinstance(value, bytes):
-            return value.decode("utf-8", errors="ignore")
+        if isinstance(value, (bytes, bytearray, memoryview)):
+            return bytes(value).decode("utf-8", errors="ignore")
         return str(value)
 
     def _normalize_headers(self, raw_headers: object) -> dict[str, str]:
@@ -743,7 +760,7 @@ class HttpClient:
 
             if isinstance(raw_values, Sequence) and not isinstance(
                 raw_values,
-                (str, bytes, bytearray),
+                (str, bytes, bytearray, memoryview),
             ):
                 value = ", ".join(
                     self._textify(raw_value).strip()

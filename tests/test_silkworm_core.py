@@ -2,8 +2,9 @@ import asyncio
 import json
 import sys
 import types
+from collections.abc import AsyncIterator
 from datetime import timedelta
-from typing import Any, ClassVar, cast
+from typing import Any, ClassVar, Self, cast
 from unittest.mock import AsyncMock, Mock
 from urllib.parse import parse_qsl, urlsplit
 
@@ -53,6 +54,45 @@ class _StubResponse:
         if isinstance(self._body, bytes):
             return self._body.decode("utf-8", errors="replace")
         return str(self._body)
+
+
+async def test_httpclient_streams_wreq_views_and_releases_context() -> None:
+    class Stream:
+        exited = False
+
+        async def __aenter__(self) -> Self:
+            return self
+
+        async def __aexit__(self, *args: object) -> None:
+            self.exited = True
+
+        async def __aiter__(self) -> AsyncIterator[object]:
+            yield memoryview(b"body")
+            yield object()  # wreq streams may also yield trailer headers.
+
+    class WreqResponse:
+        exited = False
+        closed = False
+
+        def __init__(self) -> None:
+            self.body_stream = Stream()
+
+        def stream(self) -> Stream:
+            return self.body_stream
+
+        async def __aexit__(self, *args: object) -> None:
+            self.exited = True
+
+        async def close(self) -> None:
+            self.closed = True
+
+    client = HttpClient()
+    response = WreqResponse()
+    assert await client._read_body(response, {}, None, "https://example.com") == b"body"
+    await client._close_response(response)
+    assert response.body_stream.exited
+    assert response.exited
+    assert not response.closed
 
 
 class _RecordingClient:
