@@ -54,11 +54,11 @@ classifiers = [
 ]
 
 dependencies = [
-  "charset-norm==4.0.0",
+  "charset-norm>=4.0.0",
   "scraper-rust>=0.11.0",
   "wreq>=0.13.0",
-  "fast-h2m==0.4.5",
-  "turboxml==1.0.0",
+  "fast-h2m>=0.4.5",
+  "turboxml>=1.0.0",
   "typing-extensions>=4.15.0",
 ]
 
