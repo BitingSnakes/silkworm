@@ -99,7 +99,7 @@ Core features:
 - **Redirects**: automatic follow with loop detection and max redirect cap.
 - **Keep-alive**: optional connection reuse when supported by the underlying client.
 - **Proxy support**: uses `request.meta["proxy"]`.
-- **Query merging**: `Request.params` are merged with existing query strings.
+- **Query merging**: `Request.params` replace existing values for the same key; unrelated repeated keys and blank values are preserved. Sequence values expand into repeated keys, and an empty sequence removes that key.
 - **HTML detection**: returns `HTMLResponse` when content-type/sniffing indicates HTML.
 - **wreq runtime**: pass a `wreq.Runtime` through `HttpClient(runtime=...)` to choose worker count and work stealing. The runtime can be shared with other wreq clients.
 

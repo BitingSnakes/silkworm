@@ -153,6 +153,9 @@ Set `allowed_domains` on the spider to drop requests to other hosts (subdomains
 are allowed). Start requests are filtered too; requests with `dont_filter=True`
 bypass the filter. Dropped requests are counted as `offsite_filtered`.
 
+Entries may be host names, host names with ports, full URLs, or IPv6 addresses
+(bare or bracketed). Ports and paths are ignored; a trailing DNS dot is removed.
+
 ```python
 class DocsSpider(Spider):
     start_urls = ("https://docs.example.com/",)
