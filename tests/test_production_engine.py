@@ -290,6 +290,17 @@ async def test_allowed_domains_filter_offsite_links() -> None:
     assert result.stats["offsite_filtered"] == 3
 
 
+@pytest.mark.parametrize("domain", ["[::1]", "http://[::1]:8080", "a.test."])
+async def test_allowed_domains_accept_normalized_hosts(domain: str) -> None:
+    url = "http://a.test/" if domain == "a.test." else "http://[::1]:8080/"
+    spider = LinkSpider(start_urls=[url])
+    spider.allowed_domains = (domain,)
+    engine, fetched = engine_for(spider, {})
+    result = await engine.run()
+    assert fetched == [url]
+    assert result.stats["offsite_filtered"] == 0
+
+
 # -- #5 graceful stop -------------------------------------------------------------------
 
 

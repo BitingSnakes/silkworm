@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING, cast
 from urllib.parse import parse_qsl, quote, unquote, urlencode, urlsplit, urlunsplit
 
 if TYPE_CHECKING:
+    from typing_extensions import Buffer
+
     from ._types import QueryValue
     from .request import Request
 
@@ -20,13 +22,17 @@ _QUERY_SAFE = "/:@!$'()*,;-._~"
 
 
 def merge_query_params(url: str, params: Mapping[str, QueryValue]) -> str:
-    """Return ``url`` with ``params`` merged over its existing query string."""
+    """Merge ``params`` over ``url``, preserving unrelated repeated keys."""
     if not params:
         return url
     parts = urlsplit(url)
-    merged: dict[str, QueryValue] = dict(parse_qsl(parts.query, keep_blank_values=True))
-    merged.update(params)
-    query = urlencode(cast("Mapping[str, object]", merged), doseq=True)
+    merged: list[tuple[str, QueryValue]] = [
+        (key, value)
+        for key, value in parse_qsl(parts.query, keep_blank_values=True)
+        if key not in params
+    ]
+    merged.extend(params.items())
+    query = urlencode(cast("list[tuple[str, object]]", merged), doseq=True)
     return parts._replace(query=query).geturl()
 
 
@@ -80,12 +86,21 @@ def canonicalize_url(url: str, *, keep_fragments: bool = False) -> str:
     return urlunsplit((scheme, netloc, path, query, fragment))
 
 
-def _body_bytes(request: Request) -> bytes:
+def _body_bytes(request: Request) -> Buffer:
     if request.json is not None:
         return json.dumps(request.json, sort_keys=True, separators=(",", ":")).encode()
     data = request.data
     if data is None:
         return b""
+    if (
+        isinstance(data, memoryview)
+        and data.c_contiguous
+        and isinstance(data.obj, bytes)
+    ):
+        # hashlib accepts contiguous buffers directly. Only immutable backing
+        # bytes can bypass the snapshot: hashing may release the GIL, and a
+        # read-only view can still refer to a mutable bytearray.
+        return data
     if isinstance(data, (bytes, bytearray, memoryview)):
         return bytes(data)
     if isinstance(data, str):
@@ -124,7 +139,14 @@ def normalize_domains(domains: Iterable[str]) -> tuple[str, ...]:
         value = domain.strip().lower().lstrip(".")
         if "://" in value:
             value = urlsplit(value).hostname or ""
-        value = value.split("/", 1)[0].rsplit(":", 1)[0] if value else value
+        else:
+            value = value.split("/", 1)[0]
+            if value.startswith("["):
+                value = urlsplit(f"//{value}").hostname or ""
+            elif value.count(":") <= 1:
+                # A bare IPv6 address has multiple colons and no port suffix.
+                value = value.split(":", 1)[0]
+        value = value.rstrip(".")
         if value:
             normalized.append(value)
     return tuple(dict.fromkeys(normalized))
